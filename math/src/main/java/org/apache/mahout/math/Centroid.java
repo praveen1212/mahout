@@ -89,4 +89,9 @@ public class Centroid extends WeightedVector {
     return String.format("key = %d, weight = %.2f, vector = %s", getIndex(), getWeight(), delegate);
   }
 
+  @Override
+  public Centroid clone() {
+    return (Centroid)super.clone();
+  }
+
 }
