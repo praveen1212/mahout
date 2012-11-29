@@ -1,3 +1,10 @@
+**THIS IS NOT THE ORIGINAL MAHOUT!**
+It is experimental fork for work that I intend to get into upstream eventually.
+Currently, this is implementing StreamingKMeans. An early prototype (not
+integratied into Maout's clustering API) is available at:
+https://github.com/dfilimon/knn
+**THIS IS NOT THE ORIGINAL MAHOUT!**
+
 Welcome to Apache Mahout!
 
 Mahout is a scalable machine learning library that implements many different
