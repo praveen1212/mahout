@@ -66,4 +66,11 @@ public class WeightedVector extends DecoratedVector<MutablePair<Double, Integer>
   public String toString() {
     return String.format("index=%d, weight=%.2f, v=%s", getIndex(), getWeight(), getVector());
   }
+
+  @Override
+  public WeightedVector clone() {
+    WeightedVector v = (WeightedVector)super.clone();
+    v.setValue(v.getValue().clone());
+    return v;
+  }
 }

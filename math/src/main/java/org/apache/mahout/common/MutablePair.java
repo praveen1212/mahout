@@ -34,4 +34,9 @@ public class MutablePair<A, B> extends Pair<A, B> {
   public static <A, B> MutablePair of(A first, B second) {
     return new MutablePair(first, second);
   }
+
+  @Override
+  public MutablePair<A, B> clone() {
+    return (MutablePair)super.clone();
+  }
 }

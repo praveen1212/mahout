@@ -29,6 +29,10 @@ public class DecoratedVector<T> extends DelegatingVector {
     return value;
   }
 
+  public void setValue(T value) {
+    this.value = value;
+  }
+
   @Override
   public DecoratedVector<T> like() {
     return new DecoratedVector<T>(getVector().like(), value);

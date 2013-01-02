@@ -78,8 +78,8 @@ public class Centroid extends WeightedVector {
     return getIndex();
   }
 
-  public void addWeight() {
-    setWeight(getWeight() + 1);
+  public void addWeight(double newWeight) {
+    setWeight(getWeight() + newWeight);
   }
 
   @Override
@@ -91,5 +91,4 @@ public class Centroid extends WeightedVector {
   public Centroid clone() {
     return (Centroid)super.clone();
   }
-
 }
