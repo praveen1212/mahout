@@ -25,3 +25,5 @@ foo
 math-tests/
 math/.settings/
 integration/.settings/
+.DS_Store
+*.patch
