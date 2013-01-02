@@ -15,15 +15,23 @@
  * limitations under the License.
  */
 
-package org.apache.mahout.math;
+package org.apache.mahout.common;
 
-public class MatrixSlice extends DecoratedVector<Integer> {
+public class MutablePair<A, B> extends Pair<A, B> {
 
-  public MatrixSlice(Vector v, int index) {
-    super(v, index);
+  public MutablePair(A first, B second) {
+    super(first, second);
   }
 
-  public Vector vector() { return getVector(); }
-  public int index() { return getValue(); }
-}
+  public void setFirst(A first) {
+    this.first = first;
+  }
 
+  public void setSecond(B second) {
+    this.second = second;
+  }
+
+  public static <A, B> MutablePair of(A first, B second) {
+    return new MutablePair(first, second);
+  }
+}

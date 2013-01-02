@@ -17,13 +17,25 @@
 
 package org.apache.mahout.math;
 
-public class MatrixSlice extends DecoratedVector<Integer> {
+public class DecoratedVector<T> extends DelegatingVector {
+  private T value;
 
-  public MatrixSlice(Vector v, int index) {
-    super(v, index);
+  public DecoratedVector(Vector v, T value) {
+    super(v);
+    this.value = value;
   }
 
-  public Vector vector() { return getVector(); }
-  public int index() { return getValue(); }
-}
+  public T getValue() {
+    return value;
+  }
 
+  @Override
+  public DecoratedVector<T> like() {
+    return new DecoratedVector<T>(getVector().like(), value);
+  }
+
+  @Override
+  public String toString() {
+    return String.format("value=%s, v=%s", value, getVector());
+  }
+}

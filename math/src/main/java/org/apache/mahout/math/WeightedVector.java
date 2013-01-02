@@ -17,30 +17,20 @@
 
 package org.apache.mahout.math;
 
+import org.apache.mahout.common.MutablePair;
+
 /**
  * Decorates a vector with a floating point weight and an index.
  */
-public class WeightedVector extends DelegatingVector {
+public class WeightedVector extends DecoratedVector<MutablePair<Double, Integer>> {
   private static final int INVALID_INDEX = -1;
-  private double weight;
-  private int index;
-
-  protected WeightedVector(double weight, int index) {
-    super();
-    this.weight = weight;
-    this.index = index;
-  }
 
   public WeightedVector(Vector v, double weight, int index) {
-    super(v);
-    this.weight = weight;
-    this.index = index;
+    super(v, new MutablePair<Double, Integer>(weight, index));
   }
 
   public WeightedVector(Vector v, Vector projection, int index) {
-    super(v);
-    this.index = index;
-    this.weight = v.dot(projection);
+    super(v, new MutablePair<Double, Integer>(v.dot(projection), index));
   }
 
   public static WeightedVector project(Vector v, Vector projection) {
@@ -52,28 +42,28 @@ public class WeightedVector extends DelegatingVector {
   }
 
   public double getWeight() {
-    return weight;
+    return getValue().getFirst();
   }
 
   public int getIndex() {
-    return index;
+    return getValue().getSecond();
   }
 
   public void setWeight(double newWeight) {
-    this.weight = newWeight;
+    getValue().setFirst(newWeight);
   }
 
   public void setIndex(int index) {
-    this.index = index;
+    getValue().setSecond(index);
   }
 
   @Override
-  public Vector like() {
-    return new WeightedVector(getVector().like(), weight, index);
+  public WeightedVector like() {
+    return new WeightedVector(getVector().like(), getValue().getFirst(), getValue().getSecond());
   }
 
   @Override
   public String toString() {
-    return String.format("index=%d, weight=%.2f, v=%s", index, weight, getVector());
+    return String.format("index=%d, weight=%.2f, v=%s", getIndex(), getWeight(), getVector());
   }
 }
