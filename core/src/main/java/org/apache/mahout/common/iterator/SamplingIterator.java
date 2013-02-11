@@ -21,9 +21,10 @@ import java.util.Iterator;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.AbstractIterator;
-import org.apache.commons.math.MathException;
-import org.apache.commons.math.distribution.PascalDistributionImpl;
+import org.apache.commons.math3.distribution.PascalDistribution;
 import org.apache.mahout.cf.taste.impl.common.SkippingIterator;
+import org.apache.mahout.common.RandomUtils;
+import org.apache.mahout.common.RandomWrapper;
 
 /**
  * Wraps an {@link Iterator} and returns only some subset of the elements that it would, as determined by a
@@ -31,25 +32,24 @@ import org.apache.mahout.cf.taste.impl.common.SkippingIterator;
  */
 public final class SamplingIterator<T> extends AbstractIterator<T> {
   
-  private final PascalDistributionImpl geometricDistribution;
+  private final PascalDistribution geometricDistribution;
   private final Iterator<? extends T> delegate;
 
   public SamplingIterator(Iterator<? extends T> delegate, double samplingRate) {
+    this(RandomUtils.getRandom(), delegate, samplingRate);
+  }
+
+  public SamplingIterator(RandomWrapper random, Iterator<? extends T> delegate, double samplingRate) {
     Preconditions.checkNotNull(delegate);
     Preconditions.checkArgument(samplingRate > 0.0 && samplingRate <= 1.0);
     // Geometric distribution is special case of negative binomial (aka Pascal) with r=1:
-    geometricDistribution = new PascalDistributionImpl(1, samplingRate);
+    geometricDistribution = new PascalDistribution(random.getRandomGenerator(), 1, samplingRate);
     this.delegate = delegate;
   }
 
   @Override
   protected T computeNext() {
-    int toSkip;
-    try {
-      toSkip = geometricDistribution.sample();
-    } catch (MathException e) {
-      throw new IllegalStateException(e);
-    }
+    int toSkip = geometricDistribution.sample();
     if (delegate instanceof SkippingIterator<?>) {
       SkippingIterator<? extends T> skippingDelegate = (SkippingIterator<? extends T>) delegate;
       skippingDelegate.skip(toSkip);

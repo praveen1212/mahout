@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.
@@ -12,29 +12,16 @@
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
- * limitations under the License.
+ * limitations under the License.package org.apache.mahout.math;
  */
+package org.apache.mahout.math;
 
-package org.apache.mahout.vectorizer;
+public interface QR {
+  Matrix getQ();
 
-import org.apache.lucene.search.similarities.DefaultSimilarity;
-//TODO: add a new class that supports arbitrary Lucene similarity implementations
-public class TFIDF implements Weight {
+  Matrix getR();
 
-  private DefaultSimilarity sim = new DefaultSimilarity();
+  boolean hasFullRank();
 
-  public TFIDF() {
-  }
-  
-/*  public TFIDF(Similarity sim) {
-    this.sim = sim;
-  }
-  */
-
-
-  @Override
-  public double calculate(int tf, int df, int length, int numDocs) {
-    // ignore length    
-    return sim.tf(tf) * sim.idf(df, numDocs);
-  }
+  Matrix solve(Matrix B);
 }
