@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.
@@ -15,28 +15,23 @@
  * limitations under the License.
  */
 
-package org.apache.mahout.common;
+package org.apache.mahout.clustering.streaming.search;
 
-public class MutablePair<A, B> extends Pair<A, B> {
+import org.apache.mahout.common.distance.DistanceMeasure;
+import org.apache.mahout.math.Vector;
 
-  public MutablePair(A first, B second) {
-    super(first, second);
-  }
+/**
+ * Describes how we search vectors.  A class should extend UpdatableSearch only if it can handle a remove function.
+ */
+public abstract class UpdatableSearcher extends Searcher {
 
-  public void setFirst(A first) {
-    this.first = first;
-  }
-
-  public void setSecond(B second) {
-    this.second = second;
-  }
-
-  public static <A, B> MutablePair of(A first, B second) {
-    return new MutablePair(first, second);
+  public UpdatableSearcher(DistanceMeasure distanceMeasure) {
+   super(distanceMeasure);
   }
 
   @Override
-  public MutablePair<A, B> clone() {
-    return (MutablePair)super.clone();
-  }
+  public abstract boolean remove(Vector v, double epsilon);
+
+  @Override
+  public abstract void clear();
 }

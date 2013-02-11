@@ -17,20 +17,30 @@
 
 package org.apache.mahout.math;
 
-import org.apache.mahout.common.MutablePair;
-
 /**
  * Decorates a vector with a floating point weight and an index.
  */
-public class WeightedVector extends DecoratedVector<MutablePair<Double, Integer>> {
+public class WeightedVector extends DelegatingVector {
   private static final int INVALID_INDEX = -1;
+  private double weight;
+  private int index;
+
+  protected WeightedVector(double weight, int index) {
+    super();
+    this.weight = weight;
+    this.index = index;
+  }
 
   public WeightedVector(Vector v, double weight, int index) {
-    super(v, new MutablePair<Double, Integer>(weight, index));
+    super(v);
+    this.weight = weight;
+    this.index = index;
   }
 
   public WeightedVector(Vector v, Vector projection, int index) {
-    super(v, new MutablePair<Double, Integer>(v.dot(projection), index));
+    super(v);
+    this.index = index;
+    this.weight = v.dot(projection);
   }
 
   public static WeightedVector project(Vector v, Vector projection) {
@@ -42,35 +52,36 @@ public class WeightedVector extends DecoratedVector<MutablePair<Double, Integer>
   }
 
   public double getWeight() {
-    return getValue().getFirst();
+    return weight;
   }
 
   public int getIndex() {
-    return getValue().getSecond();
+    return index;
   }
 
   public void setWeight(double newWeight) {
-    getValue().setFirst(newWeight);
+    this.weight = newWeight;
   }
 
   public void setIndex(int index) {
-    getValue().setSecond(index);
+    this.index = index;
   }
 
   @Override
-  public WeightedVector like() {
-    return new WeightedVector(getVector().like(), getValue().getFirst(), getValue().getSecond());
+  public Vector like() {
+    return new WeightedVector(getVector().like(), weight, index);
   }
 
   @Override
   public String toString() {
-    return String.format("index=%d, weight=%.2f, v=%s", getIndex(), getWeight(), getVector());
+    return String.format("index=%d, weight=%.2f, v=%s", index, weight, getVector());
   }
 
   @Override
   public WeightedVector clone() {
     WeightedVector v = (WeightedVector)super.clone();
-    v.setValue(v.getValue().clone());
+    v.weight = weight;
+    v.index = index;
     return v;
   }
 }
