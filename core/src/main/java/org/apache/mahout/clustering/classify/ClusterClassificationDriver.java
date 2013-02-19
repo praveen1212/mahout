@@ -118,22 +118,29 @@ public final class ClusterClassificationDriver extends AbstractJob {
    *          classified for the cluster.
    * @param runSequential
    *          Run the process sequentially or in a mapreduce way.
-   * @param runSequential
    * @throws IOException
    * @throws InterruptedException
    * @throws ClassNotFoundException
    */
-  public static void run(Path input, Path clusteringOutputPath, Path output, Double clusterClassificationThreshold,
+  public static void run(Configuration conf, Path input, Path clusteringOutputPath, Path output, Double clusterClassificationThreshold,
       boolean emitMostLikely, boolean runSequential) throws IOException, InterruptedException, ClassNotFoundException {
+    if (runSequential) {
+      classifyClusterSeq(conf, input, clusteringOutputPath, output, clusterClassificationThreshold, emitMostLikely);
+    } else {
+      classifyClusterMR(conf, input, clusteringOutputPath, output, clusterClassificationThreshold, emitMostLikely);
+    }
+  }
+
+  public static void run(Path input, Path clusteringOutputPath, Path output, Double clusterClassificationThreshold,
+                         boolean emitMostLikely, boolean runSequential) throws IOException, InterruptedException, ClassNotFoundException {
     Configuration conf = new Configuration();
     if (runSequential) {
       classifyClusterSeq(conf, input, clusteringOutputPath, output, clusterClassificationThreshold, emitMostLikely);
     } else {
       classifyClusterMR(conf, input, clusteringOutputPath, output, clusterClassificationThreshold, emitMostLikely);
     }
-    
   }
-  
+
   private static void classifyClusterSeq(Configuration conf, Path input, Path clusters, Path output,
       Double clusterClassificationThreshold, boolean emitMostLikely) throws IOException {
     List<Cluster> clusterModels = populateClusterModels(clusters, conf);
