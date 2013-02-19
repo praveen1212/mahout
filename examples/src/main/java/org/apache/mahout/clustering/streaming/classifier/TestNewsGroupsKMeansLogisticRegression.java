@@ -55,18 +55,18 @@ import org.apache.mahout.math.Centroid;
 import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.VectorWritable;
 
-public class TestNewsGroupsKMeanLogisticRegression {
+public class TestNewsGroupsKMeansLogisticRegression {
 
   private String inputFile;
   private String modelFile;
   private String centroidsFile;
   private String labelFile;
 
-  private TestNewsGroupsKMeanLogisticRegression() {
+  private TestNewsGroupsKMeansLogisticRegression() {
   }
 
   public static void main(String[] args) throws IOException {
-    TestNewsGroupsKMeanLogisticRegression runner = new TestNewsGroupsKMeanLogisticRegression();
+    TestNewsGroupsKMeansLogisticRegression runner = new TestNewsGroupsKMeansLogisticRegression();
     if (runner.parseArgs(args)) {
       runner.run(new PrintWriter(new OutputStreamWriter(System.out, Charsets.UTF_8), true));
     }
