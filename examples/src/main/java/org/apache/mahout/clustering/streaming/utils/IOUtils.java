@@ -12,6 +12,8 @@ import org.apache.hadoop.io.Text;
 import org.apache.mahout.clustering.streaming.experimental.CentroidWritable;
 import org.apache.mahout.clustering.streaming.search.ProjectionSearch;
 import org.apache.mahout.common.Pair;
+import org.apache.mahout.common.iterator.sequencefile.PathType;
+import org.apache.mahout.common.iterator.sequencefile.SequenceFileDirIterable;
 import org.apache.mahout.math.Centroid;
 import org.apache.mahout.math.Matrix;
 import org.apache.mahout.math.Vector;
@@ -223,21 +225,21 @@ public class IOUtils {
     Path inFile = new Path(inPath);
     Configuration conf = new Configuration();
     FileSystem fs = FileSystem.get(conf);
-    SequenceFile.Reader reader = new SequenceFile.Reader(fs, inFile, conf);
-    Text key = new Text();
-    VectorWritable value = new VectorWritable();
 
     Matrix projectionMatrix = null;
     Pair<List<String>, List<Centroid>> result =
         new Pair<List<String>, List<Centroid>>(new ArrayList<String>(), new ArrayList<Centroid>());
     int numVectors = 0;
+
     double start = System.currentTimeMillis();
-    while (reader.next(key, value)) {
+    SequenceFileDirIterable<Text, VectorWritable> dirIterable =
+        new SequenceFileDirIterable<Text, VectorWritable>(inFile, PathType.LIST, conf);
+    for (Pair<Text, VectorWritable> entry : dirIterable) {
       if (projectionMatrix == null) {
-        projectionMatrix = ProjectionSearch.generateBasis(projectionDimension, value.get().size());
+        projectionMatrix = ProjectionSearch.generateBasis(projectionDimension, entry.getSecond().get().size());
       }
-      result.getFirst().add(key.toString());
-      result.getSecond().add(new Centroid(numVectors++, projectionMatrix.times(value.get()), 1));
+      result.getFirst().add(entry.getFirst().toString());
+      result.getSecond().add(new Centroid(numVectors++, projectionMatrix.times(entry.getSecond().get()), 1));
     }
     double end = System.currentTimeMillis();
 

@@ -85,9 +85,6 @@ public class StreamingKMeans implements Iterable<Centroid> {
    * @param initialDistanceCutoff The initial distance cutoff representing the value of the
    *                              distance between a point and its closest centroid after which
    *                              the new point will certainly be assigned to a new cluster.
-   *                              @see DataUtils#estimateDistanceCutoff(Iterable,
-   *                              org.apache.mahout.common.distance.DistanceMeasure,
-   *                              int) for a rough estimate.
    * @param beta
    * @param clusterLogFactor
    * @param clusterOvershoot
@@ -170,6 +167,12 @@ public class StreamingKMeans implements Iterable<Centroid> {
     return estimatedNumClusters;
   }
 
+  private static Centroid cloneCentroidAndSetIndex(Centroid datapoint, int index) {
+    Centroid newCentroid = datapoint.clone();
+    newCentroid.setIndex(index);
+    return newCentroid;
+  }
+
   private UpdatableSearcher clusterInternal(Iterable<Centroid> datapoints,
                                             boolean collapseClusters) {
     int oldNumProcessedDataPoints = numProcessedDatapoints;
@@ -185,7 +188,7 @@ public class StreamingKMeans implements Iterable<Centroid> {
       // Assign the first datapoint to the first cluster.
       // Adding a vector to a searcher would normally just reference the copy,
       // but we could potentially mutate it and so we need to make a clone.
-      centroids.add(Iterables.get(datapoints, 0).clone());
+      centroids.add(cloneCentroidAndSetIndex(Iterables.get(datapoints, 0), 0));
       numCentroidsToSkip = 1;
       ++numProcessedDatapoints;
     }
@@ -193,7 +196,7 @@ public class StreamingKMeans implements Iterable<Centroid> {
     Random rand = RandomUtils.getRandom();
     // To cluster, we scan the data and either add each point to the nearest group or create a new group.
     // when we get too many groups, we need to increase the threshold and rescan our current groups
-    for (WeightedVector row : Iterables.skip(datapoints, numCentroidsToSkip)) {
+    for (Centroid row : Iterables.skip(datapoints, numCentroidsToSkip)) {
       // Get the closest vector and its weight as a WeightedThing<Vector>.
       // The weight of the WeightedThing is the distance to the query and the value is a
       // reference to one of the vectors we added to the searcher previously.
@@ -208,7 +211,7 @@ public class StreamingKMeans implements Iterable<Centroid> {
       // proportional to the distance to the closest cluster.
       if (rand.nextDouble() < closestPair.getWeight() / distanceCutoff) {
         // Add new centroid, note that the vector is copied because we may mutate it later.
-        centroids.add(row.clone());
+        centroids.add(cloneCentroidAndSetIndex(row, centroids.size()));
       } else {
         // Merge the new point with the existing centroid. This will update the centroid's actual
         // position.
@@ -221,6 +224,7 @@ public class StreamingKMeans implements Iterable<Centroid> {
           throw new RuntimeException("Unable to remove centroid");
         }
         centroid.update(row);
+        centroid.setIndex(Math.max(centroid.getIndex(), row.getIndex()));
         centroids.add(centroid);
       }
 

@@ -4,7 +4,9 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import org.apache.hadoop.io.Text;
 import org.apache.mahout.clustering.streaming.cluster.BallKMeans;
+import org.apache.mahout.clustering.streaming.cluster.StreamingKMeans;
 import org.apache.mahout.clustering.streaming.search.BruteSearch;
+import org.apache.mahout.clustering.streaming.search.FastProjectionSearch;
 import org.apache.mahout.clustering.streaming.search.UpdatableSearcher;
 import org.apache.mahout.common.Pair;
 import org.apache.mahout.common.distance.DistanceMeasure;
@@ -71,13 +73,15 @@ public class ExperimentUtils {
     return actualClusters;
   }
 
-  public static BallKMeans createBallKMeans(int numClusters, int maxNumIterations) {
-    return new BallKMeans(new BruteSearch(new EuclideanDistanceMeasure()), numClusters,
-        maxNumIterations);
+  public static Iterable<Centroid> clusterBallKMeans(List<Centroid> datapoints, int numClusters) {
+    BallKMeans clusterer = new BallKMeans(new BruteSearch(new EuclideanDistanceMeasure()), numClusters, 20);
+    clusterer.cluster(datapoints);
+    return clusterer;
   }
 
-  public static Iterable<Centroid> clusterBallKMeans(List<Centroid> datapoints, int numClusters) {
-    BallKMeans clusterer = createBallKMeans(numClusters, 20);
+  public static Iterable<Centroid> clusterStreamingKMeans(List<Centroid> datapoints, int numClusters) {
+    StreamingKMeans clusterer = new StreamingKMeans(new FastProjectionSearch(new EuclideanDistanceMeasure(), 3, 2),
+        (int)(numClusters * Math.log(datapoints.size())), 1e-6);
     clusterer.cluster(datapoints);
     return clusterer;
   }
@@ -95,6 +99,9 @@ public class ExperimentUtils {
     UpdatableSearcher searcher = new BruteSearch(distanceMeasure);
     searcher.addAll(centroids);
     List<OnlineSummarizer> summarizers = Lists.newArrayList();
+    if (searcher.size() == 0) {
+      return summarizers;
+    }
     for (int i = 0; i < searcher.size(); ++i) {
       summarizers.add(new OnlineSummarizer());
     }
