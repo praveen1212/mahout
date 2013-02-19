@@ -1,4 +1,4 @@
-package org.apache.mahout.clustering.streaming.tools;
+package org.apache.mahout.clustering.streaming.vectorizer;
 
 import com.google.common.base.Function;
 import com.google.common.collect.Lists;
@@ -32,11 +32,8 @@ public class TFIDFVectorizer {
   // The scoring function that gets a (TF, DF) pair and computes the score.
   private Function<TFIDFScorer.Tuple, Double> tfIdfScorer;
 
-  private AdaptiveWordValueEncoder encoder;
-
   public TFIDFVectorizer(Function<TFIDFScorer.Tuple, Double> tfIdfScorer) {
     this.tfIdfScorer = tfIdfScorer;
-    this.encoder = new AdaptiveWordValueEncoder("encoder");
   }
 
   /**
@@ -72,7 +69,13 @@ public class TFIDFVectorizer {
     for (String path : paths) {
       Map<String, Integer> wordTFDictionary = buildWordTFDictionaryForPath(path);
       for (Map.Entry<String, Integer> wordEntry : wordTFDictionary.entrySet()) {
-        MapUtils.findAndApplyFunctionOrInitialize(wordDFDictionary, new MapUtils.PlusOne(), 1, wordEntry.getKey());
+        String word = wordEntry.getKey();
+        Integer df = wordDFDictionary.get(word);
+        if (df == null) {
+          wordDFDictionary.put(word, 1);
+        } else {
+          wordDFDictionary.put(word, df + 1);
+        }
       }
       wordTFDictionaries.add(wordTFDictionary);
       ++numPaths;
@@ -150,13 +153,19 @@ public class TFIDFVectorizer {
    * @param reader the reader to get the words from.
    * @return a map of words to frequency counts.
    */
-  public Map<String, Integer> buildWordTFDictionary(Reader reader) throws IOException {
+  public static Map<String, Integer> buildWordTFDictionary(Reader reader) throws IOException {
     Tokenizer tokenizer = new StandardTokenizer(Version.LUCENE_36, reader);
+    tokenizer.reset();
     CharTermAttribute cattr = tokenizer.addAttribute(CharTermAttribute.class);
     Map<String, Integer> wordTFDictionary = Maps.newHashMap();
     while (tokenizer.incrementToken()) {
       String word = cattr.toString();
-      MapUtils.findAndApplyFunctionOrInitialize(wordTFDictionary, new MapUtils.PlusOne(), 1, word);
+      Integer tf = wordTFDictionary.get(word);
+      if (tf == null) {
+        wordTFDictionary.put(word, 1);
+      } else {
+        wordTFDictionary.put(word, tf + 1);
+      }
     }
     tokenizer.end();
     tokenizer.close();

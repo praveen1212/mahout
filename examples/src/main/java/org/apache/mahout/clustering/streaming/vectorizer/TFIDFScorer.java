@@ -1,4 +1,4 @@
-package org.apache.mahout.clustering.streaming.tools;
+package org.apache.mahout.clustering.streaming.vectorizer;
 
 import com.google.common.base.Function;
 
@@ -18,28 +18,28 @@ public class TFIDFScorer {
   static public class Linear implements Function<Tuple, Double> {
     @Override
     public Double apply(Tuple input) {
-      return input.tf * Math.log(input.n / input.df);
+      return input.tf * (input.n > 1 ? Math.log(input.n / input.df) : 1);
     }
   }
 
   static public class Const implements Function<Tuple, Double> {
     @Override
     public Double apply(Tuple input) {
-      return Math.log(input.n / input.df);
+      return (input.n > 1 ? Math.log(input.n / input.df) : 1);
     }
   }
 
   static public class Log implements Function<Tuple, Double> {
     @Override
     public Double apply(Tuple input) {
-      return Math.log(input.tf) * Math.log(input.n / input.df);
+      return Math.log(input.tf) * (input.n > 1 ? Math.log(input.n / input.df) : 1);
     }
   }
 
   static public class Sqrt implements Function<Tuple, Double> {
     @Override
     public Double apply(Tuple input) {
-      return Math.sqrt(input.tf) * Math.log(input.n / input.df);
+      return Math.sqrt(input.tf) * (input.n > 1 ? Math.log(input.n / input.df) : 1);
     }
   }
 }

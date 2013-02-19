@@ -231,6 +231,7 @@ if [ ! -x "$HADOOP_BINARY" ] || [ "$MAHOUT_LOCAL" != "" ] ; then
 else
   echo "Running on hadoop, using $HADOOP_BINARY and HADOOP_CONF_DIR=$HADOOP_CONF_DIR"
 
+  echo $1
   if [ "$MAHOUT_JOB" = "" ] ; then
     echo "ERROR: Could not find mahout-examples-*.job in $MAHOUT_HOME or $MAHOUT_HOME/examples/target, please run 'mvn install' to create the .job file"
     exit 1
@@ -238,6 +239,7 @@ else
     case "$1" in
     (hadoop)
       shift
+      echo hadoop
       export HADOOP_CLASSPATH=$MAHOUT_CONF_DIR:${HADOOP_CLASSPATH}:$CLASSPATH
       exec "$HADOOP_BINARY" "$@"
       ;;

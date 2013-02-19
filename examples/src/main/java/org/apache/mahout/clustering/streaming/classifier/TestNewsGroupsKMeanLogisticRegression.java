@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.mahout.clustering.streaming.tools;
+package org.apache.mahout.clustering.streaming.classifier;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -44,6 +44,8 @@ import org.apache.mahout.classifier.ClassifierResult;
 import org.apache.mahout.classifier.ResultAnalyzer;
 import org.apache.mahout.classifier.sgd.ModelSerializer;
 import org.apache.mahout.classifier.sgd.OnlineLogisticRegression;
+import org.apache.mahout.clustering.streaming.tools.CreateCentroids;
+import org.apache.mahout.clustering.streaming.utils.IOUtils;
 import org.apache.mahout.common.Pair;
 import org.apache.mahout.common.iterator.sequencefile.PathType;
 import org.apache.mahout.common.iterator.sequencefile.SequenceFileDirIterable;
@@ -96,7 +98,7 @@ public class TestNewsGroupsKMeanLogisticRegression {
         SequenceFileDirValueIterable<CentroidWritable>(new Path(centroidsFile), PathType.LIST, conf);
     List<Centroid> centroids =
         Lists.newArrayList(
-            CreateCentroids.getCentroidsFromCentroidWritableIterable(centroidIterable));
+            IOUtils.getCentroidsFromCentroidWritableIterable(centroidIterable));
     // Get the encoded documents (the vectors from tf-idf).
     SequenceFileDirIterable<Text, VectorWritable> inputIterable = new
         SequenceFileDirIterable<Text, VectorWritable>(new Path(inputFile), PathType.LIST, conf);

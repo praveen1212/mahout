@@ -1,11 +1,7 @@
 package org.apache.mahout.clustering.streaming.tools;
 
 import com.google.common.base.Charsets;
-import com.google.common.base.Function;
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import org.apache.commons.cli2.CommandLine;
 import org.apache.commons.cli2.Group;
 import org.apache.commons.cli2.Option;
@@ -15,25 +11,22 @@ import org.apache.commons.cli2.builder.GroupBuilder;
 import org.apache.commons.cli2.commandline.Parser;
 import org.apache.commons.cli2.util.HelpFormatter;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.IntWritable;
-import org.apache.hadoop.io.SequenceFile;
 import org.apache.hadoop.io.Text;
 import org.apache.mahout.clustering.streaming.cluster.StreamingKMeans;
+import org.apache.mahout.clustering.streaming.utils.ExperimentUtils;
+import org.apache.mahout.clustering.streaming.utils.IOUtils;
 import org.apache.mahout.common.Pair;
 import org.apache.mahout.common.distance.EuclideanDistanceMeasure;
 import org.apache.mahout.common.iterator.sequencefile.PathType;
 import org.apache.mahout.common.iterator.sequencefile.SequenceFileDirIterable;
 import org.apache.mahout.clustering.streaming.cluster.BallKMeans;
-import org.apache.mahout.clustering.streaming.experimental.CentroidWritable;
 import org.apache.mahout.clustering.streaming.search.BruteSearch;
 import org.apache.mahout.clustering.streaming.search.ProjectionSearch;
 import org.apache.mahout.math.Centroid;
 import org.apache.mahout.math.DenseVector;
 import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.VectorWritable;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.OutputStreamWriter;
@@ -74,64 +67,11 @@ public class CreateCentroids {
     return new Pair<Integer, Iterable<Centroid>>(numClusters, clusterer);
   }
 
-  public static void computeActualClusters(Iterable<Pair<Text, VectorWritable>> dirIterable,
-                                           Map<String, Centroid> actualClusters) {
-    int clusterId = 0;
-    for (Pair<Text, VectorWritable> pair : dirIterable) {
-      String clusterName = pair.getFirst().toString();
-      Centroid centroid = actualClusters.get(clusterName);
-      if (centroid == null) {
-        centroid = new Centroid(++clusterId, pair.getSecond().get().clone(), 1);
-        actualClusters.put(clusterName, centroid);
-        continue;
-      }
-      centroid.update(pair.getSecond().get());
-    }
-  }
-
-  public static void writeCentroidsToSequenceFile(Configuration conf, String name,
-                                                  Iterable<Centroid> centroids) throws IOException {
-    SequenceFile.Writer writer = SequenceFile.createWriter(FileSystem.get(conf), conf,
-        new Path(name), IntWritable.class, CentroidWritable.class);
+  public static Vector distancesFromCentroidsVector(Vector input, List<Centroid> centroids) {
+    Vector encodedInput = new DenseVector(centroids.size());
     int i = 0;
     for (Centroid centroid : centroids) {
-      writer.append(new IntWritable(i++), new CentroidWritable(centroid));
-    }
-    writer.close();
-  }
-
-  public static Iterable<Centroid> getCentroidsFromPairIterable(
-      Iterable<Pair<Text, VectorWritable>> dirIterable) {
-    return Iterables.transform(dirIterable, new Function<Pair<Text, VectorWritable>, Centroid>() {
-      private int count = 0;
-      @Override
-      public Centroid apply(Pair<Text, VectorWritable> input) {
-        Preconditions.checkNotNull(input);
-        return new Centroid(count++, input.getSecond().get().clone(), 1);
-      }
-    });
-  }
-
-  public static Iterable<Centroid> getCentroidsFromCentroidWritableIterable(
-      Iterable<CentroidWritable>  dirIterable) {
-    return Iterables.transform(dirIterable, new Function<CentroidWritable, Centroid>() {
-      @Override
-      public Centroid apply(CentroidWritable input) {
-        Preconditions.checkNotNull(input);
-        return input.getCentroid().clone();
-      }
-    });
-  }
-
-  static Vector distancesFromCentroidsVector(Vector input, Iterable<Centroid> centroids) {
-    int numCentroids = 0;
-    for (Centroid c : centroids) {
-      ++numCentroids;
-    }
-    Vector encodedInput = new DenseVector(numCentroids);
-    int i = 0;
-    for (Centroid c : centroids) {
-      encodedInput.setQuick(i, Math.exp(-input.getDistanceSquared(c)));
+      encodedInput.setQuick(i, Math.exp(-input.getDistanceSquared(centroid)));
       System.out.printf("%f ", encodedInput.get(i));
       ++i;
     }
@@ -145,17 +85,16 @@ public class CreateCentroids {
         SequenceFileDirIterable<Text, VectorWritable>(new Path(inputFile), PathType.LIST, conf);
 
     if (computeActualCentroids) {
-      Map<String, Centroid> actualClusters = Maps.newHashMap();
       printWriter.printf("Computing actual clusters\n");
-      computeActualClusters(inputIterable, actualClusters);
+      Map<String, Centroid> actualClusters = ExperimentUtils.computeActualClusters(inputIterable);
       String outputFile = outputFileBase + "-actual.seqfile";
       printWriter.printf("Writing actual clusters to %s\n", outputFile);
-      writeCentroidsToSequenceFile(conf, outputFile,  actualClusters.values());
+      IOUtils.writeCentroidsToSequenceFile(actualClusters.values(), conf, outputFile);
     }
 
     if (computeBallKMeansCentroids || computeStreamingKMeansCentroids) {
       List<Centroid> centroids =
-          Lists.newArrayList(getCentroidsFromPairIterable(inputIterable));
+          Lists.newArrayList(IOUtils.getCentroidsFromPairIterable(inputIterable));
       Pair<Integer, Iterable<Centroid>> computedClusterPair;
       String suffix;
       printWriter.printf("Computing clusters for %d points\n", centroids.size());
@@ -168,7 +107,7 @@ public class CreateCentroids {
       }
       String outputFile = outputFileBase + suffix + ".seqfile";
       printWriter.printf("Writing %s computed clusters to %s\n", suffix, outputFile);
-      writeCentroidsToSequenceFile(conf, outputFile,  computedClusterPair.getSecond());
+      IOUtils.writeCentroidsToSequenceFile(computedClusterPair.getSecond(), conf, outputFile);
     }
   }
 

@@ -1,4 +1,4 @@
-package org.apache.mahout.clustering.streaming.tools;
+package org.apache.mahout.clustering.streaming;
 
 import com.google.common.collect.Lists;
 import org.apache.mahout.common.Pair;
@@ -17,7 +17,7 @@ public class HypercubeVisualizer {
     int numSamples = Integer.parseInt(args[1]);
 
     Pair<List<Centroid>, List<Centroid>> dataset =
-        DataUtils.sampleMultiNormalHypercube(numDimensions,  numSamples);
+        DataUtils.sampleMultiNormalHypercube(numDimensions, numSamples);
 
     List<Centroid> datapoints = dataset.getFirst();
     List<Centroid> medians = dataset.getSecond();

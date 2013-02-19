@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.mahout.clustering.streaming.tools;
+package org.apache.mahout.clustering.streaming.vectorizer;
 
 import com.google.common.base.*;
 import com.google.common.collect.HashMultiset;

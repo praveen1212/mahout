@@ -33,7 +33,6 @@ import org.apache.mahout.common.commandline.DefaultOptionCreator;
 import org.apache.mahout.common.distance.EuclideanDistanceMeasure;
 import org.apache.mahout.clustering.streaming.search.BruteSearch;
 import org.apache.mahout.clustering.streaming.search.LocalitySensitiveHashSearch;
-import org.apache.mahout.clustering.streaming.tools.EvaluateClustering;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -85,7 +84,6 @@ public final class StreamingKMeansDriver extends AbstractJob {
   public static final String MAX_NUM_ITERATIONS = "maxNumIterations";
   /**
    * The initial estimated distance cutoff between two points for forming new clusters.
-   * @see org.apache.mahout.clustering.streaming.cluster.DataUtils for a simple estimation method.
    * @see org.apache.mahout.clustering.streaming.cluster.StreamingKMeans
    * Defaults to 10e-6.
    */
@@ -143,7 +141,7 @@ public final class StreamingKMeansDriver extends AbstractJob {
     Preconditions.checkArgument(numClusters > 0, "Invalid number of clusters requested");
 
     String estimatedNumMapClustersStr = getOption(ESTIMATED_NUM_MAP_CLUSTERS);
-    Preconditions.checkNotNull(estimatedNumMapClustersStr);
+    Preconditions.checkNotNull(estimatedNumMapClustersStr, "No number of estimated map clusters");
     int estimatedNumMapClusters = Integer.parseInt(estimatedNumMapClustersStr);
     Preconditions.checkArgument(estimatedNumMapClusters > 0, "Invalid number of estimated map " +
         "clusters.");
@@ -286,9 +284,11 @@ public final class StreamingKMeansDriver extends AbstractJob {
     }
     long end = System.currentTimeMillis();
 
+    /*
     if (conf.getBoolean("summarize", true)) {
       EvaluateClustering.summarize(conf, output, log);
     }
+    */
     log.info("StreamingKMeans clustering complete. Results are in {}. Took {} ms",
         output.toString(), end - start);
   }

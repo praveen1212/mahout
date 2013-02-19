@@ -1,4 +1,4 @@
-package org.apache.mahout.clustering.streaming.tools;
+package org.apache.mahout.clustering.streaming.vectorizer;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
@@ -57,6 +57,7 @@ public class FileContentsToSequenceFiles {
   public static void getRecursiveFilePaths(String base, List<String> filePaths) throws
       IOException {
     File baseFile = new File(base);
+    Preconditions.checkNotNull(baseFile, "baseFile corresponding to " + base + " is null");
     for (File child : baseFile.listFiles()) {
       String childPath = child.getCanonicalPath();
       if (child.isFile()) {

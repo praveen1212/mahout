@@ -1,9 +1,13 @@
-package org.apache.mahout.clustering.streaming.tools;
+package org.apache.mahout.clustering.streaming;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import org.apache.commons.io.FileUtils;
+import org.apache.mahout.clustering.streaming.vectorizer.TFIDFScorer;
+import org.apache.mahout.clustering.streaming.vectorizer.TFIDFVectorizer;
 import org.apache.mahout.math.Vector;
+import org.hamcrest.CoreMatchers;
+import org.hamcrest.MatcherAssert;
 import org.junit.Test;
 
 import java.io.File;
@@ -11,9 +15,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.MatcherAssert.assertThat;
 
 public class TFIDFVectorizerTest {
   @Test
@@ -35,7 +36,7 @@ public class TFIDFVectorizerTest {
     writer.close();
 
     Map<String, Integer> actualCounts = vectorizer.buildWordTFDictionaryForPath(tempFile.getPath());
-    assertThat(actualCounts, is(wordCounts));
+    MatcherAssert.assertThat(actualCounts, CoreMatchers.is(wordCounts));
 
     List<String> pathList = Lists.newArrayList();
     pathList.add(tempFile.getPath());
