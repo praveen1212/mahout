@@ -12,11 +12,9 @@ import org.apache.commons.cli2.util.HelpFormatter;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.SequenceFile;
 import org.apache.hadoop.io.Text;
-import org.apache.mahout.clustering.Cluster;
-import org.apache.mahout.clustering.classify.WeightedVectorWritable;
+import org.apache.mahout.clustering.iterator.ClusterWritable;
 import org.apache.mahout.clustering.kmeans.KMeansDriver;
 import org.apache.mahout.clustering.kmeans.RandomSeedGenerator;
 import org.apache.mahout.clustering.streaming.utils.ExperimentUtils;
@@ -78,20 +76,28 @@ public class ClusterQuality20NewsGroups {
       clusters = RandomSeedGenerator.buildRandom(conf, reducedInputPath, clusters, 20, new EuclideanDistanceMeasure());
       // Run KMeans.
       KMeansDriver.run(conf, reducedInputPath, clusters, output, new EuclideanDistanceMeasure(), 0.01, 20, true,
-          0.01, true);
+          0, true);
       // Read the results back in as a List<Centroid>.
-      SequenceFileDirValueIterable<WeightedVectorWritable> outIterable =
-          new SequenceFileDirValueIterable<WeightedVectorWritable>(
-              new Path("hdfs://localhost:9000/tmp/output/clusteredPoints/part-m-0"), PathType.LIST, conf);
+      SequenceFileDirValueIterable<ClusterWritable> outIterable =
+          new SequenceFileDirValueIterable<ClusterWritable>(
+              new Path("hdfs://localhost:9000/tmp/output/clusters-20-final/part-*"), PathType.GLOB, conf);
       int numVectors = 0;
-      for (WeightedVectorWritable vectorWritable : outIterable) {
-        kmCentroids.add(new Centroid(numVectors++, vectorWritable.getVector().clone(), vectorWritable.getWeight()));
+      for (ClusterWritable clusterWritable : outIterable) {
+        kmCentroids.add(new Centroid(numVectors++, clusterWritable.getValue().getCenter().clone(),
+            clusterWritable.getValue().getNumObservations()));
       }
       System.out.printf("Clustered %d points\n", numVectors);
     } catch (Exception e) {
       e.printStackTrace();
     }
     return kmCentroids;
+  }
+
+  public static void printSummaries(List<OnlineSummarizer> summarizers) {
+    for (int i = 0; i < summarizers.size(); ++i) {
+      OnlineSummarizer summarizer = summarizers.get(i);
+      System.out.printf("Average distance in cluster %d [%d]: %f\n", i, summarizer.getCount(), summarizer.getMean());
+    }
   }
 
   public void runInstance(int numRun) {
@@ -103,10 +109,7 @@ public class ClusterQuality20NewsGroups {
     long end = System.currentTimeMillis();
     System.out.printf("Took %f[s]\n", (end - start) / 1000.0);
     List<OnlineSummarizer> summarizers = ExperimentUtils.summarizeClusterDistances(reducedVectors, kmCentroids);
-    for (int i = 0; i < summarizers.size(); ++i) {
-      OnlineSummarizer summarizer = summarizers.get(i);
-      System.out.printf("Average distance in cluster %d: %f\n", i, summarizer.getMean());
-    }
+    printSummaries(summarizers);
 
     System.out.printf("Clustering BallKMeans\n");
     start = System.currentTimeMillis();
@@ -114,10 +117,7 @@ public class ClusterQuality20NewsGroups {
     end = System.currentTimeMillis();
     System.out.printf("Took %f[s]\n", (end - start) / 1000.0);
     summarizers = ExperimentUtils.summarizeClusterDistances(reducedVectors, bkmCentroids);
-    for (int i = 0; i < summarizers.size(); ++i) {
-      OnlineSummarizer summarizer = summarizers.get(i);
-      System.out.printf("Average distance in cluster %d: %f\n", i, summarizer.getMean());
-    }
+    printSummaries(summarizers);
 
     System.out.printf("Clustering StreamingKMeans\n");
     start = System.currentTimeMillis();
@@ -125,10 +125,7 @@ public class ClusterQuality20NewsGroups {
     end = System.currentTimeMillis();
     System.out.printf("Took %f[s]\n", (end - start) / 1000.0);
     summarizers = ExperimentUtils.summarizeClusterDistances(reducedVectors, skmCentroids);
-    for (int i = 0; i < summarizers.size(); ++i) {
-      OnlineSummarizer summarizer = summarizers.get(i);
-      System.out.printf("Average distance in cluster %d: %f\n", i, summarizer.getMean());
-    }
+    printSummaries(summarizers);
   }
 
   public void run(String[] args) {
@@ -142,7 +139,7 @@ public class ClusterQuality20NewsGroups {
       Configuration.dumpConfiguration(conf, new OutputStreamWriter(System.out));
 
       System.out.printf("Reading data\n");
-      input = IOUtils.getKeysAndVectors(inputFile, projectionDimension);
+      input = IOUtils.getKeysAndVectors(inputFile, projectionDimension, 1000);
       reducedVectors = input.getSecond();
 
       for (int i = 0; i < NUM_RUNS; ++i) {

@@ -210,6 +210,10 @@ public class IOUtils {
         initialDimension, reducedDimension, end - start);
   }
 
+  public static Pair<List<String>, List<Centroid>> getKeysAndVectors(String inPath, int projectionDimension) throws IOException {
+    return getKeysAndVectors(inPath, projectionDimension, Integer.MAX_VALUE);
+  }
+
   /**
    * Reads in a seqfile mapping keys (file paths as strings) to vectors (documents) and projects the vectors to a given
    * dimension.
@@ -219,12 +223,11 @@ public class IOUtils {
    * list containing the projected vectors as centroids.
    * @throws java.io.IOException
    */
-  public static Pair<List<String>, List<Centroid>> getKeysAndVectors(String inPath, int projectionDimension) throws IOException {
+  public static Pair<List<String>, List<Centroid>> getKeysAndVectors(String inPath, int projectionDimension, int limit) throws IOException {
     System.out.printf("Started reading data\n");
 
     Path inFile = new Path(inPath);
     Configuration conf = new Configuration();
-    FileSystem fs = FileSystem.get(conf);
 
     Matrix projectionMatrix = null;
     Pair<List<String>, List<Centroid>> result =
@@ -240,6 +243,10 @@ public class IOUtils {
       }
       result.getFirst().add(entry.getFirst().toString());
       result.getSecond().add(new Centroid(numVectors++, projectionMatrix.times(entry.getSecond().get()), 1));
+      --limit;
+      if (limit == 0) {
+        break;
+      }
     }
     double end = System.currentTimeMillis();
 
