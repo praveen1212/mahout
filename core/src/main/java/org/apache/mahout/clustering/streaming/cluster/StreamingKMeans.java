@@ -167,12 +167,6 @@ public class StreamingKMeans implements Iterable<Centroid> {
     return estimatedNumClusters;
   }
 
-  private static Centroid cloneCentroidAndSetIndex(Centroid datapoint, int index) {
-    Centroid newCentroid = datapoint.clone();
-    newCentroid.setIndex(index);
-    return newCentroid;
-  }
-
   private UpdatableSearcher clusterInternal(Iterable<Centroid> datapoints,
                                             boolean collapseClusters) {
     int oldNumProcessedDataPoints = numProcessedDatapoints;
@@ -188,7 +182,7 @@ public class StreamingKMeans implements Iterable<Centroid> {
       // Assign the first datapoint to the first cluster.
       // Adding a vector to a searcher would normally just reference the copy,
       // but we could potentially mutate it and so we need to make a clone.
-      centroids.add(cloneCentroidAndSetIndex(Iterables.get(datapoints, 0), 0));
+      centroids.add(Iterables.get(datapoints, 0));
       numCentroidsToSkip = 1;
       ++numProcessedDatapoints;
     }
@@ -211,7 +205,7 @@ public class StreamingKMeans implements Iterable<Centroid> {
       // proportional to the distance to the closest cluster.
       if (rand.nextDouble() < closestPair.getWeight() / distanceCutoff) {
         // Add new centroid, note that the vector is copied because we may mutate it later.
-        centroids.add(cloneCentroidAndSetIndex(row, centroids.size()));
+        centroids.add(row.clone());
       } else {
         // Merge the new point with the existing centroid. This will update the centroid's actual
         // position.
@@ -224,7 +218,6 @@ public class StreamingKMeans implements Iterable<Centroid> {
           throw new RuntimeException("Unable to remove centroid");
         }
         centroid.update(row);
-        centroid.setIndex(Math.max(centroid.getIndex(), row.getIndex()));
         centroids.add(centroid);
       }
 
@@ -260,6 +253,12 @@ public class StreamingKMeans implements Iterable<Centroid> {
 
     if (collapseClusters) {
       numProcessedDatapoints = oldNumProcessedDataPoints;
+    } else {
+      int numCentroids = 0;
+      for (Vector vector : centroids) {
+        Centroid centroid = (Centroid)vector;
+        centroid.setIndex(numCentroids++);
+      }
     }
 
     // Normally, iterating through the searcher produces Vectors,
