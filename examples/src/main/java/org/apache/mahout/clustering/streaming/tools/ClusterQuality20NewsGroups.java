@@ -45,6 +45,8 @@ public class ClusterQuality20NewsGroups {
 
   private Path reducedInputPath = null;
 
+  private int numPoints;
+
   /**
    * Write the reduced vectors to a sequence file so that KMeans can read them.
    * @throws IOException
@@ -96,8 +98,16 @@ public class ClusterQuality20NewsGroups {
     for (int i = 0; i < summarizers.size(); ++i) {
       OnlineSummarizer summarizer = summarizers.get(i);
       System.out.printf("Average distance in cluster %d [%d]: %f\n", i, summarizer.getCount(), summarizer.getMean());
-      fileOut.printf("%d, %s, %f, %d, %f, %f, %d\n", numRun, name, time, i, summarizer.getMean(),
-          summarizer.getSD(), summarizer.getCount());
+      // If there is just one point in the cluster, quartiles cannot be estimated. We'll just assume all the quartiles
+      // equal the only value.
+      boolean moreThanOne = summarizer.getCount() > 1;
+      fileOut.printf("%d,%s,%f,%d,%f,%f,%f,%f,%f,%f,%f,%d\n", numRun, name, time, i, summarizer.getMean(),
+          summarizer.getSD(),
+          summarizer.getQuartile(0),
+          moreThanOne ? summarizer.getQuartile(1) : summarizer.getQuartile(0),
+          moreThanOne ? summarizer.getQuartile(2) : summarizer.getQuartile(0),
+          moreThanOne ? summarizer.getQuartile(3) : summarizer.getQuartile(0),
+          summarizer.getQuartile(4), summarizer.getCount());
     }
   }
 
@@ -130,6 +140,15 @@ public class ClusterQuality20NewsGroups {
     System.out.printf("Took %f[s]\n", time);
     summarizers = ExperimentUtils.summarizeClusterDistances(reducedVectors, skmCentroids);
     printSummaries(summarizers, time, "skm", numRun);
+
+    System.out.printf("Clustering BallStreamingKMeans\n");
+    start = System.currentTimeMillis();
+    List<Centroid> bskmCentroids = Lists.newArrayList(ExperimentUtils.clusterBallKMeans(skmCentroids, 20));
+    end = System.currentTimeMillis();
+    time += (end - start) / 1000.0;
+    System.out.printf("Took %f[s]\n", time);
+    summarizers = ExperimentUtils.summarizeClusterDistances(reducedVectors, bskmCentroids);
+    printSummaries(summarizers, time, "bskm", numRun);
   }
 
   public void run(String[] args) {
@@ -143,11 +162,12 @@ public class ClusterQuality20NewsGroups {
       Configuration.dumpConfiguration(conf, new OutputStreamWriter(System.out));
 
       System.out.printf("Reading data\n");
-      input = IOUtils.getKeysAndVectors(inputFile, projectionDimension);
+      input = IOUtils.getKeysAndVectors(inputFile, projectionDimension, numPoints);
       reducedVectors = input.getSecond();
 
       fileOut = new PrintWriter(new FileOutputStream(outputFile));
-      fileOut.printf("run, type, time, cluster, distance.mean, distance.sd, count\n");
+      fileOut.printf("run,type,time,cluster,distance.mean,distance.sd,distance.q0,distance.q1,distance.q2,distance.q3,"
+          + "distance.q4,count\n");
       for (int i = 0; i < NUM_RUNS; ++i) {
         runInstance(i);
       }
@@ -184,11 +204,19 @@ public class ClusterQuality20NewsGroups {
         .withArgument(argumentBuilder.withName("project").withMaximum(1).create())
         .create();
 
+    Option numPointsOption = builder.withLongName("numpoints")
+        .withShortName("np")
+        .withRequired(false)
+        .withDescription("if set, only clusters the first numpoints points, otherwise it clusters all of them")
+        .withArgument(argumentBuilder.withName("numpoints").withMaximum(1).create())
+        .create();
+
     Group normalArgs = new GroupBuilder()
         .withOption(help)
         .withOption(inputFileOption)
         .withOption(outputFileOption)
         .withOption(projectOption)
+        .withOption(numPointsOption)
         .create();
 
     Parser parser = new Parser();
@@ -206,6 +234,11 @@ public class ClusterQuality20NewsGroups {
     outputFile = (String)cmdLine.getValue(outputFileOption);
     if (cmdLine.hasOption(projectOption)) {
       projectionDimension = Integer.parseInt((String)cmdLine.getValue(projectOption));
+    }
+    if (cmdLine.hasOption(numPointsOption)) {
+      numPoints = Integer.parseInt((String)cmdLine.getValue(numPointsOption));
+    } else {
+      numPoints = Integer.MAX_VALUE;
     }
     return true;
   }
