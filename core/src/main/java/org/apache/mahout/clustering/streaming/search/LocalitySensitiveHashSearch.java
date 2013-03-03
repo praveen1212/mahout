@@ -134,7 +134,7 @@ public class LocalitySensitiveHashSearch extends UpdatableSearcher implements It
       }
     }));
     Collections.sort(r);
-    return r.subList(0, numberOfNeighbors);
+    return r.subList(0, Math.min(numberOfNeighbors, r.size()));
   }
 
 

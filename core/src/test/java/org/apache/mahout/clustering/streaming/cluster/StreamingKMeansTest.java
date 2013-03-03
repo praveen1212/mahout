@@ -26,7 +26,6 @@ import org.apache.mahout.math.random.WeightedThing;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Arrays;
@@ -38,7 +37,7 @@ import static org.junit.runners.Parameterized.Parameters;
 
 @RunWith(value = Parameterized.class)
 public class StreamingKMeansTest {
-  private static final int NUM_DATA_POINTS = 2 * 32768;
+  private static final int NUM_DATA_POINTS = 1 << 16;
   private static final int NUM_DIMENSIONS = 6;
   private static final int NUM_PROJECTIONS = 2;
   private static final int SEARCH_SIZE = 10;

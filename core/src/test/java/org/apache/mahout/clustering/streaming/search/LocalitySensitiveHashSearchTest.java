@@ -27,6 +27,8 @@ import org.junit.Test;
 import java.util.BitSet;
 import java.util.List;
 
+import static org.junit.Assert.assertTrue;
+
 public class LocalitySensitiveHashSearchTest {
 
   @Test
@@ -55,9 +57,9 @@ public class LocalitySensitiveHashSearchTest {
       final double speedup = 10e6 / evals;
       System.out.printf("%.1f,%.2f,%.2f,%.2f\n", speedup, t1.getQuartile(1),
           t1.getQuartile(2), t1.getQuartile(3));
-      Assert.assertTrue(t1.getQuartile(2) > 0.45);
-      Assert.assertTrue(speedup > 4 || t1.getQuartile(2) > 0.9);
-      Assert.assertTrue(speedup > 15 || t1.getQuartile(2) > 0.8);
+      assertTrue(t1.getQuartile(2) > 0.45);
+      assertTrue(speedup > 4 || t1.getQuartile(2) > 0.9);
+      assertTrue(speedup > 15 || t1.getQuartile(2) > 0.8);
     }
   }
 
@@ -106,6 +108,9 @@ public class LocalitySensitiveHashSearchTest {
       if (count[bitDot] < 200) {
         System.out.printf("%d, %.3f\n", bitDot, v.dot(query) / Math.sqrt(v.getLengthSquared() * query.getLengthSquared()));
       }
+    }
+    for (int i = 0; i < 65; ++i) {
+      System.out.printf("%d, %d\n", i, count[i]);
     }
   }
 }
