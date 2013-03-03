@@ -9,7 +9,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.SequenceFile;
 import org.apache.hadoop.io.Text;
-import org.apache.mahout.clustering.streaming.experimental.CentroidWritable;
+import org.apache.mahout.clustering.streaming.mapreduce.CentroidWritable;
 import org.apache.mahout.clustering.streaming.search.ProjectionSearch;
 import org.apache.mahout.common.Pair;
 import org.apache.mahout.common.iterator.sequencefile.PathType;

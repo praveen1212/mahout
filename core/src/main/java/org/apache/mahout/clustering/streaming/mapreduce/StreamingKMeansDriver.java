@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.mahout.clustering.streaming.experimental;
+package org.apache.mahout.clustering.streaming.mapreduce;
 
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.conf.Configuration;

@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.mahout.clustering.streaming.experimental;
+package org.apache.mahout.clustering.streaming.mapreduce;
 
 import org.apache.hadoop.io.Writable;
 import org.apache.mahout.math.Centroid;
@@ -29,19 +29,12 @@ import java.io.IOException;
 public class CentroidWritable implements Writable {
   private Centroid centroid = null;
 
-  public CentroidWritable() {
-  }
-
   public CentroidWritable(Centroid centroid) {
     this.centroid = centroid;
   }
 
   public Centroid getCentroid() {
     return centroid;
-  }
-
-  public void setCentroid(Centroid centroid) {
-    this.centroid = centroid;
   }
 
   @Override

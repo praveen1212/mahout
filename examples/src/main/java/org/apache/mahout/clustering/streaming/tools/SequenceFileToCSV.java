@@ -15,6 +15,7 @@ import org.apache.mahout.clustering.streaming.search.ProjectionSearch;
 import org.apache.mahout.clustering.streaming.utils.IOUtils;
 import org.apache.mahout.common.iterator.sequencefile.PathType;
 import org.apache.mahout.common.iterator.sequencefile.SequenceFileDirValueIterable;
+import org.apache.mahout.math.Centroid;
 import org.apache.mahout.math.Matrix;
 import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.VectorWritable;
@@ -25,6 +26,7 @@ import java.util.List;
 public class SequenceFileToCSV {
   private String inputFile;
   private String outputFile;
+  private String outputCSVFile;
   private Integer projectionDimension;
 
   public static void main(String[] args) {
@@ -37,21 +39,24 @@ public class SequenceFileToCSV {
     }
 
     Configuration conf = new Configuration();
+    conf.set("fs.default.name", "hdfs://localhost:9000/");
     try {
-      List<Vector> vectors = Lists.newArrayList();
+      List<Centroid> vectors = Lists.newArrayList();
       Matrix projectionMatrix = null;
+      int numVecs = 0;
       for (Vector vector : Lists.newArrayList(IOUtils.getVectorsFromVectorWritableIterable(
           new SequenceFileDirValueIterable<VectorWritable>(new Path(inputFile), PathType.LIST, conf)))) {
         if (projectionDimension != null) {
           if (projectionMatrix == null) {
             projectionMatrix = ProjectionSearch.generateBasis(projectionDimension, vector.size());
           }
-          vectors.add(projectionMatrix.times(vector));
+          vectors.add(new Centroid(numVecs++, projectionMatrix.times(vector), 1));
         } else {
-          vectors.add(vector);
+          vectors.add(new Centroid(numVecs++, vector, 1));
         }
       }
-      IOUtils.generateCSVFromVectors(vectors, conf, outputFile);
+      IOUtils.generateCSVFromVectors(vectors, conf, outputCSVFile);
+      IOUtils.writeCentroidsToSequenceFile(vectors, conf, outputFile);
     } catch (IOException e) {
       System.out.println(e.getMessage());
     }
@@ -70,11 +75,18 @@ public class SequenceFileToCSV {
         .withDescription("where to get seq files with the vectors")
         .create();
 
+    Option outputCSVFileOption = builder.withLongName("outputcsv")
+        .withShortName("oc")
+        .withRequired(true)
+        .withArgument(argumentBuilder.withName("output").withMaximum(1).create())
+        .withDescription("the output CSV file")
+        .create();
+
     Option outputFileOption = builder.withLongName("output")
         .withShortName("o")
         .withRequired(true)
         .withArgument(argumentBuilder.withName("output").withMaximum(1).create())
-        .withDescription("the output CSV file")
+        .withDescription("the output sequence file")
         .create();
 
     Option projectOption = builder.withLongName("project")
@@ -86,6 +98,7 @@ public class SequenceFileToCSV {
     Group normalArgs = new GroupBuilder()
         .withOption(help)
         .withOption(inputFileOption)
+        .withOption(outputCSVFileOption)
         .withOption(outputFileOption)
         .withOption(projectOption)
         .create();
@@ -103,6 +116,7 @@ public class SequenceFileToCSV {
 
     inputFile = (String) cmdLine.getValue(inputFileOption);
     outputFile = (String) cmdLine.getValue(outputFileOption);
+    outputCSVFile = (String) cmdLine.getValue(outputCSVFileOption);
     if (cmdLine.hasOption(projectOption)) {
       projectionDimension = Integer.parseInt((String)cmdLine.getValue(projectOption));
     }

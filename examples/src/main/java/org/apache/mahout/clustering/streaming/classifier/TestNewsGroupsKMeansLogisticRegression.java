@@ -50,7 +50,7 @@ import org.apache.mahout.common.Pair;
 import org.apache.mahout.common.iterator.sequencefile.PathType;
 import org.apache.mahout.common.iterator.sequencefile.SequenceFileDirIterable;
 import org.apache.mahout.common.iterator.sequencefile.SequenceFileDirValueIterable;
-import org.apache.mahout.clustering.streaming.experimental.CentroidWritable;
+import org.apache.mahout.clustering.streaming.mapreduce.CentroidWritable;
 import org.apache.mahout.math.Centroid;
 import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.VectorWritable;
@@ -83,7 +83,7 @@ public class TestNewsGroupsKMeansLogisticRegression {
     Map<String, Integer> labels = Maps.newHashMap();
     for (String line : lines.subList(1, lines.size())) {
       String[] chunks = line.split(", ");
-      Preconditions.checkArgument(chunks.length == 2, "Invalid labels line " + chunks.toString());
+      Preconditions.checkArgument(chunks.length == 2, "Invalid labels line " + line);
       labels.put(chunks[0], Integer.parseInt(chunks[1]));
       System.out.printf("%s: %s\n", chunks[0], chunks[1]);
     }

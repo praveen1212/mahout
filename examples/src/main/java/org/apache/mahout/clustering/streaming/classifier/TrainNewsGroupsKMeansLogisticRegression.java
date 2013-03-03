@@ -40,7 +40,7 @@ import org.apache.mahout.common.Pair;
 import org.apache.mahout.common.iterator.sequencefile.PathType;
 import org.apache.mahout.common.iterator.sequencefile.SequenceFileDirIterable;
 import org.apache.mahout.common.iterator.sequencefile.SequenceFileValueIterable;
-import org.apache.mahout.clustering.streaming.experimental.CentroidWritable;
+import org.apache.mahout.clustering.streaming.mapreduce.CentroidWritable;
 import org.apache.mahout.math.Centroid;
 import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.VectorWritable;
@@ -70,8 +70,6 @@ public final class TrainNewsGroupsKMeansLogisticRegression {
   private static final int NUM_VECTORS = 18898;
   private static final int NUM_CLASSES = 20;
   private static final int NUM_FEATURES_ACTUAL = 20;
-  private static final int NUM_FEATURES_BKM = 20;
-  private static final int NUM_FEATURES_SKM = NUM_CLASSES * (int)Math.log(NUM_VECTORS);
 
   private TrainNewsGroupsKMeansLogisticRegression() {
   }
@@ -190,7 +188,7 @@ public final class TrainNewsGroupsKMeansLogisticRegression {
         System.out.printf("----------------------------\n");
         long start = System.currentTimeMillis();
         trainComputed(inputIterable, outputBase, "ballkmeans", clusterNamesToIds,
-            new Pair<Integer, List<Centroid>>(NUM_FEATURES_BKM, centroids));
+            new Pair<Integer, List<Centroid>>(centroids.size(), centroids));
         long end = System.currentTimeMillis();
         System.out.printf("Trained models for ballkmeans clusters. Took %d ms\n", end - start);
       }
