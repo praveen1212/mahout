@@ -20,10 +20,10 @@ package org.apache.mahout.common;
 import java.io.Serializable;
 
 /** A simple (ordered) pair of two objects. Elements may be null. */
-public class Pair<A,B> implements Comparable<Pair<A,B>>, Serializable, Cloneable {
+public final class Pair<A,B> implements Comparable<Pair<A,B>>, Serializable {
   
-  protected A first;
-  protected B second;
+  private final A first;
+  private final B second;
   
   public Pair(A first, B second) {
     this.first = first;
@@ -96,13 +96,4 @@ public class Pair<A,B> implements Comparable<Pair<A,B>>, Serializable, Cloneable
     return thisSecond.compareTo(thatSecond);
   }
 
-  @Override
-  public Pair<A, B> clone() {
-    try {
-      return (Pair<A, B>)super.clone();
-    } catch (CloneNotSupportedException e) {
-      e.printStackTrace();
-    }
-    return null;
-  }
 }
