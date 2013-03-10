@@ -141,6 +141,15 @@ public class ClusterQuality20NewsGroups {
     summarizers = ExperimentUtils.summarizeClusterDistances(reducedVectors, skmCentroids);
     printSummaries(summarizers, time, "skm", numRun);
 
+    System.out.printf("Clustering OneByOneStreamingKMeans\n");
+    start = System.currentTimeMillis();
+    List<Centroid> oskmCentroids = Lists.newArrayList(ExperimentUtils.clusterOneByOneStreamingKMeans(reducedVectors, 20));
+    end = System.currentTimeMillis();
+    time = (end - start) / 1000.0;
+    System.out.printf("Took %f[s]\n", time);
+    summarizers = ExperimentUtils.summarizeClusterDistances(reducedVectors, oskmCentroids);
+    printSummaries(summarizers, time, "oskm", numRun);
+
     System.out.printf("Clustering BallStreamingKMeans\n");
     start = System.currentTimeMillis();
     List<Centroid> bskmCentroids = Lists.newArrayList(ExperimentUtils.clusterBallKMeans(skmCentroids, 20));
@@ -149,6 +158,15 @@ public class ClusterQuality20NewsGroups {
     System.out.printf("Took %f[s]\n", time);
     summarizers = ExperimentUtils.summarizeClusterDistances(reducedVectors, bskmCentroids);
     printSummaries(summarizers, time, "bskm", numRun);
+
+    System.out.printf("Clustering OneByOneBallStreamingKMeans\n");
+    start = System.currentTimeMillis();
+    List<Centroid> boskmCentroids = Lists.newArrayList(ExperimentUtils.clusterBallKMeans(oskmCentroids, 20));
+    end = System.currentTimeMillis();
+    time = (end - start) / 1000.0;
+    System.out.printf("Took %f[s]\n", time);
+    summarizers = ExperimentUtils.summarizeClusterDistances(reducedVectors, boskmCentroids);
+    printSummaries(summarizers, time, "boskm", numRun);
   }
 
   public void run(String[] args) {
@@ -164,6 +182,7 @@ public class ClusterQuality20NewsGroups {
       System.out.printf("Reading data\n");
       input = IOUtils.getKeysAndVectors(inputFile, projectionDimension, numPoints);
       reducedVectors = input.getSecond();
+      System.out.printf("Read %d vectors\n", reducedVectors.size());
 
       fileOut = new PrintWriter(new FileOutputStream(outputFile));
       fileOut.printf("run,type,time,cluster,distance.mean,distance.sd,distance.q0,distance.q1,distance.q2,distance.q3,"

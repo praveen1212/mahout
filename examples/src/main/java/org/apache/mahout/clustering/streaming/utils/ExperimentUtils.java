@@ -86,6 +86,15 @@ public class ExperimentUtils {
     return clusterer;
   }
 
+  public static Iterable<Centroid> clusterOneByOneStreamingKMeans(List<Centroid> datapoints, int numClusters) {
+    StreamingKMeans clusterer = new StreamingKMeans(new FastProjectionSearch(new EuclideanDistanceMeasure(), 3, 2),
+        (int)(numClusters * Math.log(datapoints.size())), 1e-6);
+    for (Centroid datapoint : datapoints) {
+      clusterer.cluster(datapoint);
+    }
+    return clusterer;
+  }
+
   /**
    * Computes the summaries for the distances in each cluster.
    * @param datapoints iterable of datapoints.
