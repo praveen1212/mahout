@@ -89,6 +89,6 @@ public class Centroid extends WeightedVector {
 
   @Override
   public Centroid clone() {
-    return new Centroid(super.clone());
+    return new Centroid(this);
   }
 }
