@@ -6,6 +6,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import org.apache.mahout.clustering.streaming.LumpyData;
 import org.apache.mahout.common.Pair;
+import org.apache.mahout.common.RandomUtils;
 import org.apache.mahout.common.distance.EuclideanDistanceMeasure;
 import org.apache.mahout.math.DenseMatrix;
 import org.apache.mahout.math.Matrix;
@@ -16,9 +17,12 @@ import org.junit.Test;
 
 import java.util.List;
 
+import static org.hamcrest.core.Is.is;
+import static org.junit.Assert.assertThat;
+
 public class SearchQualityTest {
   private static final int NUM_DATA_POINTS = 1 << 13;
-  private static final int NUM_QUERIES = 1 << 6;
+  private static final int NUM_QUERIES = 1 << 8;
   private static final int NUM_DIMENSIONS = 40;
   private static final int NUM_PROJECTIONS = 3;
   private static final int SEARCH_SIZE = 10;
@@ -34,6 +38,8 @@ public class SearchQualityTest {
 
   @Test
   public void testOverlapAndRuntime() {
+    RandomUtils.useTestSeed();
+
     Matrix dataPoints = lumpyRandomData(NUM_DATA_POINTS, NUM_DIMENSIONS);
     Matrix queries = lumpyRandomData(NUM_QUERIES, NUM_DIMENSIONS);
 
@@ -66,16 +72,17 @@ public class SearchQualityTest {
           }
         }
       }
-      System.out.printf("%s [%d]: first %d; total %d; avg_time(1 query) %f[s]\n",
+      System.out.printf("%s [%d]: first matches %d; total matches %d; avg_time(1 query) %f[s]\n",
           searcher.getClass().getName(), queries.numRows(),
           numFirstMatches, numMatches, results.getSecond() / (queries.numRows() * 1.0));
+      assertThat("Closest vector returned doesn't match", numFirstMatches, is(queries.numRows()));
     }
   }
 
   public Pair<List<List<WeightedThing<Vector>>>, Long> getResultsAndRuntime(Searcher searcher,
                                                                             Iterable<? extends Vector> queries) {
     long start = System.currentTimeMillis();
-    List<List<WeightedThing<Vector>>> results = searcher.search(queries, 10);
+    List<List<WeightedThing<Vector>>> results = searcher.search(queries, 2);
     long end = System.currentTimeMillis();
     return new Pair<List<List<WeightedThing<Vector>>>, Long>(results, end - start);
   }
