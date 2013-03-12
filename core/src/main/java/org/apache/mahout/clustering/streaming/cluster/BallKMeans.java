@@ -121,6 +121,7 @@ public class BallKMeans implements Iterable<Centroid> {
   private void initializeSeeds(List<? extends WeightedVector> datapoints) {
     Preconditions.checkArgument(datapoints.size() > 1, "Must have at least two datapoints points to cluster " +
         "sensibly");
+    Preconditions.checkArgument(datapoints.size() > numClusters, "Must have more datapoints than clusters");
     // Compute the centroid of all of the datapoints.  This is then used to compute the squared radius of the datapoints.
     Centroid center = new Centroid(datapoints.iterator().next());
     for (WeightedVector row : Iterables.skip(datapoints, 1)) {
