@@ -20,12 +20,9 @@ package org.apache.mahout.math.neighborhood;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import junit.framework.Assert;
+import org.apache.mahout.common.RandomUtils;
 import org.apache.mahout.common.distance.EuclideanDistanceMeasure;
 import org.apache.mahout.math.*;
-import org.apache.mahout.math.neighborhood.FastProjectionSearch;
-import org.apache.mahout.math.neighborhood.LocalitySensitiveHashSearch;
-import org.apache.mahout.math.neighborhood.ProjectionSearch;
-import org.apache.mahout.math.neighborhood.UpdatableSearcher;
 import org.apache.mahout.math.random.MultiNormal;
 import org.apache.mahout.math.random.WeightedThing;
 import org.junit.Test;
@@ -42,7 +39,7 @@ public class SearchSanityTest {
   private static final int NUM_DATA_POINTS = 1 << 13;
   private static final int NUM_DIMENSIONS = 20;
   private static final int NUM_PROJECTIONS = 3;
-  private static final int SEARCH_SIZE = 20;
+  private static final int SEARCH_SIZE = 30;
 
   private UpdatableSearcher searcher;
   private Matrix dataPoints;
@@ -58,6 +55,7 @@ public class SearchSanityTest {
 
   @Parameterized.Parameters
   public static List<Object[]> generateData() {
+    RandomUtils.useTestSeed();
     Matrix dataPoints = multiNormalRandomData(NUM_DATA_POINTS, NUM_DIMENSIONS);
     return Arrays.asList(new Object[][]{
         {new ProjectionSearch(new EuclideanDistanceMeasure(), NUM_PROJECTIONS, SEARCH_SIZE), dataPoints},
@@ -143,7 +141,7 @@ public class SearchSanityTest {
       List<WeightedThing<Vector>> r = searcher.search(query.vector(), 200);
       double x = 0;
       for (WeightedThing<Vector> thing : r) {
-        assertTrue("Scores must be monotonic increasing", thing.getWeight() > x);
+        assertTrue("Scores must be monotonic increasing", thing.getWeight() >= x);
         x = thing.getWeight();
       }
     }
