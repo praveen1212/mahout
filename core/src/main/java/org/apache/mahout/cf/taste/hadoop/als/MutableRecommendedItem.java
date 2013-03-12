@@ -15,62 +15,61 @@
  * limitations under the License.
  */
 
-package org.apache.mahout.cf.taste.impl.recommender;
+package org.apache.mahout.cf.taste.hadoop.als;
 
-import java.io.Serializable;
-
+import org.apache.mahout.cf.taste.impl.recommender.GenericRecommendedItem;
 import org.apache.mahout.cf.taste.recommender.RecommendedItem;
 import org.apache.mahout.common.RandomUtils;
 
-import com.google.common.base.Preconditions;
-
 /**
- * <p>
- * A simple implementation of {@link RecommendedItem}.
- * </p>
+ * Mutable variant of {@link RecommendedItem}
  */
-public final class GenericRecommendedItem implements RecommendedItem, Serializable {
-  
-  private final long itemID;
-  private final float value;
-  
-  /**
-   * @throws IllegalArgumentException
-   *           if item is null or value is NaN
-   */
-  public GenericRecommendedItem(long itemID, float value) {
-    Preconditions.checkArgument(!Float.isNaN(value), "value is NaN");
-    this.itemID = itemID;
-    this.value = value;
-  }
-  
+class MutableRecommendedItem implements RecommendedItem {
+
+  private long itemID;
+  private float value;
+
   @Override
   public long getItemID() {
     return itemID;
   }
-  
+
   @Override
   public float getValue() {
     return value;
   }
 
+  public void set(long itemID, float value) {
+    this.itemID = itemID;
+    this.value = value;
+  }
+
+  public void capToMaxValue(float maxValue) {
+    if (value > maxValue) {
+      value = maxValue;
+    }
+  }
+
+  public RecommendedItem copy() {
+    return new GenericRecommendedItem(itemID, value);
+  }
+
   @Override
   public String toString() {
-    return "RecommendedItem[item:" + itemID + ", value:" + value + ']';
+    return "MutableRecommendedItem[item:" + itemID + ", value:" + value + ']';
   }
-  
+
   @Override
   public int hashCode() {
     return (int) itemID ^ RandomUtils.hashFloat(value);
   }
-  
+
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof GenericRecommendedItem)) {
+    if (!(o instanceof MutableRecommendedItem)) {
       return false;
     }
     RecommendedItem other = (RecommendedItem) o;
     return itemID == other.getItemID() && value == other.getValue();
   }
-  
 }

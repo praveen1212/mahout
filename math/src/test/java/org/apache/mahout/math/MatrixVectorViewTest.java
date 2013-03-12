@@ -15,27 +15,23 @@
  * limitations under the License.
  */
 
-package org.apache.mahout.cf.taste.recommender;
+package org.apache.mahout.math;
 
-/**
- * <p>
- * Implementations encapsulate items that are recommended, and include the item recommended and a value
- * expressing the strength of the preference.
- * </p>
- */
-public interface RecommendedItem {
-  
-  /** @return the recommended item ID */
-  long getItemID();
-  
+import org.junit.Test;
+
+public class MatrixVectorViewTest extends MahoutTestCase {
+
   /**
-   * <p>
-   * A value expressing the strength of the preference for the recommended item. The range of the values
-   * depends on the implementation. Implementations must use larger values to express stronger preference.
-   * </p>
-   * 
-   * @return strength of the preference
+   * Test for the error reported in https://issues.apache.org/jira/browse/MAHOUT-1146
    */
-  float getValue();
+  @Test
+  public void testColumnView() {
 
+    Matrix matrix = new DenseMatrix(5, 3);
+    Vector column2 = matrix.viewColumn(2);
+    Matrix outerProduct = column2.cross(column2);
+
+    assertEquals(matrix.numRows(), outerProduct.numRows());
+    assertEquals(matrix.numRows(), outerProduct.numCols());
+  }
 }
