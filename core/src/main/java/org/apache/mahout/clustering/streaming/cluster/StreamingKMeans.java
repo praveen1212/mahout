@@ -112,7 +112,7 @@ public class StreamingKMeans implements Iterable<Centroid> {
   private Logger progressLogger;
 
   /**
-   * Calls StreamingKMeans(searcher, numClusters, initialDistanceCutoff, 1.3, 10, 0.5).
+   * Calls StreamingKMeans(searcher, numClusters, initialDistanceCutoff, 1.3, 10, 1.5).
    * @see StreamingKMeans#StreamingKMeans(org.apache.mahout.math.neighborhood.UpdatableSearcher, int,
    * double, double, double, double, Logger)
    */
