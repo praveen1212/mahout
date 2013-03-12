@@ -29,6 +29,10 @@ import java.io.IOException;
 public class CentroidWritable implements Writable {
   private Centroid centroid = null;
 
+  public CentroidWritable() {
+
+  }
+
   public CentroidWritable(Centroid centroid) {
     this.centroid = centroid;
   }
