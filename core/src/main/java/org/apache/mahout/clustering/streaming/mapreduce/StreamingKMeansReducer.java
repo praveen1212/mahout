@@ -24,7 +24,7 @@ import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.mahout.common.commandline.DefaultOptionCreator;
 import org.apache.mahout.common.distance.EuclideanDistanceMeasure;
 import org.apache.mahout.clustering.streaming.cluster.BallKMeans;
-import org.apache.mahout.clustering.streaming.search.BruteSearch;
+import org.apache.mahout.math.neighborhood.BruteSearch;
 import org.apache.mahout.math.Centroid;
 
 import java.io.IOException;

@@ -15,9 +15,12 @@
  * limitations under the License.
  */
 
-package org.apache.mahout.clustering.streaming;
+package org.apache.mahout.math.neighborhood;
 
 import com.google.common.collect.Lists;
+import org.apache.mahout.math.DenseMatrix;
+import org.apache.mahout.math.Matrix;
+import org.apache.mahout.math.MatrixSlice;
 import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.random.ChineseRestaurant;
 import org.apache.mahout.math.random.MultiNormal;
@@ -51,6 +54,15 @@ public class LumpyData implements Sampler<Vector> {
     this.centers = new MultiNormal(dimension);
     this.radius = radius;
     cluster = new ChineseRestaurant(alpha);
+  }
+
+  public static Matrix lumpyRandomData(int numDataPoints, int numDimensions) {
+    final Matrix data = new DenseMatrix(numDataPoints, numDimensions);
+    final LumpyData clusters = new LumpyData(numDimensions, 0.05, 10);
+    for (MatrixSlice row : data) {
+      row.vector().assign(clusters.sample());
+    }
+    return data;
   }
 
   @Override

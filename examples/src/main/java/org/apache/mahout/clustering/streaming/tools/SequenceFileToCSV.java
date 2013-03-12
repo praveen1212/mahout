@@ -11,7 +11,7 @@ import org.apache.commons.cli2.commandline.Parser;
 import org.apache.commons.cli2.util.HelpFormatter;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.mahout.clustering.streaming.search.ProjectionSearch;
+import org.apache.mahout.math.neighborhood.ProjectionSearch;
 import org.apache.mahout.clustering.streaming.utils.IOUtils;
 import org.apache.mahout.common.iterator.sequencefile.PathType;
 import org.apache.mahout.common.iterator.sequencefile.SequenceFileDirValueIterable;

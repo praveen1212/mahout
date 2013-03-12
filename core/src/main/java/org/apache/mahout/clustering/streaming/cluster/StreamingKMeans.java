@@ -22,7 +22,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
 import org.apache.mahout.common.RandomUtils;
-import org.apache.mahout.clustering.streaming.search.UpdatableSearcher;
+import org.apache.mahout.math.neighborhood.UpdatableSearcher;
 import org.apache.mahout.math.*;
 import org.apache.mahout.math.random.WeightedThing;
 import org.slf4j.Logger;
@@ -65,7 +65,7 @@ public class StreamingKMeans implements Iterable<Centroid> {
 
   /**
    * Calls StreamingKMeans(searcher, estimatedNumClusters, initialDistanceCutoff, 1.3, 10, 0.5).
-   * @see StreamingKMeans#StreamingKMeans(org.apache.mahout.clustering.streaming.search.UpdatableSearcher, int,
+   * @see StreamingKMeans#StreamingKMeans(org.apache.mahout.math.neighborhood.UpdatableSearcher, int,
    * double, double, double, double, Logger)
    */
   public StreamingKMeans(UpdatableSearcher searcher, int estimatedNumClusters,

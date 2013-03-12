@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.mahout.clustering.streaming.search;
+package org.apache.mahout.math.neighborhood;
 
 import com.google.common.collect.Lists;
 import org.apache.mahout.common.distance.DistanceMeasure;

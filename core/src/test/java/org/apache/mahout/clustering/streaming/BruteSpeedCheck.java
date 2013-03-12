@@ -20,7 +20,7 @@ package org.apache.mahout.clustering.streaming;
 
 import com.google.common.collect.Lists;
 import org.apache.mahout.common.distance.EuclideanDistanceMeasure;
-import org.apache.mahout.clustering.streaming.search.BruteSearch;
+import org.apache.mahout.math.neighborhood.BruteSearch;
 import org.apache.mahout.math.ConstantVector;
 import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.random.MultiNormal;

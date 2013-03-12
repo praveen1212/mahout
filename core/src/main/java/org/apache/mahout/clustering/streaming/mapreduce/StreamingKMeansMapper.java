@@ -24,7 +24,7 @@ import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.mahout.common.commandline.DefaultOptionCreator;
 import org.apache.mahout.common.distance.DistanceMeasure;
 import org.apache.mahout.clustering.streaming.cluster.StreamingKMeans;
-import org.apache.mahout.clustering.streaming.search.*;
+import org.apache.mahout.math.neighborhood.*;
 import org.apache.mahout.math.Centroid;
 import org.apache.mahout.math.VectorWritable;
 import org.slf4j.Logger;

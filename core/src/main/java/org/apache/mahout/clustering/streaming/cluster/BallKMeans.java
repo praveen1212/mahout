@@ -25,7 +25,7 @@ import com.google.common.collect.Lists;
 import org.apache.mahout.common.distance.DistanceMeasure;
 import org.apache.mahout.common.distance.EuclideanDistanceMeasure;
 import org.apache.mahout.common.distance.SquaredEuclideanDistanceMeasure;
-import org.apache.mahout.clustering.streaming.search.UpdatableSearcher;
+import org.apache.mahout.math.neighborhood.UpdatableSearcher;
 import org.apache.mahout.math.Centroid;
 import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.WeightedVector;

@@ -20,7 +20,7 @@ package org.apache.mahout.clustering.streaming.cluster;
 
 import org.apache.mahout.common.Pair;
 import org.apache.mahout.common.distance.EuclideanDistanceMeasure;
-import org.apache.mahout.clustering.streaming.search.*;
+import org.apache.mahout.math.neighborhood.*;
 import org.apache.mahout.math.*;
 import org.apache.mahout.math.random.WeightedThing;
 import org.junit.Test;

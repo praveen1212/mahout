@@ -15,13 +15,17 @@
  * limitations under the License.
  */
 
-package org.apache.mahout.clustering.streaming.search;
+package org.apache.mahout.math.neighborhood;
 
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import junit.framework.Assert;
 import org.apache.mahout.common.distance.EuclideanDistanceMeasure;
 import org.apache.mahout.math.*;
+import org.apache.mahout.math.neighborhood.FastProjectionSearch;
+import org.apache.mahout.math.neighborhood.LocalitySensitiveHashSearch;
+import org.apache.mahout.math.neighborhood.ProjectionSearch;
+import org.apache.mahout.math.neighborhood.UpdatableSearcher;
 import org.apache.mahout.math.random.MultiNormal;
 import org.apache.mahout.math.random.WeightedThing;
 import org.junit.Test;
@@ -133,7 +137,6 @@ public class SearchSanityTest {
     for (int i = 0; i < 100; i++) {
       queries.viewRow(i).assign(gen.sample());
     }
-
     searcher.addAllMatrixSlices(dataPoints);
 
     for (MatrixSlice query : queries) {

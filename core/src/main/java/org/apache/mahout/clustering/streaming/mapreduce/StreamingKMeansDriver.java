@@ -31,8 +31,8 @@ import org.apache.mahout.common.AbstractJob;
 import org.apache.mahout.common.HadoopUtil;
 import org.apache.mahout.common.commandline.DefaultOptionCreator;
 import org.apache.mahout.common.distance.EuclideanDistanceMeasure;
-import org.apache.mahout.clustering.streaming.search.BruteSearch;
-import org.apache.mahout.clustering.streaming.search.LocalitySensitiveHashSearch;
+import org.apache.mahout.math.neighborhood.BruteSearch;
+import org.apache.mahout.math.neighborhood.LocalitySensitiveHashSearch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

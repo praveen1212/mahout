@@ -2,7 +2,7 @@ package org.apache.mahout.clustering.streaming.tools;
 
 import com.google.common.collect.Lists;
 import org.apache.mahout.common.Pair;
-import org.apache.mahout.clustering.streaming.search.ProjectionSearch;
+import org.apache.mahout.math.neighborhood.ProjectionSearch;
 import org.apache.mahout.math.*;
 import org.apache.mahout.math.random.Normal;
 import org.apache.mahout.math.stats.OnlineSummarizer;

@@ -3,7 +3,7 @@ package org.apache.mahout.clustering.streaming;
 import com.google.common.collect.Lists;
 import org.apache.mahout.common.Pair;
 import org.apache.mahout.clustering.streaming.cluster.DataUtils;
-import org.apache.mahout.clustering.streaming.search.ProjectionSearch;
+import org.apache.mahout.math.neighborhood.ProjectionSearch;
 import org.apache.mahout.math.Centroid;
 import org.apache.mahout.math.Matrix;
 import org.apache.mahout.math.Vector;

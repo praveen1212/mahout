@@ -1,4 +1,4 @@
-package org.apache.mahout.clustering.streaming.search;
+package org.apache.mahout.math.neighborhood;
 
 import com.google.common.base.Function;
 import com.google.common.collect.*;
