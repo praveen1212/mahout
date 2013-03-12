@@ -42,22 +42,23 @@ import org.junit.runners.Parameterized;
 import java.io.IOException;
 import java.util.List;
 
+import static org.hamcrest.Matchers.lessThan;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
 
 @RunWith(value = Parameterized.class)
 public class StreamingKMeansTestMR {
-
-  private static final int NUM_DATA_POINTS = 10000;
-  private static final int NUM_DIMENSIONS = 4;
+  private static final int NUM_DATA_POINTS = 1 << 12;
+  private static final int NUM_DIMENSIONS = 10;
   private static final int NUM_PROJECTIONS = 3;
-  private static final int SEARCH_SIZE = 20;
+  private static final int SEARCH_SIZE = 5;
   private static final int MAX_NUM_ITERATIONS = 10;
 
   private static Pair<List<Centroid>, List<Centroid>> syntheticData =
-      DataUtils.sampleMultiNormalHypercube(NUM_DIMENSIONS, NUM_DATA_POINTS);
+      DataUtils.sampleMultiNormalHypercube(NUM_DIMENSIONS, NUM_DATA_POINTS, 10e-6);
 
   private Configuration configuration;
 
@@ -70,7 +71,7 @@ public class StreamingKMeansTestMR {
     configuration.setInt(DefaultOptionCreator.NUM_CLUSTERS_OPTION, 1 << NUM_DIMENSIONS);
     configuration.setInt(StreamingKMeansDriver.ESTIMATED_NUM_MAP_CLUSTERS,
         (1 << NUM_DIMENSIONS) * (int)Math.log(NUM_DATA_POINTS));
-    configuration.setFloat(StreamingKMeansDriver.ESTIMATED_DISTANCE_CUTOFF, (float)10e-6);
+    configuration.setFloat(StreamingKMeansDriver.ESTIMATED_DISTANCE_CUTOFF, (float)10e-4);
     configuration.setInt(StreamingKMeansDriver.MAX_NUM_ITERATIONS, MAX_NUM_ITERATIONS);
   }
 
@@ -81,10 +82,6 @@ public class StreamingKMeansTestMR {
         {FastProjectionSearch.class.getName(), EuclideanDistanceMeasure.class.getName()},
         {LocalitySensitiveHashSearch.class.getName(), EuclideanDistanceMeasure.class.getName()}
     });
-  }
-
-  @Before
-  public void setUp() {
   }
 
   @Test
@@ -102,7 +99,7 @@ public class StreamingKMeansTestMR {
     }
     for (Vector mean : syntheticData.getSecond()) {
       WeightedThing<Vector> closest = resultSearcher.search(mean, 1).get(0);
-      assertTrue(closest.getWeight() < 0.5);
+      assertThat("Weight " + closest.getWeight() + " not less than 0.5", closest.getWeight(), lessThan(0.5));
     }
   }
 
@@ -111,7 +108,7 @@ public class StreamingKMeansTestMR {
     StreamingKMeans clusterer = new StreamingKMeans(StreamingKMeansMapper
         .searcherFromConfiguration(configuration),
         (1 << NUM_DIMENSIONS) * (int)Math.log(NUM_DATA_POINTS),
-        DataUtils.estimateDistanceCutoff(syntheticData.getFirst()));
+        10e-8);
     clusterer.cluster(syntheticData.getFirst());
     ReduceDriver<IntWritable, CentroidWritable, IntWritable, CentroidWritable> reduceDriver =
         ReduceDriver.newReduceDriver(new StreamingKMeansReducer());
@@ -125,9 +122,15 @@ public class StreamingKMeansTestMR {
     reduceDriver.addInput(new IntWritable(0), reducerInputs);
     List<org.apache.hadoop.mrunit.types.Pair<IntWritable, CentroidWritable>> results =
         reduceDriver.run();
+    int expectedNumClusters = 1 << NUM_DIMENSIONS;
     int numClusters = 0;
-    double expectedWeight = postMapperTotalWeight / (1 << NUM_DIMENSIONS);
+    double expectedWeight = postMapperTotalWeight / expectedNumClusters;
+    System.out.printf("Expected weight per cluster: %f [%d total clusters]\n", expectedWeight, expectedNumClusters);
     for (org.apache.hadoop.mrunit.types.Pair<IntWritable, CentroidWritable> result : results) {
+      if (result.getSecond().getCentroid().getWeight() != expectedWeight) {
+        System.out.printf("Unbalanced weight %f in centroid %d\n",  result.getSecond().getCentroid().getWeight(),
+            result.getSecond().getCentroid().getIndex());
+      }
       assertEquals("Final centroid index is invalid", numClusters, result.getFirst().get());
       assertEquals("Unbalanced weight for centroid", expectedWeight,
           result.getSecond().getCentroid().getWeight(), 0);

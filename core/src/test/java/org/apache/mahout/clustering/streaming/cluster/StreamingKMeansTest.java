@@ -86,7 +86,7 @@ public class StreamingKMeansTest {
               (syntheticData.getFirst()));
       clusterer.cluster(syntheticData.getFirst());
       avgDistanceCutoff += clusterer.getDistanceCutoff();
-      avgNumClusters += clusterer.getEstimatedNumClusters();
+      avgNumClusters += clusterer.getNumClusters();
       System.out.printf("%d %f\n", i, clusterer.getDistanceCutoff());
     }
     avgDistanceCutoff /= numTests;
@@ -115,12 +115,12 @@ public class StreamingKMeansTest {
 
     System.out.printf("%s %s\n", searcher.getClass().getName(), searcher.getDistanceMeasure()
         .getClass().getName());
-    System.out.printf("Total number of clusters %d\n", clusterer.getCentroids().size());
+    System.out.printf("Total number of clusters %d\n", clusterer.getNumClusters());
 
     System.out.printf("Weights: %f %f\n", totalWeight(syntheticData.getFirst()),
-        totalWeight(clusterer.getCentroids()));
+        totalWeight(clusterer));
     assertEquals("Total weight not preserved", totalWeight(syntheticData.getFirst()),
-        totalWeight(clusterer.getCentroids()), 1e-9);
+        totalWeight(clusterer), 1e-9);
 
     // and verify that each corner of the cube has a centroid very nearby
     double maxWeight = 0;
