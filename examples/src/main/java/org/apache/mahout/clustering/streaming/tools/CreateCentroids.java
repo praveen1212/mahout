@@ -55,7 +55,7 @@ public class CreateCentroids {
     StreamingKMeans clusterer = new StreamingKMeans(new ProjectionSearch(new
         EuclideanDistanceMeasure(), 20, 10), numClusters, 10e-6);
     clusterer.cluster(dataPoints);
-    return new Pair<Integer, Iterable<Centroid>>(clusterer.getCentroids().size(), clusterer);
+    return new Pair<Integer, Iterable<Centroid>>(clusterer.getNumClusters(), clusterer);
   }
 
   // TODO(dfilimon): Make more configurable.
