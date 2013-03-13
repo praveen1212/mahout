@@ -32,20 +32,27 @@ import java.io.*;
 import java.util.List;
 
 public class ClusterQuality20NewsGroups {
-  private final static int NUM_RUNS = 6;
-
   private Configuration conf;
   private String inputFile;
+  private String testInputFile;
   private String outputFile;
   private int projectionDimension;
+
   private Pair<List<String>, List<Centroid>> input;
+  private Pair<List<String>, List<Centroid>> testInput;
   private List<Centroid> reducedVectors;
+  private List<Centroid> testReducedVectors;
+
+  private int numRuns;
 
   private PrintWriter fileOut;
 
   private Path reducedInputPath = null;
 
   private int numPoints;
+  private boolean clusterMahoutKMeans;
+  private boolean clusterBallKMeans;
+  private boolean clusterStreamingKMeans;
 
   /**
    * Write the reduced vectors to a sequence file so that KMeans can read them.
@@ -94,79 +101,115 @@ public class ClusterQuality20NewsGroups {
     return kmCentroids;
   }
 
-  public void printSummaries(List<OnlineSummarizer> summarizers, double time, String name, int numRun) {
+  public void printSummariesInternal(List<OnlineSummarizer> summarizers, double time, String name, int numRun,
+                                     String type) {
+    System.out.printf("%s %s\n", name, type.toUpperCase());
+    double maxDistance = 0;
     for (int i = 0; i < summarizers.size(); ++i) {
       OnlineSummarizer summarizer = summarizers.get(i);
+      if (summarizer.getCount() == 0) {
+        continue;
+      }
+      maxDistance = Math.max(maxDistance, summarizer.getMax());
       System.out.printf("Average distance in cluster %d [%d]: %f\n", i, summarizer.getCount(), summarizer.getMean());
       // If there is just one point in the cluster, quartiles cannot be estimated. We'll just assume all the quartiles
       // equal the only value.
       boolean moreThanOne = summarizer.getCount() > 1;
-      fileOut.printf("%d,%s,%f,%d,%f,%f,%f,%f,%f,%f,%f,%d\n", numRun, name, time, i, summarizer.getMean(),
-          summarizer.getSD(),
-          summarizer.getQuartile(0),
-          moreThanOne ? summarizer.getQuartile(1) : summarizer.getQuartile(0),
-          moreThanOne ? summarizer.getQuartile(2) : summarizer.getQuartile(0),
-          moreThanOne ? summarizer.getQuartile(3) : summarizer.getQuartile(0),
-          summarizer.getQuartile(4), summarizer.getCount());
+      if (fileOut != null) {
+        fileOut.printf("%d,%s,%f,%d,%f,%f,%f,%f,%f,%f,%f,%d,%s\n", numRun, name, time, i, summarizer.getMean(),
+            summarizer.getSD(),
+            summarizer.getQuartile(0),
+            moreThanOne ? summarizer.getQuartile(1) : summarizer.getQuartile(0),
+            moreThanOne ? summarizer.getQuartile(2) : summarizer.getQuartile(0),
+            moreThanOne ? summarizer.getQuartile(3) : summarizer.getQuartile(0),
+            summarizer.getQuartile(4), summarizer.getCount(), type);
+      }
+    }
+    System.out.printf("Num clusters: %d; maxDistance: %f\n", summarizers.size(), maxDistance);
+  }
+
+  public void printSummaries(List<Centroid> centroids, double time, String name, int numRun) {
+    printSummariesInternal(ExperimentUtils.summarizeClusterDistances(reducedVectors, centroids),
+        time, name, numRun, "train");
+    if (testReducedVectors != null) {
+      printSummariesInternal(ExperimentUtils.summarizeClusterDistances(testReducedVectors, centroids),
+          time, name, numRun, "test");
     }
   }
 
   public void runInstance(int numRun) {
     System.out.printf("Run %d\n", numRun);
+    long start;
+    long end;
+    double time;
 
-    System.out.printf("Clustering MahoutKMeans\n");
-    long start = System.currentTimeMillis();
-    List<Centroid> kmCentroids = clusterKMeans();
-    long end = System.currentTimeMillis();
-    double time = (end - start) / 1000.0;
-    System.out.printf("Took %f[s]\n", time);
-    List<OnlineSummarizer> summarizers = ExperimentUtils.summarizeClusterDistances(reducedVectors, kmCentroids);
-    printSummaries(summarizers, time, "km", numRun);
+    if (clusterMahoutKMeans) {
+      System.out.printf("Clustering MahoutKMeans\n");
+      start = System.currentTimeMillis();
+      List<Centroid> kmCentroids = clusterKMeans();
+      end = System.currentTimeMillis();
+      time = (end - start) / 1000.0;
+      System.out.printf("Took %f[s]\n", time);
+      printSummaries(kmCentroids, time, "km", numRun);
+    }
 
-    System.out.printf("Clustering BallKMeans\n");
-    start = System.currentTimeMillis();
-    List<Centroid> bkmCentroids = Lists.newArrayList(ExperimentUtils.clusterBallKMeans(reducedVectors, 20));
-    end = System.currentTimeMillis();
-    time = (end - start) / 1000.0;
-    System.out.printf("Took %f[s]\n", time);
-    summarizers = ExperimentUtils.summarizeClusterDistances(reducedVectors, bkmCentroids);
-    printSummaries(summarizers, time, "bkm", numRun);
+    if (clusterBallKMeans) {
+      System.out.printf("Clustering BallKMeans\n");
+      start = System.currentTimeMillis();
+      List<Centroid> bkmCentroids = Lists.newArrayList(ExperimentUtils.clusterBallKMeans(reducedVectors, 20));
+      end = System.currentTimeMillis();
+      time = (end - start) / 1000.0;
+      System.out.printf("Took %f[s]\n", time);
+      printSummaries(bkmCentroids, time, "bkm", numRun);
+    }
 
-    System.out.printf("Clustering StreamingKMeans\n");
-    start = System.currentTimeMillis();
-    List<Centroid> skmCentroids = Lists.newArrayList(ExperimentUtils.clusterStreamingKMeans(reducedVectors, 20));
-    end = System.currentTimeMillis();
-    time = (end - start) / 1000.0;
-    System.out.printf("Took %f[s]\n", time);
-    summarizers = ExperimentUtils.summarizeClusterDistances(reducedVectors, skmCentroids);
-    printSummaries(summarizers, time, "skm", numRun);
+    if (clusterStreamingKMeans) {
+      System.out.printf("Clustering StreamingKMeans with k [20] clusters\n");
+      start = System.currentTimeMillis();
+      List<Centroid> skmCentroids0 =
+          Lists.newArrayList(ExperimentUtils.clusterStreamingKMeans(reducedVectors, 20));
+      end = System.currentTimeMillis();
+      time = (end - start) / 1000.0;
+      System.out.printf("Took %f[s]\n", time);
+      printSummaries(skmCentroids0, time, "skm0", numRun);
 
-    System.out.printf("Clustering OneByOneStreamingKMeans\n");
-    start = System.currentTimeMillis();
-    List<Centroid> oskmCentroids = Lists.newArrayList(ExperimentUtils.clusterOneByOneStreamingKMeans(reducedVectors, 20));
-    end = System.currentTimeMillis();
-    time = (end - start) / 1000.0;
-    System.out.printf("Took %f[s]\n", time);
-    summarizers = ExperimentUtils.summarizeClusterDistances(reducedVectors, oskmCentroids);
-    printSummaries(summarizers, time, "oskm", numRun);
+      int numStreamingClusters = (int) (20 * Math.log(reducedVectors.size()));
+      System.out.printf("Clustering StreamingKMeans\n");
+      start = System.currentTimeMillis();
+      List<Centroid> skmCentroids =
+          Lists.newArrayList(ExperimentUtils.clusterStreamingKMeans(reducedVectors, numStreamingClusters));
+      end = System.currentTimeMillis();
+      time = (end - start) / 1000.0;
+      System.out.printf("Took %f[s]\n", time);
+      printSummaries(skmCentroids, time, "skm", numRun);
 
-    System.out.printf("Clustering BallStreamingKMeans\n");
-    start = System.currentTimeMillis();
-    List<Centroid> bskmCentroids = Lists.newArrayList(ExperimentUtils.clusterBallKMeans(skmCentroids, 20));
-    end = System.currentTimeMillis();
-    time += (end - start) / 1000.0;
-    System.out.printf("Took %f[s]\n", time);
-    summarizers = ExperimentUtils.summarizeClusterDistances(reducedVectors, bskmCentroids);
-    printSummaries(summarizers, time, "bskm", numRun);
+      System.out.printf("Clustering OneByOneStreamingKMeans\n");
+      start = System.currentTimeMillis();
+      List<Centroid> oskmCentroids =
+          Lists.newArrayList(ExperimentUtils.clusterOneByOneStreamingKMeans(reducedVectors, numStreamingClusters));
+      end = System.currentTimeMillis();
+      time = (end - start) / 1000.0;
+      System.out.printf("Took %f[s]\n", time);
+      printSummaries(oskmCentroids, time, "oskm", numRun);
 
-    System.out.printf("Clustering OneByOneBallStreamingKMeans\n");
-    start = System.currentTimeMillis();
-    List<Centroid> boskmCentroids = Lists.newArrayList(ExperimentUtils.clusterBallKMeans(oskmCentroids, 20));
-    end = System.currentTimeMillis();
-    time = (end - start) / 1000.0;
-    System.out.printf("Took %f[s]\n", time);
-    summarizers = ExperimentUtils.summarizeClusterDistances(reducedVectors, boskmCentroids);
-    printSummaries(summarizers, time, "boskm", numRun);
+      if (clusterBallKMeans) {
+        System.out.printf("Clustering BallStreamingKMeans\n");
+        start = System.currentTimeMillis();
+        List<Centroid> bskmCentroids = Lists.newArrayList(ExperimentUtils.clusterBallKMeans(skmCentroids, 20));
+        end = System.currentTimeMillis();
+        time += (end - start) / 1000.0;
+        System.out.printf("Took %f[s]\n", time);
+        printSummaries(bskmCentroids, time, "bskm", numRun);
+
+        System.out.printf("Clustering OneByOneBallStreamingKMeans\n");
+        start = System.currentTimeMillis();
+        List<Centroid> boskmCentroids = Lists.newArrayList(ExperimentUtils.clusterBallKMeans(oskmCentroids, 20));
+        end = System.currentTimeMillis();
+        time = (end - start) / 1000.0;
+        System.out.printf("Took %f[s]\n", time);
+        printSummaries(boskmCentroids, time, "boskm", numRun);
+      }
+    }
   }
 
   public void run(String[] args) {
@@ -179,18 +222,29 @@ public class ClusterQuality20NewsGroups {
     try {
       Configuration.dumpConfiguration(conf, new OutputStreamWriter(System.out));
 
-      System.out.printf("Reading data\n");
+      System.out.printf("Reading training data\n");
       input = IOUtils.getKeysAndVectors(inputFile, projectionDimension, numPoints);
       reducedVectors = input.getSecond();
-      System.out.printf("Read %d vectors\n", reducedVectors.size());
+      System.out.printf("Read %d training vectors\n", reducedVectors.size());
 
-      fileOut = new PrintWriter(new FileOutputStream(outputFile));
-      fileOut.printf("run,type,time,cluster,distance.mean,distance.sd,distance.q0,distance.q1,distance.q2,distance.q3,"
-          + "distance.q4,count\n");
-      for (int i = 0; i < NUM_RUNS; ++i) {
+      if (testInputFile != null) {
+        System.out.printf("Reading test data\n");
+        testInput = IOUtils.getKeysAndVectors(testInputFile, projectionDimension, numPoints);
+        testReducedVectors = testInput.getSecond();
+        System.out.printf("Read %d test vectors\n", testReducedVectors.size());
+      }
+
+      if (outputFile != null) {
+        fileOut = new PrintWriter(new FileOutputStream(outputFile));
+        fileOut.printf("run,type,time,cluster,distance.mean,distance.sd,distance.q0,distance.q1,distance.q2,distance.q3,"
+          + "distance.q4,count,is.train\n");
+      }
+      for (int i = 0; i < numRuns; ++i) {
         runInstance(i);
       }
-      fileOut.close();
+      if (outputFile != null) {
+        fileOut.close();
+      }
     } catch (IOException e) {
       System.out.println(e.getMessage());
     }
@@ -206,12 +260,17 @@ public class ClusterQuality20NewsGroups {
         .withShortName("i")
         .withRequired(true)
         .withArgument(argumentBuilder.withName("input").withMaximum(1).create())
-        .withDescription("where to get seq files with the vectors")
+        .withDescription("where to get seq files with the vectors (training set)")
+        .create();
+
+    Option testInputFileOption = builder.withLongName("testInput")
+        .withShortName("itest")
+        .withArgument(argumentBuilder.withName("testInput").withMaximum(1).create())
+        .withDescription("where to get seq files with the vectors (test set)")
         .create();
 
     Option outputFileOption = builder.withLongName("output")
         .withShortName("o")
-        .withRequired(true)
         .withArgument(argumentBuilder.withName("output").withMaximum(1).create())
         .withDescription("where to dump the CSV file with the results")
         .create();
@@ -230,12 +289,41 @@ public class ClusterQuality20NewsGroups {
         .withArgument(argumentBuilder.withName("numpoints").withMaximum(1).create())
         .create();
 
+    Option mahoutKMeansOptions = builder.withLongName("mahoutKMeans")
+        .withShortName("km")
+        .withRequired(false)
+        .withDescription("if set, clusters points using Mahout KMeans for comparison")
+        .create();
+
+    Option ballKMeansOptions = builder.withLongName("ballKMeans")
+        .withShortName("bkm")
+        .withRequired(false)
+        .withDescription("if set, clusters points using Ball KMeans for comparison")
+        .create();
+
+    Option streamingKMeansOptions = builder.withLongName("streamingKMeans")
+        .withShortName("skm")
+        .withRequired(false)
+        .withDescription("if set, clusters points using Streaming KMeans for comparison")
+        .create();
+
+    Option numRunsOption = builder.withLongName("numRuns")
+        .withShortName("nr")
+        .withRequired(false)
+        .withArgument(argumentBuilder.withName("numRuns").withMaximum(1).withDefault(5).create())
+        .create();
+
     Group normalArgs = new GroupBuilder()
         .withOption(help)
         .withOption(inputFileOption)
+        .withOption(testInputFileOption)
         .withOption(outputFileOption)
         .withOption(projectOption)
         .withOption(numPointsOption)
+        .withOption(mahoutKMeansOptions)
+        .withOption(ballKMeansOptions)
+        .withOption(streamingKMeansOptions)
+        .withOption(numRunsOption)
         .create();
 
     Parser parser = new Parser();
@@ -249,8 +337,13 @@ public class ClusterQuality20NewsGroups {
       return false;
     }
 
-    inputFile = (String)cmdLine.getValue(inputFileOption);
-    outputFile = (String)cmdLine.getValue(outputFileOption);
+    inputFile = (String) cmdLine.getValue(inputFileOption);
+    if (cmdLine.hasOption(testInputFileOption)) {
+      testInputFile = (String) cmdLine.getValue(testInputFileOption);
+    }
+    if (cmdLine.hasOption(outputFileOption)) {
+      outputFile = (String) cmdLine.getValue(outputFileOption);
+    }
     if (cmdLine.hasOption(projectOption)) {
       projectionDimension = Integer.parseInt((String)cmdLine.getValue(projectOption));
     }
@@ -259,6 +352,16 @@ public class ClusterQuality20NewsGroups {
     } else {
       numPoints = Integer.MAX_VALUE;
     }
+    if (cmdLine.hasOption(mahoutKMeansOptions)) {
+      clusterMahoutKMeans = true;
+    }
+    if (cmdLine.hasOption(ballKMeansOptions)) {
+      clusterBallKMeans = true;
+    }
+    if (cmdLine.hasOption(streamingKMeansOptions)) {
+      clusterStreamingKMeans = true;
+    }
+    numRuns = Integer.parseInt(cmdLine.getValue(numRunsOption).toString());
     return true;
   }
 
