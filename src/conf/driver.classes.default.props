@@ -13,6 +13,8 @@ org.apache.mahout.vectorizer.SparseVectorsFromSequenceFiles = seq2sparse: Sparse
 org.apache.mahout.vectorizer.EncodedVectorsFromSequenceFiles = seq2encoded: Encoded Sparse Vector generation from Text sequence files
 org.apache.mahout.text.WikipediaToSequenceFile = seqwiki : Wikipedia xml dump to sequence file
 org.apache.mahout.text.SequenceFilesFromMailArchives = seqmailarchives : Creates SequenceFile from a directory containing gzipped mail archives
+org.apache.mahout.clustering.streaming.tools.ResplitSequenceFiles = resplit : Splits a set of SequenceFiles into a number of equal splits
+org.apache.mahout.clustering.streaming.tools.SummarizeQuality20NewsGroups = summarycluster : Creates a CSV summarizing the cluster quality in a clustering
 
 #Math
 org.apache.mahout.math.hadoop.TransposeJob = transpose : Take the transpose of a matrix
