@@ -9,6 +9,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.SequenceFile;
 import org.apache.hadoop.io.Text;
+import org.apache.mahout.clustering.iterator.ClusterWritable;
 import org.apache.mahout.clustering.streaming.mapreduce.CentroidWritable;
 import org.apache.mahout.math.neighborhood.ProjectionSearch;
 import org.apache.mahout.common.Pair;
@@ -155,6 +156,22 @@ public class IOUtils {
   }
 
   /**
+   * Converts CentroidWritable values in a sequence file into Centroids lazily.
+   * @param dirIterable the source iterable (comes from a SequenceFileDirIterable).
+   * @return an Iterable<Centroid> with the converted vectors.
+   */
+  public static Iterable<Centroid> getCentroidsFromClusterWritableIterable(
+      Iterable<ClusterWritable>  dirIterable) {
+    return Iterables.transform(dirIterable, new Function<ClusterWritable, Centroid>() {
+      @Override
+      public Centroid apply(ClusterWritable input) {
+        Preconditions.checkNotNull(input);
+        return new Centroid(0, input.getValue().getCenter().clone(), 1);
+      }
+    });
+  }
+
+  /**
    * Converts VectorWritable values in a sequence file into Vectors lazily.
    * @param dirIterable the source iterable (comes from a SequenceFileDirIterable).
    * @return an Iterable<Vector> with the converted vectors.
@@ -218,7 +235,7 @@ public class IOUtils {
    * Reads in a seqfile mapping keys (file paths as strings) to vectors (documents) and projects the vectors to a given
    * dimension.
    * @param inPath the input path to the seqfile.
-   * @param projectionDimension the dimension to project to.
+   * @param projectionDimension the dimension to project to (if it 0, the vectors will not be projected).
    * @return a pair of List<String> and List<Centroid>, the first list containing the values of the keys and the second
    * list containing the projected vectors as centroids.
    * @throws java.io.IOException
@@ -238,11 +255,15 @@ public class IOUtils {
     SequenceFileDirIterable<Text, VectorWritable> dirIterable =
         new SequenceFileDirIterable<Text, VectorWritable>(inFile, PathType.LIST, conf);
     for (Pair<Text, VectorWritable> entry : dirIterable) {
-      if (projectionMatrix == null) {
+      if (projectionDimension > 0 && projectionMatrix == null) {
         projectionMatrix = ProjectionSearch.generateBasis(projectionDimension, entry.getSecond().get().size());
       }
       result.getFirst().add(entry.getFirst().toString());
-      result.getSecond().add(new Centroid(numVectors++, projectionMatrix.times(entry.getSecond().get()), 1));
+      if (projectionDimension > 0) {
+        result.getSecond().add(new Centroid(numVectors++, projectionMatrix.times(entry.getSecond().get()), 1));
+      } else {
+        result.getSecond().add(new Centroid(numVectors++, entry.getSecond().get(), 1));
+      }
       --limit;
       if (limit == 0) {
         break;

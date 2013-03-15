@@ -13,11 +13,10 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.SequenceFile;
-import org.apache.hadoop.io.Text;
+import org.apache.hadoop.io.Writable;
 import org.apache.mahout.common.Pair;
 import org.apache.mahout.common.iterator.sequencefile.PathType;
 import org.apache.mahout.common.iterator.sequencefile.SequenceFileDirIterable;
-import org.apache.mahout.math.VectorWritable;
 
 import java.io.IOException;
 import java.io.OutputStreamWriter;
@@ -32,35 +31,36 @@ public class ResplitSequenceFiles {
   private Configuration conf;
   private FileSystem fs;
 
-  private void writeSplit(Iterator<Pair<Text, VectorWritable>> inputIterator,
+  private void writeSplit(Iterator<Pair<Writable, Writable>> inputIterator,
                           int numSplit, int numEntriesPerSplit) throws IOException {
-    Text writerText = new Text();
-    VectorWritable writerVector = new VectorWritable();
-    SequenceFile.Writer splitWriter = SequenceFile.createWriter(fs, conf,
-        new Path(outputFileBase + "-" + numSplit), Text.class, VectorWritable.class);
+    SequenceFile.Writer splitWriter = null;
     for (int j = 0; j < numEntriesPerSplit; ++j) {
-      Pair<Text, VectorWritable> item = inputIterator.next();
-      writerText.set(item.getFirst());
-      writerVector.set(item.getSecond().get());
-      splitWriter.append(writerText, writerVector);
+      Pair<Writable, Writable> item = inputIterator.next();
+      if (splitWriter == null) {
+        splitWriter = SequenceFile.createWriter(fs, conf,
+            new Path(outputFileBase + "-" + numSplit), item.getFirst().getClass(), item.getSecond().getClass());
+      }
+      splitWriter.append(item.getFirst(), item.getSecond());
     }
-    splitWriter.close();
+    if (splitWriter != null) {
+      splitWriter.close();
+    }
   }
 
   private void run(PrintWriter printWriter) throws IOException {
     conf = new Configuration();
-    SequenceFileDirIterable<Text, VectorWritable> inputIterable = new
-        SequenceFileDirIterable<Text, VectorWritable>(new Path(inputFile), PathType.LIST, conf);
+    SequenceFileDirIterable<Writable, Writable> inputIterable = new
+        SequenceFileDirIterable<Writable, Writable>(new Path(inputFile), PathType.LIST, conf);
     fs = FileSystem.get(conf);
 
     int numEntries = 0;
-    for (Pair<Text, VectorWritable> item : inputIterable) {
+    for (Pair<Writable, Writable> item : inputIterable) {
       ++numEntries;
     }
 
     int numEntriesPerSplit = numEntries / numSplits;
     int numEntriesLastSplit = numEntriesPerSplit + numEntries - numEntriesPerSplit * numSplits;
-    Iterator<Pair<Text, VectorWritable>> inputIterator = inputIterable.iterator();
+    Iterator<Pair<Writable, Writable>> inputIterator = inputIterable.iterator();
 
     printWriter.printf("Writing %d splits\n", numSplits);
     for (int i = 0; i < numSplits - 1; ++i) {

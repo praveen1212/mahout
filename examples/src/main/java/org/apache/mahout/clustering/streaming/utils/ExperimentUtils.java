@@ -12,6 +12,7 @@ import org.apache.mahout.common.Pair;
 import org.apache.mahout.common.distance.DistanceMeasure;
 import org.apache.mahout.common.distance.EuclideanDistanceMeasure;
 import org.apache.mahout.math.Centroid;
+import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.VectorWritable;
 import org.apache.mahout.math.stats.OnlineSummarizer;
 
@@ -102,8 +103,9 @@ public class ExperimentUtils {
    * @return a list of OnlineSummarizers where the i-th element is the summarizer corresponding to the cluster whose
    * index is i.
    */
-  public static List<OnlineSummarizer> summarizeClusterDistances(Iterable<Centroid> datapoints,
+  public static List<OnlineSummarizer> summarizeClusterDistances(Iterable<? extends Vector> datapoints,
                                                                  Iterable<Centroid> centroids) {
+    System.out.printf("Summarizing\n");
     DistanceMeasure distanceMeasure = new EuclideanDistanceMeasure();
     UpdatableSearcher searcher = new BruteSearch(distanceMeasure);
     searcher.addAll(centroids);
@@ -114,11 +116,14 @@ public class ExperimentUtils {
     for (int i = 0; i < searcher.size(); ++i) {
       summarizers.add(new OnlineSummarizer());
     }
-    for (Centroid v : datapoints) {
+    int numPoints = 0;
+    for (Vector v : datapoints) {
       Centroid closest = (Centroid)searcher.search(v,  1).get(0).getValue();
       OnlineSummarizer summarizer = summarizers.get(closest.getIndex());
       summarizer.add(distanceMeasure.distance(v, closest));
+      ++numPoints;
     }
+    System.out.printf("Summarized %d points into %d clusters\n", numPoints, searcher.size());
     return summarizers;
   }
 }

@@ -12,20 +12,25 @@ import org.apache.commons.cli2.util.HelpFormatter;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.SequenceFile;
 import org.apache.hadoop.io.Text;
 import org.apache.mahout.clustering.iterator.ClusterWritable;
 import org.apache.mahout.clustering.kmeans.KMeansDriver;
 import org.apache.mahout.clustering.kmeans.RandomSeedGenerator;
+import org.apache.mahout.clustering.streaming.mapreduce.CentroidWritable;
+import org.apache.mahout.clustering.streaming.mapreduce.StreamingKMeansDriver;
 import org.apache.mahout.clustering.streaming.utils.ExperimentUtils;
 import org.apache.mahout.clustering.streaming.utils.IOUtils;
 import org.apache.mahout.common.HadoopUtil;
 import org.apache.mahout.common.Pair;
 import org.apache.mahout.common.distance.EuclideanDistanceMeasure;
 import org.apache.mahout.common.iterator.sequencefile.PathType;
+import org.apache.mahout.common.iterator.sequencefile.SequenceFileDirIterable;
 import org.apache.mahout.common.iterator.sequencefile.SequenceFileDirValueIterable;
 import org.apache.mahout.math.Centroid;
 import org.apache.mahout.math.VectorWritable;
+import org.apache.mahout.math.neighborhood.ProjectionSearch;
 import org.apache.mahout.math.stats.OnlineSummarizer;
 
 import java.io.*;
@@ -36,7 +41,7 @@ public class ClusterQuality20NewsGroups {
   private String inputFile;
   private String testInputFile;
   private String outputFile;
-  private int projectionDimension;
+  private int projectionDimension = 0;
 
   private Pair<List<String>, List<Centroid>> input;
   private Pair<List<String>, List<Centroid>> testInput;
@@ -53,6 +58,7 @@ public class ClusterQuality20NewsGroups {
   private boolean clusterMahoutKMeans;
   private boolean clusterBallKMeans;
   private boolean clusterStreamingKMeans;
+  private boolean mapReduce;
 
   /**
    * Write the reduced vectors to a sequence file so that KMeans can read them.
@@ -210,6 +216,36 @@ public class ClusterQuality20NewsGroups {
         printSummaries(boskmCentroids, time, "boskm", numRun);
       }
     }
+
+    if (mapReduce) {
+      StreamingKMeansDriver.configureOptionsForWorkers(conf, 20, 200, 1e-6f, EuclideanDistanceMeasure.class.getName(),
+          ProjectionSearch.class.getName(), 10, 20, 20);
+      try {
+        if (reducedInputPath == null) {
+          getReducedInputPath();
+        }
+        Path output = new Path("streaming-centroids");
+        HadoopUtil.delete(conf, output);
+        start = System.currentTimeMillis();
+        StreamingKMeansDriver.run(conf, reducedInputPath, output);
+        end = System.currentTimeMillis();
+        time = (end - start) / 1000.0;
+        SequenceFileDirValueIterable<CentroidWritable> inputIterable =
+            new SequenceFileDirValueIterable<CentroidWritable>(
+                new Path("streaming-centroids/part-r*"), PathType.GLOB, conf);
+        List<Centroid> mrCentroids = Lists.newArrayList();
+        for (CentroidWritable centroidWritable : inputIterable) {
+          mrCentroids.add(centroidWritable.getCentroid().clone());
+        }
+        printSummaries(mrCentroids, time, "mr", numRun);
+      } catch (IOException e) {
+        e.printStackTrace();
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      } catch (ClassNotFoundException e) {
+        e.printStackTrace();
+      }
+    }
   }
 
   public void run(String[] args) {
@@ -289,22 +325,28 @@ public class ClusterQuality20NewsGroups {
         .withArgument(argumentBuilder.withName("numpoints").withMaximum(1).create())
         .create();
 
-    Option mahoutKMeansOptions = builder.withLongName("mahoutKMeans")
+    Option mahoutKMeansOption = builder.withLongName("mahoutKMeans")
         .withShortName("km")
         .withRequired(false)
         .withDescription("if set, clusters points using Mahout KMeans for comparison")
         .create();
 
-    Option ballKMeansOptions = builder.withLongName("ballKMeans")
+    Option ballKMeansOption = builder.withLongName("ballKMeans")
         .withShortName("bkm")
         .withRequired(false)
         .withDescription("if set, clusters points using Ball KMeans for comparison")
         .create();
 
-    Option streamingKMeansOptions = builder.withLongName("streamingKMeans")
+    Option streamingKMeansOption = builder.withLongName("streamingKMeans")
         .withShortName("skm")
         .withRequired(false)
         .withDescription("if set, clusters points using Streaming KMeans for comparison")
+        .create();
+
+    Option mapReduceOption = builder.withLongName("mapreduce")
+        .withShortName("mr")
+        .withRequired(false)
+        .withDescription("if set, cluster points using Streaming KMeans + Ball KMeans as a MapReduce")
         .create();
 
     Option numRunsOption = builder.withLongName("numRuns")
@@ -320,9 +362,10 @@ public class ClusterQuality20NewsGroups {
         .withOption(outputFileOption)
         .withOption(projectOption)
         .withOption(numPointsOption)
-        .withOption(mahoutKMeansOptions)
-        .withOption(ballKMeansOptions)
-        .withOption(streamingKMeansOptions)
+        .withOption(mahoutKMeansOption)
+        .withOption(ballKMeansOption)
+        .withOption(streamingKMeansOption)
+        .withOption(mapReduceOption)
         .withOption(numRunsOption)
         .create();
 
@@ -352,14 +395,17 @@ public class ClusterQuality20NewsGroups {
     } else {
       numPoints = Integer.MAX_VALUE;
     }
-    if (cmdLine.hasOption(mahoutKMeansOptions)) {
+    if (cmdLine.hasOption(mahoutKMeansOption)) {
       clusterMahoutKMeans = true;
     }
-    if (cmdLine.hasOption(ballKMeansOptions)) {
+    if (cmdLine.hasOption(ballKMeansOption)) {
       clusterBallKMeans = true;
     }
-    if (cmdLine.hasOption(streamingKMeansOptions)) {
+    if (cmdLine.hasOption(streamingKMeansOption)) {
       clusterStreamingKMeans = true;
+    }
+    if (cmdLine.hasOption(mapReduceOption)) {
+      mapReduce = true;
     }
     numRuns = Integer.parseInt(cmdLine.getValue(numRunsOption).toString());
     return true;
