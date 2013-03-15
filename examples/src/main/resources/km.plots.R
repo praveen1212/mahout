@@ -66,9 +66,19 @@ km.compareplot <- function(data, type1, type2) {
 
 # plots all the different classes of runs as boxplots computing the average in
 # each case
-km.allplot <- function(akm, cols=c('red', 'pink', 'violet', 'green', 'purple', 'blue')) {
+km.allplot <- function(akm, cols=c('red', 'pink', 'violet', 'green', 'purple',
+                                   'blue', 'light blue'), traintest='all', types=c('bkm',
+                                   'boskm', 'bskm', 'km', 'oskm', 'skm',
+                                   'skm0')) {
+    if (traintest == 'train') {
+        akm <- akm[akm$is.train=='train',]
+    } else if (traintest == 'test') {
+        akm <- akm[akm$is.train=='test',]
+    }
     # gets the unique types of k-means
-    utypes <- sort(unique(akm$type))
+    utypes <- sort(unique(as.factor(types)))
+    akm <- akm[akm$type %in% utypes, ]
+    akm$type <- factor(akm$type)
     # sets the margins to have enough spaces for labels
     par(oma=c(3, 2, 1, 0))
     # plots distances grouped by type on a log-y axis
@@ -81,5 +91,5 @@ km.allplot <- function(akm, cols=c('red', 'pink', 'violet', 'green', 'purple', '
         i <- i + 1
     }
     # set the title and labels
-    title(main='Clustering techniques compared', xlab='Clustering type / overall mean cluster distance', ylab='Mean cluster distance')
+    title(main=paste('Clustering techniques compared', traintest), xlab='Clustering type / overall mean cluster distance', ylab='Mean cluster distance')
 }
