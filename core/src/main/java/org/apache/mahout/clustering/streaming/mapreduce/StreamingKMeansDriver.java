@@ -278,8 +278,6 @@ public final class StreamingKMeansDriver extends AbstractJob {
     // Set the JAR (so that the required libraries are available) and run.
     job.setJarByClass(StreamingKMeansDriver.class);
 
-    log.info("Split size ", conf.getInt("mapred.max.split.size", 0));
-
     long start = System.currentTimeMillis();
     if (!job.waitForCompletion(true)) {
       throw new InterruptedException("StreamingKMeans interrupted");

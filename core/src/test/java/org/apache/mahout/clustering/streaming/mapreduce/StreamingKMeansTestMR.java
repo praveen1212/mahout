@@ -21,6 +21,7 @@ import com.google.common.collect.Lists;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Writable;
+import org.apache.hadoop.mrunit.mapreduce.MapReduceDriver;
 import org.apache.hadoop.mrunit.mapreduce.ReduceDriver;
 import org.apache.mahout.clustering.streaming.cluster.DataUtils;
 import org.apache.mahout.clustering.streaming.cluster.StreamingKMeans;
@@ -86,6 +87,7 @@ public class StreamingKMeansTestMR {
 
   @Test
   public void testHypercubeMapper() throws IOException {
+    System.out.printf("%s mapper test\n", configuration.get(StreamingKMeansDriver.SEARCHER_CLASS_OPTION));
     MapDriver<Writable, VectorWritable, IntWritable, CentroidWritable> mapDriver =
         MapDriver.newMapDriver(new StreamingKMeansMapper());
     mapDriver.setConfiguration(configuration);
@@ -105,6 +107,7 @@ public class StreamingKMeansTestMR {
 
   @Test
   public void testHypercubeReducer() throws IOException {
+    System.out.printf("%s reducer test\n", configuration.get(StreamingKMeansDriver.SEARCHER_CLASS_OPTION));
     StreamingKMeans clusterer = new StreamingKMeans(StreamingKMeansMapper
         .searcherFromConfiguration(configuration),
         (1 << NUM_DIMENSIONS) * (int)Math.log(NUM_DATA_POINTS),
@@ -122,9 +125,29 @@ public class StreamingKMeansTestMR {
     reduceDriver.addInput(new IntWritable(0), reducerInputs);
     List<org.apache.hadoop.mrunit.types.Pair<IntWritable, CentroidWritable>> results =
         reduceDriver.run();
+    testReducerResults(postMapperTotalWeight, results);
+  }
+
+  @Test
+  public void testHypercubeMapReduce() throws IOException {
+    System.out.printf("%s full test\n", configuration.get(StreamingKMeansDriver.SEARCHER_CLASS_OPTION));
+    MapReduceDriver<Writable, VectorWritable, IntWritable, CentroidWritable, IntWritable, CentroidWritable>
+        mapReduceDriver =  new MapReduceDriver<Writable, VectorWritable, IntWritable, CentroidWritable,
+        IntWritable, CentroidWritable>(new StreamingKMeansMapper(), new StreamingKMeansReducer());
+    mapReduceDriver.setConfiguration(configuration);
+    for (Centroid datapoint : syntheticData.getFirst()) {
+      mapReduceDriver.addInput(new IntWritable(0), new VectorWritable(datapoint));
+    }
+    List<org.apache.hadoop.mrunit.types.Pair<IntWritable, CentroidWritable>> results =
+        mapReduceDriver.run();
+    testReducerResults(syntheticData.getFirst().size(), results);
+  }
+
+  private void testReducerResults(int totalWeight, List<org.apache.hadoop.mrunit.types.Pair<IntWritable,
+      CentroidWritable>> results) {
     int expectedNumClusters = 1 << NUM_DIMENSIONS;
     int numClusters = 0;
-    double expectedWeight = postMapperTotalWeight / expectedNumClusters;
+    double expectedWeight = totalWeight / expectedNumClusters;
     System.out.printf("Expected weight per cluster: %f [%d total clusters]\n", expectedWeight, expectedNumClusters);
     for (org.apache.hadoop.mrunit.types.Pair<IntWritable, CentroidWritable> result : results) {
       if (result.getSecond().getCentroid().getWeight() != expectedWeight) {
@@ -138,4 +161,5 @@ public class StreamingKMeansTestMR {
     }
     assertEquals("Invalid number of clusters", 1 << NUM_DIMENSIONS, numClusters);
   }
+
 }
