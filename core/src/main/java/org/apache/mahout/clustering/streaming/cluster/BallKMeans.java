@@ -253,7 +253,7 @@ public class BallKMeans implements Iterable<Centroid> {
     // clusterAssignments[i] == j means that the i'th point is assigned to the j'th cluster. When
     // these don't change, we are done.
     // Each point is assigned to the invalid "-1" cluster initially.
-    List<Integer> clusterAssignments = Lists.newArrayList(Collections.nCopies(-1, datapoints.size()));
+    List<Integer> clusterAssignments = Lists.newArrayList(Collections.nCopies(datapoints.size(), -1));
 
     boolean changed = true;
     for (int i = 0; changed && i < maxNumIterations; i++) {
