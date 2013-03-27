@@ -12,12 +12,12 @@ import org.apache.commons.cli2.util.HelpFormatter;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.SequenceFile;
 import org.apache.hadoop.io.Text;
 import org.apache.mahout.clustering.iterator.ClusterWritable;
 import org.apache.mahout.clustering.kmeans.KMeansDriver;
 import org.apache.mahout.clustering.kmeans.RandomSeedGenerator;
+import org.apache.mahout.clustering.streaming.cluster.ClusteringUtils;
 import org.apache.mahout.clustering.streaming.mapreduce.CentroidWritable;
 import org.apache.mahout.clustering.streaming.mapreduce.StreamingKMeansDriver;
 import org.apache.mahout.clustering.streaming.utils.ExperimentUtils;
@@ -25,15 +25,18 @@ import org.apache.mahout.clustering.streaming.utils.IOUtils;
 import org.apache.mahout.common.HadoopUtil;
 import org.apache.mahout.common.Pair;
 import org.apache.mahout.common.distance.EuclideanDistanceMeasure;
+import org.apache.mahout.common.distance.SquaredEuclideanDistanceMeasure;
 import org.apache.mahout.common.iterator.sequencefile.PathType;
-import org.apache.mahout.common.iterator.sequencefile.SequenceFileDirIterable;
 import org.apache.mahout.common.iterator.sequencefile.SequenceFileDirValueIterable;
 import org.apache.mahout.math.Centroid;
 import org.apache.mahout.math.VectorWritable;
 import org.apache.mahout.math.neighborhood.ProjectionSearch;
 import org.apache.mahout.math.stats.OnlineSummarizer;
 
-import java.io.*;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 import java.util.List;
 
 public class ClusterQuality20NewsGroups {
@@ -87,9 +90,9 @@ public class ClusterQuality20NewsGroups {
       HadoopUtil.delete(conf, output);
       // Generate the random starting clusters.
       Path clusters = new Path("hdfs://localhost:9000/tmp/clusters");
-      clusters = RandomSeedGenerator.buildRandom(conf, reducedInputPath, clusters, 20, new EuclideanDistanceMeasure());
+      clusters = RandomSeedGenerator.buildRandom(conf, reducedInputPath, clusters, 20, new SquaredEuclideanDistanceMeasure());
       // Run KMeans.
-      KMeansDriver.run(conf, reducedInputPath, clusters, output, new EuclideanDistanceMeasure(), 0.01, 20, true,
+      KMeansDriver.run(conf, reducedInputPath, clusters, output, new SquaredEuclideanDistanceMeasure(), 0.01, 20, true,
           0, true);
       // Read the results back in as a List<Centroid>.
       SequenceFileDirValueIterable<ClusterWritable> outIterable =
@@ -135,10 +138,10 @@ public class ClusterQuality20NewsGroups {
   }
 
   public void printSummaries(List<Centroid> centroids, double time, String name, int numRun) {
-    printSummariesInternal(ExperimentUtils.summarizeClusterDistances(reducedVectors, centroids),
+    printSummariesInternal(ClusteringUtils.summarizeClusterDistances(reducedVectors, centroids),
         time, name, numRun, "train");
     if (testReducedVectors != null) {
-      printSummariesInternal(ExperimentUtils.summarizeClusterDistances(testReducedVectors, centroids),
+      printSummariesInternal(ClusteringUtils.summarizeClusterDistances(testReducedVectors, centroids),
           time, name, numRun, "test");
     }
   }

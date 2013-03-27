@@ -11,8 +11,8 @@ import org.apache.commons.cli2.util.HelpFormatter;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.mahout.clustering.iterator.ClusterWritable;
+import org.apache.mahout.clustering.streaming.cluster.ClusteringUtils;
 import org.apache.mahout.clustering.streaming.mapreduce.CentroidWritable;
-import org.apache.mahout.clustering.streaming.utils.ExperimentUtils;
 import org.apache.mahout.clustering.streaming.utils.IOUtils;
 import org.apache.mahout.common.iterator.sequencefile.PathType;
 import org.apache.mahout.common.iterator.sequencefile.SequenceFileDirValueIterable;
@@ -86,13 +86,13 @@ public class SummarizeQuality20NewsGroups {
 
       SequenceFileDirValueIterable<VectorWritable> trainIterable =
           new SequenceFileDirValueIterable<VectorWritable>(new Path(trainFile), PathType.GLOB, conf);
-      printSummaries(ExperimentUtils.summarizeClusterDistances(
+      printSummaries(ClusteringUtils.summarizeClusterDistances(
           IOUtils.getVectorsFromVectorWritableIterable(trainIterable), centroids), "train");
 
       if (testFile != null) {
         SequenceFileDirValueIterable<VectorWritable> testIterable =
             new SequenceFileDirValueIterable<VectorWritable>(new Path(testFile), PathType.GLOB, conf);
-        printSummaries(ExperimentUtils.summarizeClusterDistances(
+        printSummaries(ClusteringUtils.summarizeClusterDistances(
             IOUtils.getVectorsFromVectorWritableIterable(testIterable), centroids), "test");
       }
 
