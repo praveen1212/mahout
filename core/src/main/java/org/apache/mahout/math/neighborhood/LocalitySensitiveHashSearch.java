@@ -1,6 +1,5 @@
 package org.apache.mahout.math.neighborhood;
 
-import com.google.common.base.Function;
 import com.google.common.collect.*;
 import org.apache.mahout.common.RandomUtils;
 import org.apache.mahout.common.distance.DistanceMeasure;
@@ -11,7 +10,10 @@ import org.apache.mahout.math.jet.random.Normal;
 import org.apache.mahout.math.random.WeightedThing;
 import org.apache.mahout.math.stats.OnlineSummarizer;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.PriorityQueue;
 
 /**
  * Implements a Searcher that uses locality sensitivity hash as a first pass approximation
@@ -24,7 +26,7 @@ public class LocalitySensitiveHashSearch extends UpdatableSearcher implements It
   @SuppressWarnings("PointlessBitwiseExpression")
   private static final long BITMASK = -1L >>> 64 - BITS;
 
-  private Set<HashedVector> trainingVectors = Sets.newHashSet();
+  private Multiset<HashedVector> trainingVectors = HashMultiset.create();
 
 
   // this matrix of 32 random vectors is used to compute the Locality Sensitive Hash
@@ -126,15 +128,13 @@ public class LocalitySensitiveHashSearch extends UpdatableSearcher implements It
       }
     }
 
-    List<WeightedThing<Vector>> r = Lists.newArrayList(Iterables.transform(top, new Function<WeightedThing<Vector>, WeightedThing<Vector>>() {
-      @Override
-      public WeightedThing<Vector> apply(WeightedThing<Vector> input) {
-        return new WeightedThing<Vector>(((HashedVector)(input.getValue())).getVector(),
-            input.getWeight());
-      }
-    }));
-    Collections.sort(r);
-    return r.subList(0, Math.min(numberOfNeighbors, r.size()));
+    List<WeightedThing<Vector>> results = Lists.newArrayListWithExpectedSize(numberOfNeighbors);
+    while (numberOfNeighbors > 0 && !top.isEmpty()) {
+      WeightedThing<Vector> wv = top.poll();
+      results.add(new WeightedThing<Vector>(((HashedVector)wv.getValue()).getVector(), wv.getWeight()));
+    }
+    Collections.reverse(results);
+    return results;
   }
 
 
@@ -170,7 +170,6 @@ public class LocalitySensitiveHashSearch extends UpdatableSearcher implements It
   @Override
   public Iterator<Vector> iterator() {
     return new AbstractIterator<Vector>() {
-      int index = 0;
       Iterator<HashedVector> data = trainingVectors.iterator();
 
       @Override

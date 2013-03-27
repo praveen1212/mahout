@@ -18,10 +18,7 @@
 package org.apache.mahout.math.neighborhood;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.AbstractIterator;
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
+import com.google.common.collect.*;
 import org.apache.mahout.common.distance.DistanceMeasure;
 import org.apache.mahout.math.*;
 import org.apache.mahout.math.Vector;
@@ -38,11 +35,11 @@ public class ProjectionSearch extends UpdatableSearcher implements Iterable<Vect
 
   /**
    * A lists of tree sets containing the scalar projections of each vector.
-   * The elements in a TreeSet are WeightedThing<Integer>, where the weight is the scalar
+   * The elements in a TreeMultiset are WeightedThing<Integer>, where the weight is the scalar
    * projection of the vector at the index pointed to by the Integer from the referenceVectors list
    * on the basis vector whose index is the same as the index of the TreeSet in the List.
    */
-  private List<TreeSet<WeightedThing<Vector>>> scalarProjections;
+  private List<TreeMultiset<WeightedThing<Vector>>> scalarProjections;
 
   /**
    * The list of random normalized projection vectors forming a basis.
@@ -102,7 +99,7 @@ public class ProjectionSearch extends UpdatableSearcher implements Iterable<Vect
     basisMatrix = generateBasis(numProjections, numDimensions);
     scalarProjections = Lists.newArrayList();
     for (int i = 0; i < numProjections; ++i) {
-      scalarProjections.add(Sets.<WeightedThing<Vector>>newTreeSet());
+      scalarProjections.add(TreeMultiset.<WeightedThing<Vector>>create());
     }
   }
 
@@ -125,14 +122,14 @@ public class ProjectionSearch extends UpdatableSearcher implements Iterable<Vect
     Vector projection = basisMatrix.times(v);
     // Add the the new vector and the projected distance to each set separately.
     int i = 0;
-    for (TreeSet<WeightedThing<Vector>> s : scalarProjections) {
+    for (TreeMultiset<WeightedThing<Vector>> s : scalarProjections) {
       s.add(new WeightedThing<Vector>(v, projection.get(i++)));
     }
     int numVectors = scalarProjections.get(0).size();
-    for (TreeSet<WeightedThing<Vector>> s : scalarProjections) {
+    for (TreeMultiset<WeightedThing<Vector>> s : scalarProjections) {
       Preconditions.checkArgument(s.size() == numVectors, "Number of vectors in projection sets " +
           "differ");
-      double firstWeight = s.first().getWeight();
+      double firstWeight = s.firstEntry().getElement().getWeight();
       for (WeightedThing<Vector> w : s) {
         Preconditions.checkArgument(firstWeight <= w.getWeight(), "Weights not in non-decreasing " +
             "order");
@@ -163,13 +160,13 @@ public class ProjectionSearch extends UpdatableSearcher implements Iterable<Vect
     HashSet<Vector> candidates = Sets.newHashSet();
 
     Iterator<? extends Vector> projections = basisMatrix.iterator();
-    for (TreeSet<WeightedThing<Vector>> v : scalarProjections) {
+    for (TreeMultiset<WeightedThing<Vector>> v : scalarProjections) {
       Vector basisVector = projections.next();
       WeightedThing<Vector> projectedQuery = new WeightedThing<Vector>(query,
           query.dot(basisVector));
       for (WeightedThing<Vector> candidate : Iterables.concat(
-          Iterables.limit(v.tailSet(projectedQuery, true), searchSize),
-          Iterables.limit(v.headSet(projectedQuery, false).descendingSet(), searchSize))) {
+          Iterables.limit(v.tailMultiset(projectedQuery, BoundType.CLOSED), searchSize),
+          Iterables.limit(v.headMultiset(projectedQuery, BoundType.OPEN).descendingMultiset(), searchSize))) {
         candidates.add(candidate.getValue());
       }
     }
@@ -182,14 +179,6 @@ public class ProjectionSearch extends UpdatableSearcher implements Iterable<Vect
     }
     Collections.sort(top);
     return top.subList(0, Math.min(limit, top.size()));
-  }
-
-  public int getSearchSize() {
-    return searchSize;
-  }
-
-  public void setSearchSize(int searchSize) {
-    this.searchSize = searchSize;
   }
 
   @Override
@@ -210,7 +199,7 @@ public class ProjectionSearch extends UpdatableSearcher implements Iterable<Vect
     List<WeightedThing<Vector>> x = search(vector, 1);
     if (x.get(0).getWeight() < 1e-7) {
       Iterator<? extends Vector> basisVectors = basisMatrix.iterator();
-      for (TreeSet<WeightedThing<Vector>> projection : scalarProjections) {
+      for (TreeMultiset<WeightedThing<Vector>> projection : scalarProjections) {
         if (!projection.remove(new WeightedThing<Vector>(null, vector.dot(basisVectors.next())))) {
           throw new RuntimeException("Internal inconsistency in ProjectionSearch");
         }
@@ -226,7 +215,7 @@ public class ProjectionSearch extends UpdatableSearcher implements Iterable<Vect
     if (scalarProjections == null) {
       return;
     }
-    for (TreeSet<WeightedThing<Vector>> set : scalarProjections) {
+    for (TreeMultiset<WeightedThing<Vector>> set : scalarProjections) {
       set.clear();
     }
   }
