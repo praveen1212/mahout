@@ -20,29 +20,32 @@ package org.apache.mahout.clustering.streaming.cluster;
 import com.google.common.collect.Lists;
 import org.apache.mahout.common.Pair;
 import org.apache.mahout.common.distance.EuclideanDistanceMeasure;
-import org.apache.mahout.math.neighborhood.BruteSearch;
-import org.apache.mahout.math.neighborhood.Searcher;
-import org.apache.mahout.math.neighborhood.UpdatableSearcher;
 import org.apache.mahout.math.*;
 import org.apache.mahout.math.function.Functions;
 import org.apache.mahout.math.function.VectorFunction;
+import org.apache.mahout.math.neighborhood.BruteSearch;
+import org.apache.mahout.math.neighborhood.Searcher;
+import org.apache.mahout.math.neighborhood.UpdatableSearcher;
 import org.apache.mahout.math.random.MultiNormal;
 import org.apache.mahout.math.random.WeightedThing;
+import org.apache.mahout.math.stats.OnlineSummarizer;
 import org.junit.Test;
 
 import java.util.List;
 
+import static org.hamcrest.number.OrderingComparison.lessThan;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertThat;
 
 public class BallKMeansTest {
 
   private static final int NUM_DATA_POINTS = 10000;
   private static final int NUM_DIMENSIONS = 4;
   private static final int NUM_ITERATIONS = 20;
+  private static final double DISTRIBUTION_RADIUS = 0.01;
 
   private static Pair<List<Centroid>, List<Centroid>> syntheticData =
-      DataUtils.sampleMultiNormalHypercube(NUM_DIMENSIONS, NUM_DATA_POINTS);
+      DataUtils.sampleMultiNormalHypercube(NUM_DIMENSIONS, NUM_DATA_POINTS, DISTRIBUTION_RADIUS);
   private static final int K1 = 100;
 
   @Test
@@ -73,12 +76,14 @@ public class BallKMeansTest {
 
     // Verify that each corner of the cube has a centroid very nearby.
     // This is probably FALSE for large-dimensional spaces!
-    double maxWeight = 0;
+    OnlineSummarizer summarizer = new OnlineSummarizer();
     for (Vector mean : syntheticData.getSecond()) {
       WeightedThing<Vector> v = searcher.search(mean, 1).get(0);
-      maxWeight = Math.max(v.getWeight(), maxWeight);
+      summarizer.add(v.getWeight());
     }
-    assertTrue("Maximum weight too large " + maxWeight, maxWeight < 0.05);
+    assertThat(String.format("Median weight [%f] too large [>%f]", summarizer.getMedian(),
+        DISTRIBUTION_RADIUS), summarizer.getMedian(), lessThan(DISTRIBUTION_RADIUS));
+
     double clusterTime = (endTime - startTime) / 1000.0;
     System.out.printf("%s\n%.2f for clustering\n%.1f us per row\n\n",
         searcher.getClass().getName(), clusterTime,
