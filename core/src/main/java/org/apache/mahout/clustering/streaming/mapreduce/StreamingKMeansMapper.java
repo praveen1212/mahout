@@ -21,12 +21,10 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapreduce.Mapper;
-import org.apache.mahout.common.commandline.DefaultOptionCreator;
-import org.apache.mahout.common.distance.DistanceMeasure;
 import org.apache.mahout.clustering.streaming.cluster.StreamingKMeans;
-import org.apache.mahout.math.neighborhood.*;
 import org.apache.mahout.math.Centroid;
 import org.apache.mahout.math.VectorWritable;
+import org.apache.mahout.math.neighborhood.UpdatableSearcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,18 +39,17 @@ public class StreamingKMeansMapper extends Mapper<Writable, VectorWritable,
   private StreamingKMeans clusterer;
   private int numPoints = 0;
 
-  private static final Logger log = LoggerFactory.getLogger(Mapper.class);
+  private static final Logger log = LoggerFactory.getLogger(StreamingKMeansMapper.class);
 
   @Override
   public void setup(Context context) {
     // At this point the configuration received from the Driver is assumed to be valid.
     // No other checks are made.
     Configuration conf = context.getConfiguration();
-    UpdatableSearcher searcher;
-    searcher = searcherFromConfiguration(conf);
-    int numClusters = conf.getInt(DefaultOptionCreator.NUM_CLUSTERS_OPTION, 1);
+    UpdatableSearcher searcher = StreamingKMeansUtilsMR.searcherFromConfiguration(conf, log);
+    int numClusters = conf.getInt(StreamingKMeansDriver.ESTIMATED_NUM_MAP_CLUSTERS, 1);
     clusterer = new StreamingKMeans(searcher, numClusters,
-        conf.getFloat(StreamingKMeansDriver.ESTIMATED_DISTANCE_CUTOFF, (float) 10e-6));
+        conf.getFloat(StreamingKMeansDriver.ESTIMATED_DISTANCE_CUTOFF, (float) 1e-5));
   }
 
   @Override
@@ -66,44 +63,6 @@ public class StreamingKMeansMapper extends Mapper<Writable, VectorWritable,
     for (Centroid centroid : clusterer) {
       context.write(new IntWritable(0), new CentroidWritable(centroid));
     }
-  }
-
-  @SuppressWarnings("ConstantConditions")
-  public static UpdatableSearcher searcherFromConfiguration(Configuration conf) {
-    DistanceMeasure distanceMeasure;
-    String distanceMeasureClass = conf.get(DefaultOptionCreator.DISTANCE_MEASURE_OPTION);
-    try {
-      distanceMeasure = (DistanceMeasure)Class.forName(distanceMeasureClass).newInstance();
-    } catch (Exception e) {
-      log.error("Failed to instantiate distanceMeasure", e);
-      throw new RuntimeException("Failed to instantiate distanceMeasure", e);
-    }
-
-    int numProjections =  conf.getInt(StreamingKMeansDriver.NUM_PROJECTIONS_OPTION, 20);
-    int searchSize =  conf.getInt(StreamingKMeansDriver.SEARCH_SIZE_OPTION, 10);
-
-    UpdatableSearcher searcher;
-    String searcherClass = conf.get(StreamingKMeansDriver.SEARCHER_CLASS_OPTION);
-    try {
-      if (searcherClass.equals(BruteSearch.class.getName())) {
-        searcher = (UpdatableSearcher)Class.forName(searcherClass).getConstructor(DistanceMeasure
-            .class).newInstance(distanceMeasure);
-      } else if (searcherClass.equals(FastProjectionSearch.class.getName()) ||
-          searcherClass.equals(ProjectionSearch.class.getName())) {
-        searcher = (UpdatableSearcher)Class.forName(searcherClass).getConstructor(DistanceMeasure
-            .class, int.class, int.class).newInstance(distanceMeasure, numProjections, searchSize);
-      } else if (searcherClass.equals(LocalitySensitiveHashSearch.class.getName())) {
-        searcher = (UpdatableSearcher)Class.forName(searcherClass).getConstructor(DistanceMeasure
-            .class, int.class).newInstance(distanceMeasure, searchSize);
-      } else {
-        log.error("Unknown searcher class instantiation requested {}", searcherClass);
-        throw new InstantiationException();
-      }
-    } catch (Exception e) {
-      log.error("Failed to instantiate searcher", e);
-      throw new RuntimeException("Failed to instantiate searcher.", e);
-    }
-    return searcher;
   }
 
 }

@@ -24,7 +24,7 @@ import org.apache.mahout.clustering.streaming.utils.ExperimentUtils;
 import org.apache.mahout.clustering.streaming.utils.IOUtils;
 import org.apache.mahout.common.HadoopUtil;
 import org.apache.mahout.common.Pair;
-import org.apache.mahout.common.distance.EuclideanDistanceMeasure;
+import org.apache.mahout.common.distance.CosineDistanceMeasure;
 import org.apache.mahout.common.distance.SquaredEuclideanDistanceMeasure;
 import org.apache.mahout.common.iterator.sequencefile.PathType;
 import org.apache.mahout.common.iterator.sequencefile.SequenceFileDirValueIterable;
@@ -221,8 +221,13 @@ public class ClusterQuality20NewsGroups {
     }
 
     if (mapReduce) {
-      StreamingKMeansDriver.configureOptionsForWorkers(conf, 20, 200, 1e-6f, EuclideanDistanceMeasure.class.getName(),
-          ProjectionSearch.class.getName(), 10, 20, 20);
+      StreamingKMeansDriver.configureOptionsForWorkers(conf, 20,
+          // StreamingKMeans
+          200, 1e-10f,
+          // BallKMeans
+          20, 0.9f, 10,
+          // Searcher
+          CosineDistanceMeasure.class.getName(), ProjectionSearch.class.getName(), 10, 20);
       try {
         if (reducedInputPath == null) {
           getReducedInputPath();
