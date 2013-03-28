@@ -9,7 +9,8 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.SequenceFile;
 import org.apache.hadoop.io.Text;
 
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
 

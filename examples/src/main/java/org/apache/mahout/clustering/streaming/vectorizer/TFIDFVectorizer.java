@@ -16,70 +16,92 @@ import org.apache.mahout.common.Pair;
 import org.apache.mahout.math.SequentialAccessSparseVector;
 import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.VectorWritable;
-import org.apache.mahout.vectorizer.encoders.AdaptiveWordValueEncoder;
 
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
-import java.lang.reflect.InvocationTargetException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
 public class TFIDFVectorizer {
-  // The word dictionary from Lucene tokens to the document frequency of the word.
-  private Map<String, Integer> wordDFDictionary = Maps.newHashMap();
   // The scoring function that gets a (TF, DF) pair and computes the score.
   private Function<TFIDFScorer.Tuple, Double> tfIdfScorer;
 
-  public TFIDFVectorizer(Function<TFIDFScorer.Tuple, Double> tfIdfScorer) {
+  // Whether the resulting vectors should be normalized (so their length is 1). This should nearly always be true.
+  private boolean normalize;
+
+  public TFIDFVectorizer(Function<TFIDFScorer.Tuple, Double> tfIdfScorer, boolean normalize) {
     this.tfIdfScorer = tfIdfScorer;
+    this.normalize = normalize;
   }
 
   /**
-   * Creates a sequence file of Text, VectorWritable for a set of documents trying different
-   * approaches to TF/IDF scoring.
-   * @param args the first argument is the folder/file where the documents are. It will be
-   *             scanned recursively to get the list of all documents to be tokenized. The second
-   *             argument is the name of output seqfile containing the vectors. The third
-   *             argument is the canonical name of the scoring class to be used.
+   * Vectorizes a list of paths writing the output to a given output path.
+   * @param paths paths to documents to vectorize.
+   * @param outputPath path to output sequence file containing the document vectors.
+   * @param fs filesystem the paths are on.
+   * @param conf Hadoop configuration.
    * @throws IOException
-   * @see TFIDFScorer
    */
-  public static void main(String[] args) throws IOException, ClassNotFoundException, NoSuchMethodException, InvocationTargetException, IllegalAccessException, InstantiationException {
-    // Create the list of documents to be vectorized.
-    List<String> paths = Lists.newArrayList();
-    FileContentsToSequenceFiles.getRecursiveFilePaths(args[0], paths);
-
-    // Parse arguments and see what scorer to use.
-    Function<TFIDFScorer.Tuple, Double> tfIdfScorer =
-        (Function<TFIDFScorer.Tuple, Double>) Class.forName(args[2]).getConstructor().newInstance();
-
-    // Vectorize the documents and write them out.
-    Configuration conf = new Configuration();
-    FileSystem fs = FileSystem.get(conf);
-    TFIDFVectorizer vectorizer = new TFIDFVectorizer(tfIdfScorer);
-    vectorizer.vectorize(paths,  new Path(args[1]), fs, conf);
+  public void vectorizePaths(List<String> paths, Path outputPath, FileSystem fs, Configuration conf)
+      throws IOException {
+    SequenceFile.Writer writer =
+        SequenceFile.createWriter(fs, conf, outputPath, Text.class, VectorWritable.class);
+    Iterable<Vector> documentVectors = vectorize(paths);
+    int i = 0;
+    for (Vector documentVector : documentVectors) {
+      String path = paths.get(i++);
+      writer.append(new Text(path), new VectorWritable(documentVector));
+    }
+    writer.close();
   }
 
+  /**
+   * Vectorizes the documents from the given paths.
+   * @param paths the paths to documents to vectorize.
+   * @return an Iterable of the resulting vectors. The vectors are in the same order as the given paths.
+   * @throws IOException
+   */
   public Iterable<Vector> vectorize(final Iterable<String> paths) throws IOException {
-    final List<Map<String, Integer>> wordTFDictionaries = Lists.newArrayList();
-    int numPaths = 0;
-    // Build the dictionary for all the files.
+    List<Map<String, Integer>> wordTFDictionaries = Lists.newArrayList();
     for (String path : paths) {
-      Map<String, Integer> wordTFDictionary = buildWordTFDictionaryForPath(path);
+      wordTFDictionaries.add(buildWordTFDictionary(path));
+    }
+    return vectorize(wordTFDictionaries);
+  }
+
+  /**
+   * Vectorizes the documents described by the list of frequency dictionaries.
+   * @param wordTFDictionaries the list of word term frequency dictionaries to use.
+   * @return an Iterable of the resulting vectors. The vectors are in the same order as the given dictionaries.
+   */
+  public Iterable<Vector> vectorize(final List<Map<String, Integer>> wordTFDictionaries) {
+    // The word dictionary from Lucene tokens to the a pair containing the document frequency of the word and its
+    // final position in the vectorized document.
+
+    final Map<String, Pair<Integer, Integer>> wordDFDictionary = Maps.newHashMap();
+
+    int numPaths = 0;
+    // Build the document frequency dictionary for all the files.
+    for (Map<String, Integer> wordTFDictionary : wordTFDictionaries) {
       for (Map.Entry<String, Integer> wordEntry : wordTFDictionary.entrySet()) {
         String word = wordEntry.getKey();
-        Integer df = wordDFDictionary.get(word);
-        if (df == null) {
-          wordDFDictionary.put(word, 1);
+        Pair<Integer, Integer> dfValue = wordDFDictionary.get(word);
+        if (dfValue == null) {
+          wordDFDictionary.put(word, Pair.of(1, -1));
         } else {
-          wordDFDictionary.put(word, df + 1);
+          wordDFDictionary.put(word, Pair.of(dfValue.getFirst() + 1, -1));
         }
       }
-      wordTFDictionaries.add(wordTFDictionary);
+      System.out.printf("Tokenized document %d\n", numPaths);
       ++numPaths;
     }
+    int wordIndex = 0;
+    for (Map.Entry<String, Pair<Integer, Integer>> entry : wordDFDictionary.entrySet()) {
+      entry.setValue(Pair.of(entry.getValue().getFirst(), wordIndex++));
+    }
+
     // Build the actual vectors.
     final int finalNumPaths = numPaths;
     return new Iterable<Vector>() {
@@ -98,14 +120,15 @@ public class TFIDFVectorizer {
           public Vector next() {
             Map<String, Integer> wordTFDictionary = wordTFDictionaries.get(i++);
             Vector documentVector = new SequentialAccessSparseVector(numWords);
-            int wordIndex = 0;
-            for (Map.Entry<String, Integer> dfEntry : wordDFDictionary.entrySet()) {
-              Integer termFrequency = wordTFDictionary.get(dfEntry.getKey());
-              if (termFrequency != null) {
-                documentVector.set(wordIndex++,
-                    tfIdfScorer.apply(new TFIDFScorer.Tuple(termFrequency, dfEntry.getValue(),
-                        finalNumPaths)));
-              }
+            for (Map.Entry<String, Integer> tfEntry : wordTFDictionary.entrySet()) {
+              Pair<Integer, Integer> dfValue = wordDFDictionary.get(tfEntry.getKey());
+              documentVector.set(dfValue.getSecond(),
+                  tfIdfScorer.apply(new TFIDFScorer.Tuple(tfEntry.getValue(), dfValue.getFirst(),
+                      finalNumPaths)));
+            }
+            System.out.printf("Vectorized document %d\n", i - 1);
+            if (normalize) {
+              return documentVector.normalize();
             }
             return documentVector;
           }
@@ -119,33 +142,13 @@ public class TFIDFVectorizer {
     };
   }
 
-  public void vectorize(List<String> paths, Path outputPath, FileSystem fs, Configuration conf) throws IOException {
-    SequenceFile.Writer writer =
-        SequenceFile.createWriter(fs, conf, outputPath, Text.class, VectorWritable.class);
-    Iterable<Vector> documentVectors = vectorize(paths);
-    int i = 0;
-    for (Vector documentVector : documentVectors) {
-      String path = paths.get(i++);
-      writer.append(new Text(path), new VectorWritable(documentVector));
-      if (i % 500 == 0) {
-        float percent = (float) i / paths.size() * 100;
-        System.out.println(percent + "%");
-      }
-    }
-    System.out.println("Finished writing vectors to " + outputPath.getName());
-    writer.close();
-  }
-
-  public static void writeVectorizedDocumentsToFile(List<Pair<String, Vector>> vectorizedDocuments,
-                                                    Path outputPath,
-                                                    FileSystem fs,
-                                                    Configuration conf) throws IOException {
-    SequenceFile.Writer writer =
-        SequenceFile.createWriter(fs, conf, outputPath, Text.class, VectorWritable.class);
-    for (Pair<String, Vector> document : vectorizedDocuments) {
-      writer.append(document.getFirst(), new VectorWritable(document.getSecond()));
-    }
-    writer.close();
+  /**
+   * Builds a term frequency dictionary for the words in a file.
+   * @param path the name of the file to be processed.
+   * @return a map of words to frequency counts.
+   */
+  public static Map<String, Integer> buildWordTFDictionary(String path) throws IOException {
+    return buildWordTFDictionary(new FileReader(path));
   }
 
   /**
@@ -154,7 +157,7 @@ public class TFIDFVectorizer {
    * @return a map of words to frequency counts.
    */
   public static Map<String, Integer> buildWordTFDictionary(Reader reader) throws IOException {
-    Tokenizer tokenizer = new StandardTokenizer(Version.LUCENE_36, reader);
+    Tokenizer tokenizer = new StandardTokenizer(Version.LUCENE_41, reader);
     tokenizer.reset();
     CharTermAttribute cattr = tokenizer.addAttribute(CharTermAttribute.class);
     Map<String, Integer> wordTFDictionary = Maps.newHashMap();
@@ -171,15 +174,5 @@ public class TFIDFVectorizer {
     tokenizer.close();
     return wordTFDictionary;
   }
-
-  /**
-   * Builds a term frequency dictionary for the words in a file.
-   * @param path the name of the file to be processed.
-   * @return a map of words to frequency counts.
-   */
-  public Map<String, Integer> buildWordTFDictionaryForPath(String path) throws IOException {
-    return buildWordTFDictionary(new FileReader(path));
-  }
-
 }
 

@@ -19,7 +19,7 @@ import java.util.Map;
 public class TFIDFVectorizerTest {
   @Test
   public void testSimpleFile() throws IOException {
-    TFIDFVectorizer vectorizer = new TFIDFVectorizer(new TFIDFScorer.Linear());
+    TFIDFVectorizer vectorizer = new TFIDFVectorizer(new TFIDFScorer.Linear(), true);
     Map<String, Integer> wordCounts = Maps.newHashMap();
     wordCounts.put("alfa", 23);
     wordCounts.put("beta", 2);
@@ -35,7 +35,7 @@ public class TFIDFVectorizerTest {
     }
     writer.close();
 
-    Map<String, Integer> actualCounts = vectorizer.buildWordTFDictionaryForPath(tempFile.getPath());
+    Map<String, Integer> actualCounts = vectorizer.buildWordTFDictionary(tempFile.getPath());
     MatcherAssert.assertThat(actualCounts, CoreMatchers.is(wordCounts));
 
     List<String> pathList = Lists.newArrayList();

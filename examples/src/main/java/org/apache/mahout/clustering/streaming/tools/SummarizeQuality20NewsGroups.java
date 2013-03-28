@@ -40,6 +40,7 @@ public class SummarizeQuality20NewsGroups {
     for (int i = 0; i < summarizers.size(); ++i) {
       OnlineSummarizer summarizer = summarizers.get(i);
       if (summarizer.getCount() == 0) {
+        System.out.printf("Cluster %d is empty\n");
         continue;
       }
       maxDistance = Math.max(maxDistance, summarizer.getMax());
