@@ -6,6 +6,7 @@ import org.apache.mahout.clustering.streaming.cluster.BallKMeans;
 import org.apache.mahout.clustering.streaming.cluster.StreamingKMeans;
 import org.apache.mahout.common.Pair;
 import org.apache.mahout.common.distance.CosineDistanceMeasure;
+import org.apache.mahout.common.distance.DistanceMeasure;
 import org.apache.mahout.math.Centroid;
 import org.apache.mahout.math.VectorWritable;
 import org.apache.mahout.math.neighborhood.BruteSearch;
@@ -70,21 +71,26 @@ public class ExperimentUtils {
     return actualClusters;
   }
 
-  public static Iterable<Centroid> clusterBallKMeans(List<Centroid> datapoints, int numClusters, boolean randomInit) {
-    BallKMeans clusterer = new BallKMeans(new BruteSearch(new CosineDistanceMeasure()), numClusters, 20);
+  public static Iterable<Centroid> clusterBallKMeans(List<Centroid> datapoints, int numClusters,
+                                                     double trimFraction, boolean randomInit,
+                                                     DistanceMeasure distanceMeasure) {
+    BallKMeans clusterer = new BallKMeans(new BruteSearch(new CosineDistanceMeasure()), numClusters, 20,
+        trimFraction, true);
     clusterer.cluster(datapoints, randomInit);
     return clusterer;
   }
 
-  public static Iterable<Centroid> clusterStreamingKMeans(List<Centroid> datapoints, int numClusters) {
-    StreamingKMeans clusterer = new StreamingKMeans(new FastProjectionSearch(new CosineDistanceMeasure(), 3, 2),
+  public static Iterable<Centroid> clusterStreamingKMeans(List<Centroid> datapoints, int numClusters,
+                                                     DistanceMeasure distanceMeasure) {
+    StreamingKMeans clusterer = new StreamingKMeans(new FastProjectionSearch(distanceMeasure, 3, 2),
         numClusters, 1e-6);
     clusterer.cluster(datapoints);
     return clusterer;
   }
 
-  public static Iterable<Centroid> clusterOneByOneStreamingKMeans(List<Centroid> datapoints, int numClusters) {
-    StreamingKMeans clusterer = new StreamingKMeans(new FastProjectionSearch(new CosineDistanceMeasure(), 3, 2),
+  public static Iterable<Centroid> clusterOneByOneStreamingKMeans(List<Centroid> datapoints, int numClusters,
+                                                     DistanceMeasure distanceMeasure) {
+    StreamingKMeans clusterer = new StreamingKMeans(new FastProjectionSearch(distanceMeasure, 3, 2),
         numClusters, 1e-6);
     for (Centroid datapoint : datapoints) {
       clusterer.cluster(datapoint);

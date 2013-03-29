@@ -22,10 +22,11 @@ import org.apache.mahout.clustering.streaming.mapreduce.CentroidWritable;
 import org.apache.mahout.clustering.streaming.mapreduce.StreamingKMeansDriver;
 import org.apache.mahout.clustering.streaming.utils.ExperimentUtils;
 import org.apache.mahout.clustering.streaming.utils.IOUtils;
+import org.apache.mahout.common.ClassUtils;
 import org.apache.mahout.common.HadoopUtil;
 import org.apache.mahout.common.Pair;
 import org.apache.mahout.common.distance.CosineDistanceMeasure;
-import org.apache.mahout.common.distance.SquaredEuclideanDistanceMeasure;
+import org.apache.mahout.common.distance.DistanceMeasure;
 import org.apache.mahout.common.iterator.sequencefile.PathType;
 import org.apache.mahout.common.iterator.sequencefile.SequenceFileDirValueIterable;
 import org.apache.mahout.math.Centroid;
@@ -63,6 +64,8 @@ public class ClusterQuality20NewsGroups {
   private boolean clusterStreamingKMeans;
   private boolean mapReduce;
 
+  private DistanceMeasure distanceMeasure;
+
   /**
    * Write the reduced vectors to a sequence file so that KMeans can read them.
    * @throws IOException
@@ -76,6 +79,7 @@ public class ClusterQuality20NewsGroups {
       seqWriter.append(new Text(input.getFirst().get(i)), new VectorWritable(reducedVectors.get(i)));
     }
     seqWriter.close();
+    System.out.printf("Wrote %d reduced vectors\n", reducedVectors.size());
   }
 
   public List<Centroid> clusterKMeans() {
@@ -90,14 +94,14 @@ public class ClusterQuality20NewsGroups {
       HadoopUtil.delete(conf, output);
       // Generate the random starting clusters.
       Path clusters = new Path("hdfs://localhost:9000/tmp/clusters");
-      clusters = RandomSeedGenerator.buildRandom(conf, reducedInputPath, clusters, 20, new SquaredEuclideanDistanceMeasure());
+      clusters = RandomSeedGenerator.buildRandom(conf, reducedInputPath, clusters, 20, distanceMeasure);
       // Run KMeans.
-      KMeansDriver.run(conf, reducedInputPath, clusters, output, new SquaredEuclideanDistanceMeasure(), 0.01, 20, true,
+      KMeansDriver.run(conf, reducedInputPath, clusters, output, distanceMeasure, 0.01, 20, true,
           0, true);
       // Read the results back in as a List<Centroid>.
       SequenceFileDirValueIterable<ClusterWritable> outIterable =
           new SequenceFileDirValueIterable<ClusterWritable>(
-              new Path("hdfs://localhost:9000/tmp/output/clusters-20-final/part-*"), PathType.GLOB, conf);
+              new Path("hdfs://localhost:9000/tmp/output/clusters-*-final/part-*"), PathType.GLOB, conf);
       int numVectors = 0;
       for (ClusterWritable clusterWritable : outIterable) {
         kmCentroids.add(new Centroid(numVectors++, clusterWritable.getValue().getCenter().clone(),
@@ -146,7 +150,7 @@ public class ClusterQuality20NewsGroups {
     }
   }
 
-  public void runInstance(int numRun) {
+  public void runInstance(int numRun) throws ClassNotFoundException {
     System.out.printf("Run %d\n", numRun);
     long start;
     long end;
@@ -165,7 +169,8 @@ public class ClusterQuality20NewsGroups {
     if (clusterBallKMeans) {
       System.out.printf("Clustering BallKMeans k-means++\n");
       start = System.currentTimeMillis();
-      List<Centroid> bkmCentroids = Lists.newArrayList(ExperimentUtils.clusterBallKMeans(reducedVectors, 20, false));
+      List<Centroid> bkmCentroids =
+          Lists.newArrayList(ExperimentUtils.clusterBallKMeans(reducedVectors, 20, 1, false, distanceMeasure));
       end = System.currentTimeMillis();
       time = (end - start) / 1000.0;
       System.out.printf("Took %f[s]\n", time);
@@ -173,7 +178,8 @@ public class ClusterQuality20NewsGroups {
 
       System.out.printf("Clustering BallKMeans random centers\n");
       start = System.currentTimeMillis();
-      List<Centroid> rBkmCentroids = Lists.newArrayList(ExperimentUtils.clusterBallKMeans(reducedVectors, 20, true));
+      List<Centroid> rBkmCentroids =
+          Lists.newArrayList(ExperimentUtils.clusterBallKMeans(reducedVectors, 20, 1, true, distanceMeasure));
       end = System.currentTimeMillis();
       time = (end - start) / 1000.0;
       System.out.printf("Took %f[s]\n", time);
@@ -184,7 +190,7 @@ public class ClusterQuality20NewsGroups {
       System.out.printf("Clustering StreamingKMeans with k [20] clusters\n");
       start = System.currentTimeMillis();
       List<Centroid> skmCentroids0 =
-          Lists.newArrayList(ExperimentUtils.clusterStreamingKMeans(reducedVectors, 20));
+          Lists.newArrayList(ExperimentUtils.clusterStreamingKMeans(reducedVectors, 20, distanceMeasure));
       end = System.currentTimeMillis();
       time = (end - start) / 1000.0;
       System.out.printf("Took %f[s]\n", time);
@@ -194,7 +200,7 @@ public class ClusterQuality20NewsGroups {
       System.out.printf("Clustering StreamingKMeans\n");
       start = System.currentTimeMillis();
       List<Centroid> skmCentroids =
-          Lists.newArrayList(ExperimentUtils.clusterStreamingKMeans(reducedVectors, numStreamingClusters));
+          Lists.newArrayList(ExperimentUtils.clusterStreamingKMeans(reducedVectors, numStreamingClusters, distanceMeasure));
       end = System.currentTimeMillis();
       time = (end - start) / 1000.0;
       System.out.printf("Took %f[s]\n", time);
@@ -203,7 +209,7 @@ public class ClusterQuality20NewsGroups {
       System.out.printf("Clustering OneByOneStreamingKMeans\n");
       start = System.currentTimeMillis();
       List<Centroid> oskmCentroids =
-          Lists.newArrayList(ExperimentUtils.clusterOneByOneStreamingKMeans(reducedVectors, numStreamingClusters));
+          Lists.newArrayList(ExperimentUtils.clusterOneByOneStreamingKMeans(reducedVectors, numStreamingClusters, distanceMeasure));
       end = System.currentTimeMillis();
       time = (end - start) / 1000.0;
       System.out.printf("Took %f[s]\n", time);
@@ -212,7 +218,8 @@ public class ClusterQuality20NewsGroups {
       if (clusterBallKMeans) {
         System.out.printf("Clustering BallStreamingKMeans\n");
         start = System.currentTimeMillis();
-        List<Centroid> bskmCentroids = Lists.newArrayList(ExperimentUtils.clusterBallKMeans(skmCentroids, 20, true));
+        List<Centroid> bskmCentroids =
+            Lists.newArrayList(ExperimentUtils.clusterBallKMeans(skmCentroids, 20, 0.9, true, distanceMeasure));
         end = System.currentTimeMillis();
         time += (end - start) / 1000.0;
         System.out.printf("Took %f[s]\n", time);
@@ -220,7 +227,8 @@ public class ClusterQuality20NewsGroups {
 
         System.out.printf("Clustering OneByOneBallStreamingKMeans\n");
         start = System.currentTimeMillis();
-        List<Centroid> boskmCentroids = Lists.newArrayList(ExperimentUtils.clusterBallKMeans(oskmCentroids, 20, true));
+        List<Centroid> boskmCentroids =
+            Lists.newArrayList(ExperimentUtils.clusterBallKMeans(oskmCentroids, 20, 0.9, true, distanceMeasure));
         end = System.currentTimeMillis();
         time = (end - start) / 1000.0;
         System.out.printf("Took %f[s]\n", time);
@@ -264,7 +272,7 @@ public class ClusterQuality20NewsGroups {
     }
   }
 
-  public void run(String[] args) {
+  public void run(String[] args) throws ClassNotFoundException {
     if (!parseArgs(args)) {
       return;
     }
@@ -371,6 +379,12 @@ public class ClusterQuality20NewsGroups {
         .withArgument(argumentBuilder.withName("numRuns").withMaximum(1).withDefault(5).create())
         .create();
 
+    Option distanceOption = builder.withLongName("distanceMeasure")
+        .withShortName("dm")
+        .withArgument(argumentBuilder.withName("distanceMeasure").withMaximum(1)
+            .withDefault("org.apache.mahout.common.distance.SquaredEuclideanDistanceMeasure").create())
+        .create();
+
     Group normalArgs = new GroupBuilder()
         .withOption(help)
         .withOption(inputFileOption)
@@ -383,6 +397,7 @@ public class ClusterQuality20NewsGroups {
         .withOption(streamingKMeansOption)
         .withOption(mapReduceOption)
         .withOption(numRunsOption)
+        .withOption(distanceOption)
         .create();
 
     Parser parser = new Parser();
@@ -424,10 +439,12 @@ public class ClusterQuality20NewsGroups {
       mapReduce = true;
     }
     numRuns = Integer.parseInt(cmdLine.getValue(numRunsOption).toString());
+    distanceMeasure = ClassUtils.instantiateAs(cmdLine.getValue(distanceOption).toString(), DistanceMeasure.class,
+        new Class[]{}, new Object[]{});
     return true;
   }
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws ClassNotFoundException {
     new ClusterQuality20NewsGroups().run(args);
   }
 }
