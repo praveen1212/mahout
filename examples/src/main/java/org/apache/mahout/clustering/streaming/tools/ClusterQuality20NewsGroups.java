@@ -163,13 +163,21 @@ public class ClusterQuality20NewsGroups {
     }
 
     if (clusterBallKMeans) {
-      System.out.printf("Clustering BallKMeans\n");
+      System.out.printf("Clustering BallKMeans k-means++\n");
       start = System.currentTimeMillis();
-      List<Centroid> bkmCentroids = Lists.newArrayList(ExperimentUtils.clusterBallKMeans(reducedVectors, 20));
+      List<Centroid> bkmCentroids = Lists.newArrayList(ExperimentUtils.clusterBallKMeans(reducedVectors, 20, false));
       end = System.currentTimeMillis();
       time = (end - start) / 1000.0;
       System.out.printf("Took %f[s]\n", time);
       printSummaries(bkmCentroids, time, "bkm", numRun);
+
+      System.out.printf("Clustering BallKMeans random centers\n");
+      start = System.currentTimeMillis();
+      List<Centroid> rBkmCentroids = Lists.newArrayList(ExperimentUtils.clusterBallKMeans(reducedVectors, 20, true));
+      end = System.currentTimeMillis();
+      time = (end - start) / 1000.0;
+      System.out.printf("Took %f[s]\n", time);
+      printSummaries(rBkmCentroids, time, "bkmr", numRun);
     }
 
     if (clusterStreamingKMeans) {
@@ -204,7 +212,7 @@ public class ClusterQuality20NewsGroups {
       if (clusterBallKMeans) {
         System.out.printf("Clustering BallStreamingKMeans\n");
         start = System.currentTimeMillis();
-        List<Centroid> bskmCentroids = Lists.newArrayList(ExperimentUtils.clusterBallKMeans(skmCentroids, 20));
+        List<Centroid> bskmCentroids = Lists.newArrayList(ExperimentUtils.clusterBallKMeans(skmCentroids, 20, true));
         end = System.currentTimeMillis();
         time += (end - start) / 1000.0;
         System.out.printf("Took %f[s]\n", time);
@@ -212,7 +220,7 @@ public class ClusterQuality20NewsGroups {
 
         System.out.printf("Clustering OneByOneBallStreamingKMeans\n");
         start = System.currentTimeMillis();
-        List<Centroid> boskmCentroids = Lists.newArrayList(ExperimentUtils.clusterBallKMeans(oskmCentroids, 20));
+        List<Centroid> boskmCentroids = Lists.newArrayList(ExperimentUtils.clusterBallKMeans(oskmCentroids, 20, true));
         end = System.currentTimeMillis();
         time = (end - start) / 1000.0;
         System.out.printf("Took %f[s]\n", time);

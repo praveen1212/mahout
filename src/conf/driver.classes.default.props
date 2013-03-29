@@ -15,6 +15,8 @@ org.apache.mahout.text.WikipediaToSequenceFile = seqwiki : Wikipedia xml dump to
 org.apache.mahout.text.SequenceFilesFromMailArchives = seqmailarchives : Creates SequenceFile from a directory containing gzipped mail archives
 org.apache.mahout.clustering.streaming.tools.ResplitSequenceFiles = resplit : Splits a set of SequenceFiles into a number of equal splits
 org.apache.mahout.clustering.streaming.tools.SummarizeQuality20NewsGroups = summarycluster : Creates a CSV summarizing the cluster quality in a clustering
+org.apache.mahout.clustering.streaming.tools.ClusterQuality20NewsGroups = qualcluster : Runs clustering experiments and summarizes results in a CSV
+org.apache.mahout.clustering.streaming.vectorizer.TFIDFVectorizer = vectorize : Runs clustering experiments and summarizes results in a CSV
 
 #Math
 org.apache.mahout.math.hadoop.TransposeJob = transpose : Take the transpose of a matrix

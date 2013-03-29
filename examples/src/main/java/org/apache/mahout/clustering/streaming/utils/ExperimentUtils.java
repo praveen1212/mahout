@@ -70,9 +70,9 @@ public class ExperimentUtils {
     return actualClusters;
   }
 
-  public static Iterable<Centroid> clusterBallKMeans(List<Centroid> datapoints, int numClusters) {
+  public static Iterable<Centroid> clusterBallKMeans(List<Centroid> datapoints, int numClusters, boolean randomInit) {
     BallKMeans clusterer = new BallKMeans(new BruteSearch(new CosineDistanceMeasure()), numClusters, 20);
-    clusterer.cluster(datapoints, false);
+    clusterer.cluster(datapoints, randomInit);
     return clusterer;
   }
 
