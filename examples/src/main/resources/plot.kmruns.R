@@ -7,8 +7,8 @@
 # and count)
 
 # restrict the data set to the given type and run number
-km.restrict <- function(data, type, run) {
-    rdata <- data[data$type == type & data$run == run,]
+km.restrict <- function(data, type, run, is.train) {
+    rdata <- data[data$type == type & data$run == run & data$is.train==is.train,]
     return(rdata)
 }
 
