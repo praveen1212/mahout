@@ -18,9 +18,7 @@
 package org.apache.mahout.math.random;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Multiset;
+import com.google.common.collect.*;
 import org.apache.mahout.common.RandomUtils;
 import org.apache.mahout.math.list.DoubleArrayList;
 
@@ -182,6 +180,18 @@ public final class Multinomial<T> implements Sampler<T>, Iterable<T> {
 
     @Override
     public Iterator<T> iterator() {
-        return items.keySet().iterator();
+        return new AbstractIterator<T>() {
+          Iterator<T> valuesIterator = values.iterator();
+          @Override
+          protected T computeNext() {
+            while (valuesIterator.hasNext()) {
+              T next = valuesIterator.next();
+              if (next != null) {
+                return next;
+              }
+            }
+            return endOfData();
+          }
+        };
     }
 }
