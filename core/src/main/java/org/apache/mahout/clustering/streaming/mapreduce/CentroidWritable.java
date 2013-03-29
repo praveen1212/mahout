@@ -29,9 +29,7 @@ import java.io.IOException;
 public class CentroidWritable implements Writable {
   private Centroid centroid = null;
 
-  public CentroidWritable() {
-
-  }
+  public CentroidWritable() {}
 
   public CentroidWritable(Centroid centroid) {
     this.centroid = centroid;
@@ -68,13 +66,14 @@ public class CentroidWritable implements Writable {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (!(o instanceof CentroidWritable)) return false;
-
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof CentroidWritable)) {
+      return false;
+    }
     CentroidWritable writable = (CentroidWritable) o;
-
     return centroid.equals(writable.centroid);
-
   }
 
   @Override

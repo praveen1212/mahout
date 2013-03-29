@@ -49,7 +49,7 @@ public class StreamingKMeansMapper extends Mapper<Writable, VectorWritable,
     UpdatableSearcher searcher = StreamingKMeansUtilsMR.searcherFromConfiguration(conf, log);
     int numClusters = conf.getInt(StreamingKMeansDriver.ESTIMATED_NUM_MAP_CLUSTERS, 1);
     clusterer = new StreamingKMeans(searcher, numClusters,
-        conf.getFloat(StreamingKMeansDriver.ESTIMATED_DISTANCE_CUTOFF, (float) 1e-5));
+        conf.getFloat(StreamingKMeansDriver.ESTIMATED_DISTANCE_CUTOFF, 1e-5f));
   }
 
   @Override

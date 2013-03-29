@@ -22,15 +22,12 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.mapreduce.Job;
-import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
-import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
 import org.apache.hadoop.util.ToolRunner;
 import org.apache.mahout.common.AbstractJob;
 import org.apache.mahout.common.HadoopUtil;
 import org.apache.mahout.common.commandline.DefaultOptionCreator;
-import org.apache.mahout.common.distance.EuclideanDistanceMeasure;
 import org.apache.mahout.math.neighborhood.BruteSearch;
 import org.apache.mahout.math.neighborhood.LocalitySensitiveHashSearch;
 import org.slf4j.Logger;
@@ -43,10 +40,39 @@ import java.io.IOException;
  * algorithm.
  */
 public final class StreamingKMeansDriver extends AbstractJob {
+  // Streaming KMeans options
   /**
-   *
+   * The number of cluster that Mappers will use should be O(k log n) where k is the number of clusters
+   * to get at the end and n is the number of points to cluster. This doesn't need to be exact.
+   * It will be adjusted at runtime.
    */
   public static final String ESTIMATED_NUM_MAP_CLUSTERS = "estimatedNumMapClusters";
+  /**
+   * The initial estimated distance cutoff between two points for forming new clusters.
+   * @see org.apache.mahout.clustering.streaming.cluster.StreamingKMeans
+   * Defaults to 10e-6.
+   */
+  public static final String ESTIMATED_DISTANCE_CUTOFF = "estimatedDistanceCutoff";
+
+  // Ball KMeans options
+  /**
+   * After mapping finishes, we get an intermediate set of vectors that represent approximate
+   * clusterings of the data from each Mapper. These can be clustered by the Reducer using
+   * BallKMeans in memory. This variable is the maximum number of iterations in the final
+   * BallKMeans algorithm.
+   * Defaults to 10.
+   */
+  public static final String MAX_NUM_ITERATIONS = "maxNumIterations";
+  /**
+   * The percentage of points that go into the "training" set when evaluating BallKMeans runs in the reducer.
+   */
+  public static final String TRAIN_TEST_SPLIT = "trainTestSplit";
+  /**
+   * The percentage of points that go into the "training" set when evaluating BallKMeans runs in the reducer.
+   */
+  public static final String NUM_BALLKMEANS_RUNS = "numBallKMeansRuns";
+
+  // Searcher options
   /**
    * The Searcher class when performing nearest neighbor search in StreamingKMeans.
    * Defaults to BruteSearch.
@@ -73,30 +99,6 @@ public final class StreamingKMeansDriver extends AbstractJob {
    * Defaults to 10.
    */
   public static final String SEARCH_SIZE_OPTION = "searchSize";
-  /**
-   * After mapping finishes, we get an intermediate set of vectors that represent approximate
-   * clusterings of the data from each Mapper. These can be clustered by the Reducer using
-   * BallKMeans in memory. This variable is the maximum number of iterations in the final
-   * BallKMeans algorithm.
-   * Defaults to 10.
-   */
-  public static final String MAX_NUM_ITERATIONS = "maxNumIterations";
-  /**
-   * The initial estimated distance cutoff between two points for forming new clusters.
-   * @see org.apache.mahout.clustering.streaming.cluster.StreamingKMeans
-   * Defaults to 10e-6.
-   */
-  public static final String ESTIMATED_DISTANCE_CUTOFF = "estimatedDistanceCutoff";
-
-  /**
-   * The percentage of points that go into the "training" set when evaluating BallKMeans runs in the reducer.
-   */
-  public static final String TRAIN_TEST_SPLIT = "trainTestSplit";
-
-  /**
-   * The percentage of points that go into the "training" set when evaluating BallKMeans runs in the reducer.
-   */
-  public static final String NUM_BALLKMEANS_RUNS = "numBallKMeansRuns";
 
   private static final Logger log = LoggerFactory.getLogger(StreamingKMeansDriver.class);
 
@@ -112,7 +114,6 @@ public final class StreamingKMeansDriver extends AbstractJob {
         "The k in k-Means. Approximately this many clusters will be generated.").create());
 
     /* StreamingKMeans (mapper) options */
-
     // There will be k final clusters, but in the Map phase to get a good approximation of the data, O(k log n)
     // clusters are needed. Since n is the number of data points and not knowable until reading all the vectors,
     // provide a decent estimate.
@@ -122,22 +123,20 @@ public final class StreamingKMeansDriver extends AbstractJob {
         "cluster.");
 
     addOption(ESTIMATED_DISTANCE_CUTOFF, "e", "The initial estimated distance cutoff between two " +
-        "points for forming new clusters", "1e-6");
+        "points for forming new clusters", String.valueOf(1e-6));
 
     /* BallKMeans (reducer) options */
-
     addOption(MAX_NUM_ITERATIONS, "mi", "The maximum number of iterations to run for the " +
-        "BallKMeans algorithm used by the reducer.", "10");
+        "BallKMeans algorithm used by the reducer. If no value is given, defaults to 10.", String.valueOf(10));
 
     addOption(TRAIN_TEST_SPLIT, "trte", "A double value between 0 and 1 that represents the percentage of " +
         "points to be used for 'training' and for 'testing' different clustering runs in the final BallKMeans " +
-        "step. If no value is given, defaults to 0.9", "0.9");
+        "step. If no value is given, defaults to 0.9", String.valueOf(0.9));
 
     addOption(NUM_BALLKMEANS_RUNS, "nbkm", "Number of BallKMeans runs to use at the end to try to cluster the " +
-        "points. If no value is given, defaults to 10", "10");
+        "points. If no value is given, defaults to 10", String.valueOf(10));
 
     /* Nearest neighbor search options */
-
     // The distance measure used for computing the distance between two points. Generally, the
     // SquaredEuclideanDistance is used for clustering problems (it's equivalent to CosineDistance for normalized
     // vectors).
@@ -152,58 +151,43 @@ public final class StreamingKMeansDriver extends AbstractJob {
     // In the original paper, the authors used 1 projection vector.
     addOption(NUM_PROJECTIONS_OPTION, "np", "The number of projections considered in estimating the " +
         "distances between vectors. Only used when the distance measure requested is either " +
-        "ProjectionSearch or FastProjectionSearch. If no value is given, defaults to 5.", "5");
+        "ProjectionSearch or FastProjectionSearch. If no value is given, defaults to 5.", String.valueOf(5));
 
     addOption(SEARCH_SIZE_OPTION, "s", "In more efficient searches (non BruteSearch), " +
         "not all distances are calculated for determining the nearest neighbors. The number of " +
         "elements whose distances from the query vector is actually computer is proportional to " +
-        "searchSize. If no value is given, defaults to 3.", "3");
+        "searchSize. If no value is given, defaults to 3.", String.valueOf(3));
 
     if (parseArguments(args) == null) {
       return -1;
     }
-    Path input = getInputPath();
     Path output = getOutputPath();
     if (hasOption(DefaultOptionCreator.OVERWRITE_OPTION)) {
       HadoopUtil.delete(getConf(), output);
     }
     configureOptionsForWorkers();
-    run(getConf(), input, output);
+    run(getConf(), getInputPath(), output);
     return 0;
   }
 
-  private void configureOptionsForWorkers() throws ClassNotFoundException, IllegalAccessException,
-      InstantiationException {
+  private void configureOptionsForWorkers() throws ClassNotFoundException {
     log.info("Starting to configure options for workers");
 
-    String numClustersStr = getOption(DefaultOptionCreator.NUM_CLUSTERS_OPTION);
-    int numClusters = Integer.parseInt(numClustersStr);
+    int numClusters = Integer.parseInt(getOption(DefaultOptionCreator.NUM_CLUSTERS_OPTION));
 
     // StreamingKMeans
-    String estimatedNumMapClustersStr = getOption(ESTIMATED_NUM_MAP_CLUSTERS);
-    int estimatedNumMapClusters = Integer.parseInt(estimatedNumMapClustersStr);
-
-    String estimatedDistanceCutoffStr = getOption(ESTIMATED_DISTANCE_CUTOFF);
-    float estimatedDistanceCutoff = Float.parseFloat(estimatedDistanceCutoffStr);
+    int estimatedNumMapClusters = Integer.parseInt(getOption(ESTIMATED_NUM_MAP_CLUSTERS));
+    float estimatedDistanceCutoff = Float.parseFloat(getOption(ESTIMATED_DISTANCE_CUTOFF));
 
     // BallKMeans
-    String maxNumIterationsStr = getOption(MAX_NUM_ITERATIONS);
-    int maxNumIterations = Integer.parseInt(maxNumIterationsStr);
-
-    String trainTestSplitStr = getOption(TRAIN_TEST_SPLIT);
-    float trainTestSplit = Float.parseFloat(trainTestSplitStr);
-
-    String numBallKMeansRunsStr = getOption(NUM_BALLKMEANS_RUNS);
-    int numBallKMeansRuns = Integer.parseInt(numBallKMeansRunsStr);
+    int maxNumIterations = Integer.parseInt(getOption(MAX_NUM_ITERATIONS));
+    float trainTestSplit = Float.parseFloat(getOption(TRAIN_TEST_SPLIT));
+    int numBallKMeansRuns = Integer.parseInt(getOption(NUM_BALLKMEANS_RUNS));
 
     // Nearest neighbor search
     String measureClass = getOption(DefaultOptionCreator.DISTANCE_MEASURE_OPTION);
-    if (measureClass == null) {
-      measureClass = EuclideanDistanceMeasure.class.getName();
-      log.info("No measure class given, using EuclideanDistanceMeasure");
-    }
-
     String searcherClass = getOption(SEARCHER_CLASS_OPTION);
+
     // Get more parameters depending on the kind of search class we're working with. BruteSearch
     // doesn't need anything else.
     // LocalitySensitiveHashSearch and ProjectionSearches need searchSize.
@@ -220,8 +204,7 @@ public final class StreamingKMeansDriver extends AbstractJob {
     // The search size to use. This is quite fuzzy and might end up not being configurable at all.
     int searchSize = 0;
     if (getSearchSize) {
-      String searchSizeStr = getOption(SEARCH_SIZE_OPTION);
-      searchSize = Integer.parseInt(searchSizeStr);
+      searchSize = Integer.parseInt(getOption(SEARCH_SIZE_OPTION));
     }
 
     // The number of projections to use. This is only useful in projection searches which
@@ -229,8 +212,7 @@ public final class StreamingKMeansDriver extends AbstractJob {
     // calculate.
     int numProjections = 0;
     if (getNumProjections) {
-      String numProjectionsStr = getOption(NUM_PROJECTIONS_OPTION);
-      numProjections = Integer.parseInt(numProjectionsStr);
+      numProjections = Integer.parseInt(getOption(NUM_PROJECTIONS_OPTION));
     }
 
     configureOptionsForWorkers(getConf(), numClusters,
@@ -269,7 +251,7 @@ public final class StreamingKMeansDriver extends AbstractJob {
                                                 int maxNumIterations, float trainTestSplit, int numBallKMeansRuns,
                                                 /* Searcher */
                                                 String measureClass, String searcherClass,
-                                                int searchSize, int numProjections) {
+                                                int searchSize, int numProjections) throws ClassNotFoundException {
     // Checking preconditions for the parameters.
     Preconditions.checkArgument(numClusters > 0, "Invalid number of clusters requested");
 
@@ -303,17 +285,11 @@ public final class StreamingKMeansDriver extends AbstractJob {
     conf.setFloat(TRAIN_TEST_SPLIT, trainTestSplit);
     conf.setInt(NUM_BALLKMEANS_RUNS, numBallKMeansRuns);
     /* Searcher */
-    try {
-      Class.forName(measureClass);
-    }  catch (ClassNotFoundException e) {
-      log.error("Measure class not found " + measureClass, e);
-    }
+    // Checks if the measureClass is available, throws exception otherwise.
+    Class.forName(measureClass);
     conf.set(DefaultOptionCreator.DISTANCE_MEASURE_OPTION, measureClass);
-    try {
-      Class.forName(searcherClass);
-    } catch (ClassNotFoundException e) {
-      log.error("Searcher class not found " + measureClass, e);
-    }
+    // Checks if the searcherClass is available, throws exception otherwise.
+    Class.forName(searcherClass);
     conf.set(SEARCHER_CLASS_OPTION, searcherClass);
     conf.setInt(SEARCH_SIZE_OPTION, searchSize);
     conf.setInt(NUM_PROJECTIONS_OPTION, numProjections);
@@ -330,64 +306,49 @@ public final class StreamingKMeansDriver extends AbstractJob {
    * Iterate over the input vectors to produce clusters and, if requested, use the results of the final iteration to
    * cluster the input vectors.
    *
-   * @param input
-   *          the directory pathname for input points
-   * @param output
-   *          the directory pathname for output points
+   * @param input the directory pathname for input points.
+   * @param output the directory pathname for output points.
+   * @return 0 on success, -1 on failure.
    */
-  public static void run(Configuration conf, Path input, Path output)
+  @SuppressWarnings("unchecked")
+  public static int run(Configuration conf, Path input, Path output)
       throws IOException, InterruptedException, ClassNotFoundException {
     log.info("Starting StreamingKMeans clustering for vectors in {}; results are output to {}",
         input.toString(), output.toString());
 
     // Prepare Job for submission.
-    Job job = new Job(conf, "StreamingKMeans");
-
-    // Input and output file format.
-    job.setInputFormatClass(SequenceFileInputFormat.class);
-    job.setOutputFormatClass(SequenceFileOutputFormat.class);
-
-    // Mapper output Key and Value classes.
-    // We don't really need to output anything as a key, since there will only be 1 reducer.
-    job.setMapOutputKeyClass(IntWritable.class);
-    job.setMapOutputValueClass(CentroidWritable.class);
-
-    // Reducer output Key and Value classes.
-    job.setOutputKeyClass(IntWritable.class);
-    job.setOutputValueClass(CentroidWritable.class);
-
-    // Mapper and Reducer classes.
-    job.setMapperClass(StreamingKMeansMapper.class);
-    job.setReducerClass(StreamingKMeansReducer.class);
+    Job job = HadoopUtil.prepareJob(input, output, SequenceFileInputFormat.class,
+        StreamingKMeansMapper.class, IntWritable.class, CentroidWritable.class,
+        StreamingKMeansReducer.class, IntWritable.class, CentroidWritable.class, SequenceFileOutputFormat.class,
+        conf);
+    job.setJobName(HadoopUtil.getCustomJobName(StreamingKMeansDriver.class.getSimpleName(), job,
+        StreamingKMeansMapper.class, StreamingKMeansReducer.class));
 
     // There is only one reducer so that the intermediate centroids get collected on one
     // machine and are clustered in memory to get the right number of clusters.
     job.setNumReduceTasks(1);
 
-    // Set input and output paths for the job.
-    FileInputFormat.addInputPath(job, input);
-    FileOutputFormat.setOutputPath(job, output);
-
     // Set the JAR (so that the required libraries are available) and run.
     job.setJarByClass(StreamingKMeansDriver.class);
 
+    // Run job!
     long start = System.currentTimeMillis();
     if (!job.waitForCompletion(true)) {
-      throw new InterruptedException("StreamingKMeans interrupted");
+      return -1;
     }
     long end = System.currentTimeMillis();
 
     log.info("StreamingKMeans clustering complete. Results are in {}. Took {} ms",
         output.toString(), end - start);
+    return 0;
   }
 
   /**
    * Constructor to be used by the ToolRunner.
    */
-  private StreamingKMeansDriver() {
-  }
+  private StreamingKMeansDriver() {}
 
   public static void main(String[] args) throws Exception {
-    ToolRunner.run(new Configuration(), new StreamingKMeansDriver(), args);
+    ToolRunner.run(new StreamingKMeansDriver(), args);
   }
 }

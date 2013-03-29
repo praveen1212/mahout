@@ -53,7 +53,7 @@ public class StreamingKMeansReducer extends Reducer<IntWritable, CentroidWritabl
     conf = context.getConfiguration();
     numClusters = conf.getInt(DefaultOptionCreator.NUM_CLUSTERS_OPTION, 1);
     maxNumIterations = conf.getInt(StreamingKMeansDriver.MAX_NUM_ITERATIONS, 10);
-    trainTestSplit = conf.getFloat(StreamingKMeansDriver.TRAIN_TEST_SPLIT, (float) 0.9);
+    trainTestSplit = conf.getFloat(StreamingKMeansDriver.TRAIN_TEST_SPLIT, 0.9f);
     numRuns = conf.getInt(StreamingKMeansDriver.NUM_BALLKMEANS_RUNS, 10);
   }
 
