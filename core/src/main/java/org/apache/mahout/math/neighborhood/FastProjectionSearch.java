@@ -2,6 +2,7 @@ package org.apache.mahout.math.neighborhood;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.*;
+import org.apache.mahout.clustering.streaming.cluster.RandomProjector;
 import org.apache.mahout.common.distance.DistanceMeasure;
 import org.apache.mahout.math.Matrix;
 import org.apache.mahout.math.Vector;
@@ -77,7 +78,7 @@ public class FastProjectionSearch extends UpdatableSearcher {
     if (initialized) {
       return;
     }
-    basisMatrix = ProjectionSearch.generateBasis(numProjections, numDimensions);
+    basisMatrix = RandomProjector.generateBasisNormal(numProjections, numDimensions);
     initialized = true;
   }
 
@@ -111,7 +112,7 @@ public class FastProjectionSearch extends UpdatableSearcher {
    */
   @Override
   public List<WeightedThing<Vector>> search(Vector query, int limit) {
-    reindex();
+    reindex(false);
 
     HashSet<Vector> candidates = Sets.newHashSet();
     Vector projection = basisMatrix.times(query);
@@ -175,10 +176,23 @@ public class FastProjectionSearch extends UpdatableSearcher {
     return true;
   }
 
-  private void reindex() {
+  private void reindex(boolean force) {
     int numProjected = scalarProjections.get(0).size();
-    if (dirty || pendingAdditions.size() > ADDITION_THRESHOLD * numProjected ||
+    if (force || dirty || pendingAdditions.size() > ADDITION_THRESHOLD * numProjected ||
         numPendingRemovals > REMOVAL_THRESHOLD * numProjected) {
+
+      // We only need to copy the first list because when iterating we use only that list for the Vector
+      // references.
+      // see public Iterator<Vector> iterator()
+      List<List<WeightedThing<Vector>>> scalarProjections = Lists.newArrayListWithCapacity(numProjections);
+      for (int i = 0; i < numProjections; ++i) {
+        if (i == 0) {
+          scalarProjections.add(Lists.newArrayList(this.scalarProjections.get(i)));
+        } else {
+          scalarProjections.add(this.scalarProjections.get(i));
+        }
+      }
+
       // Project every pending vector onto every basis vector.
       for (Vector pending : pendingAdditions) {
         Vector projection = basisMatrix.times(pending);
@@ -203,6 +217,8 @@ public class FastProjectionSearch extends UpdatableSearcher {
         }
       }
       numPendingRemovals = 0;
+
+      this.scalarProjections = scalarProjections;
     }
   }
 
@@ -216,9 +232,16 @@ public class FastProjectionSearch extends UpdatableSearcher {
     dirty = false;
   }
 
+  /**
+   * This iterates on the snapshot of the contents first instantiated regardless of any future modifications.
+   * Changes done after the iterator is created will not be visible to the iterator but will be visible
+   * when searching.
+   * @return iterator through the vectors in this searcher.
+   */
   @Override
   public Iterator<Vector> iterator() {
-    return Iterators.concat(new AbstractIterator<Vector>() {
+    reindex(true);
+    return new AbstractIterator<Vector>() {
           Iterator<WeightedThing<Vector>> data = scalarProjections.get(0).iterator();
           @Override
           protected Vector computeNext() {
@@ -233,8 +256,7 @@ public class FastProjectionSearch extends UpdatableSearcher {
               }
             } while (true);
           }
-        },
-        pendingAdditions.iterator());
+        };
   }
 
   /**
@@ -242,6 +264,7 @@ public class FastProjectionSearch extends UpdatableSearcher {
    * the user MUST CALL setDirty() to update the internal data structures. Otherwise,
    * the internal order of the vectors will change and future results might be wrong.
    */
+  @SuppressWarnings("unused")
   public void setDirty() {
     dirty = true;
   }
