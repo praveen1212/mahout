@@ -10,8 +10,8 @@ import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.SequenceFile;
 import org.apache.hadoop.io.Text;
 import org.apache.mahout.clustering.iterator.ClusterWritable;
+import org.apache.mahout.clustering.streaming.cluster.RandomProjector;
 import org.apache.mahout.clustering.streaming.mapreduce.CentroidWritable;
-import org.apache.mahout.math.neighborhood.ProjectionSearch;
 import org.apache.mahout.common.Pair;
 import org.apache.mahout.common.iterator.sequencefile.PathType;
 import org.apache.mahout.common.iterator.sequencefile.SequenceFileDirIterable;
@@ -217,7 +217,7 @@ public class IOUtils {
     }
 
     int initialDimension = inputVectors.get(0).size();
-    Matrix basisMatrix = ProjectionSearch.generateBasis(reducedDimension, initialDimension);
+    Matrix basisMatrix = RandomProjector.generateBasisNormal(reducedDimension, initialDimension);
     int numVectors = 0;
     for (Vector v : inputVectors) {
       reducedVectors.add(new Centroid(numVectors++, basisMatrix.times(v), 1));
@@ -256,7 +256,9 @@ public class IOUtils {
         new SequenceFileDirIterable<Text, VectorWritable>(inFile, PathType.LIST, conf);
     for (Pair<Text, VectorWritable> entry : dirIterable) {
       if (projectionDimension > 0 && projectionMatrix == null) {
-        projectionMatrix = ProjectionSearch.generateBasis(projectionDimension, entry.getSecond().get().size());
+        projectionMatrix = RandomProjector.generateBasisNormal(projectionDimension, entry.getSecond().get().size());
+        // projectionMatrix = RandomProjector.generateBasisNormal(projectionDimension, entry.getSecond().get().size());
+        // projectionMatrix = RandomProjector.generateBasisZeroPlusMinusOne(projectionDimension, entry.getSecond().get().size());
       }
       result.getFirst().add(entry.getFirst().toString());
       if (projectionDimension > 0) {

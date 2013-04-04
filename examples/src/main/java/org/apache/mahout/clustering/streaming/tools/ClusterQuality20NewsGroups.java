@@ -39,6 +39,7 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 public class ClusterQuality20NewsGroups {
   private Configuration conf;
@@ -142,10 +143,10 @@ public class ClusterQuality20NewsGroups {
   }
 
   public void printSummaries(List<Centroid> centroids, double time, String name, int numRun) {
-    printSummariesInternal(ClusteringUtils.summarizeClusterDistances(reducedVectors, centroids),
+    printSummariesInternal(ClusteringUtils.summarizeClusterDistances(reducedVectors, centroids, distanceMeasure),
         time, name, numRun, "train");
     if (testReducedVectors != null) {
-      printSummariesInternal(ClusteringUtils.summarizeClusterDistances(testReducedVectors, centroids),
+      printSummariesInternal(ClusteringUtils.summarizeClusterDistances(testReducedVectors, centroids, distanceMeasure),
           time, name, numRun, "test");
     }
   }
@@ -243,7 +244,7 @@ public class ClusterQuality20NewsGroups {
           // BallKMeans
           20, 0.9f, 10,
           // Searcher
-          CosineDistanceMeasure.class.getName(), ProjectionSearch.class.getName(), 10, 20);
+          CosineDistanceMeasure.class.getName(), ProjectionSearch.class.getName(), 10, 20, true);
       try {
         if (reducedInputPath == null) {
           getReducedInputPath();
@@ -267,6 +268,8 @@ public class ClusterQuality20NewsGroups {
       } catch (InterruptedException e) {
         e.printStackTrace();
       } catch (ClassNotFoundException e) {
+        e.printStackTrace();
+      } catch (ExecutionException e) {
         e.printStackTrace();
       }
     }

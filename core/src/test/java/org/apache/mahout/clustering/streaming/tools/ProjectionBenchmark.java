@@ -1,8 +1,8 @@
 package org.apache.mahout.clustering.streaming.tools;
 
 import com.google.common.collect.Lists;
+import org.apache.mahout.clustering.streaming.cluster.RandomProjector;
 import org.apache.mahout.common.Pair;
-import org.apache.mahout.math.neighborhood.ProjectionSearch;
 import org.apache.mahout.math.*;
 import org.apache.mahout.math.random.Normal;
 import org.apache.mahout.math.stats.OnlineSummarizer;
@@ -47,7 +47,7 @@ public class ProjectionBenchmark {
     // To project down to PROJECTED_VECTOR_SIZE, we need PROJECTED_VECTOR_SIZE basis vectors of
     // size VECTOR_SIZE. The dot product of each test vector with each column of a projection
     // matrix gives the projected vectors.
-    Matrix projectionMatrix = ProjectionSearch.generateBasis(PROJECTED_VECTOR_SIZE, VECTOR_SIZE);
+    Matrix projectionMatrix = RandomProjector.generateBasisNormal(PROJECTED_VECTOR_SIZE, VECTOR_SIZE);
 
     double start = System.currentTimeMillis();
     Matrix projectedVectorMatrix = projectionMatrix.times(testVectors);

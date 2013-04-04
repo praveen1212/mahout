@@ -14,6 +14,7 @@ import org.apache.mahout.clustering.iterator.ClusterWritable;
 import org.apache.mahout.clustering.streaming.cluster.ClusteringUtils;
 import org.apache.mahout.clustering.streaming.mapreduce.CentroidWritable;
 import org.apache.mahout.clustering.streaming.utils.IOUtils;
+import org.apache.mahout.common.distance.SquaredEuclideanDistanceMeasure;
 import org.apache.mahout.common.iterator.sequencefile.PathType;
 import org.apache.mahout.common.iterator.sequencefile.SequenceFileDirValueIterable;
 import org.apache.mahout.math.Centroid;
@@ -88,13 +89,15 @@ public class SummarizeQuality20NewsGroups {
       SequenceFileDirValueIterable<VectorWritable> trainIterable =
           new SequenceFileDirValueIterable<VectorWritable>(new Path(trainFile), PathType.GLOB, conf);
       printSummaries(ClusteringUtils.summarizeClusterDistances(
-          IOUtils.getVectorsFromVectorWritableIterable(trainIterable), centroids), "train");
+          IOUtils.getVectorsFromVectorWritableIterable(trainIterable), centroids,
+          new SquaredEuclideanDistanceMeasure()), "train");
 
       if (testFile != null) {
         SequenceFileDirValueIterable<VectorWritable> testIterable =
             new SequenceFileDirValueIterable<VectorWritable>(new Path(testFile), PathType.GLOB, conf);
         printSummaries(ClusteringUtils.summarizeClusterDistances(
-            IOUtils.getVectorsFromVectorWritableIterable(testIterable), centroids), "test");
+            IOUtils.getVectorsFromVectorWritableIterable(testIterable), centroids,
+            new SquaredEuclideanDistanceMeasure()), "test");
       }
 
       if (outputFile != null) {

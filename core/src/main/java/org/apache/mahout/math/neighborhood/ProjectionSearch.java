@@ -19,14 +19,15 @@ package org.apache.mahout.math.neighborhood;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.*;
+import org.apache.mahout.clustering.streaming.cluster.RandomProjector;
 import org.apache.mahout.common.distance.DistanceMeasure;
 import org.apache.mahout.math.*;
-import org.apache.mahout.math.Vector;
-import org.apache.mahout.math.function.DoubleFunction;
-import org.apache.mahout.math.function.Functions;
 import org.apache.mahout.math.random.WeightedThing;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
 
 /**
  * Does approximate nearest neighbor dudes search by projecting the data.
@@ -57,46 +58,11 @@ public class ProjectionSearch extends UpdatableSearcher implements Iterable<Vect
   private int numProjections;
   private boolean initialized = false;
 
-  /**
-   * Generates a basis matrix of size projectedVectorSize x vectorSize. Multiplying a a vector by
-   * this matrix results in the projected vector.
-   * @param projectedVectorSize final projected size of a vector (number of projection vectors)
-   * @param vectorSize initial vector size
-   * @return a projection matrix
-   */
-  public static Matrix generateBasis(int projectedVectorSize, int vectorSize) {
-    Matrix basisMatrix = new DenseMatrix(projectedVectorSize, vectorSize);
-    basisMatrix.assign(Functions.random());
-    for (MatrixSlice row : basisMatrix) {
-      row.vector().assign(row.normalize());
-    }
-    return basisMatrix;
-  }
-
-  /**
-   * Generates a list of projectedVectorSize vectors, each of size vectorSize. This looks like a
-   * matrix of size (projectedVectorSize, vectorSize).
-   * @param projectedVectorSize final projected size of a vector (number of projection vectors)
-   * @param vectorSize initial vector size
-   * @return a list of projection vectors
-   */
-  public static List<Vector> generateVectorBasis(int projectedVectorSize, int vectorSize) {
-    final DoubleFunction random = Functions.random();
-    List<Vector> basisVectors = Lists.newArrayList();
-    for (int i = 0; i < projectedVectorSize; ++i) {
-      Vector basisVector = new DenseVector(vectorSize);
-      basisVector.assign(random);
-      basisVector.normalize();
-      basisVectors.add(basisVector);
-    }
-    return basisVectors;
-  }
-
   private void initialize(int numDimensions) {
     if (initialized)
       return;
     initialized = true;
-    basisMatrix = generateBasis(numProjections, numDimensions);
+    basisMatrix = RandomProjector.generateBasisNormal(numProjections, numDimensions);
     scalarProjections = Lists.newArrayList();
     for (int i = 0; i < numProjections; ++i) {
       scalarProjections.add(TreeMultiset.<WeightedThing<Vector>>create());
@@ -173,8 +139,10 @@ public class ProjectionSearch extends UpdatableSearcher implements Iterable<Vect
 
     // If searchSize * scalarProjections.size() is small enough not to cause much memory pressure,
     // this is probably just as fast as a priority queue here.
+    double numNonDefault = 0;
     List<WeightedThing<Vector>> top = Lists.newArrayList();
     for (Vector candidate : candidates) {
+      numNonDefault += candidate.getNumNondefaultElements();
       top.add(new WeightedThing<Vector>(candidate, distanceMeasure.distance(query, candidate)));
     }
     Collections.sort(top);
@@ -197,7 +165,7 @@ public class ProjectionSearch extends UpdatableSearcher implements Iterable<Vect
 
   public boolean remove(Vector vector, double epsilon) {
     List<WeightedThing<Vector>> x = search(vector, 1);
-    if (x.get(0).getWeight() < 1e-7) {
+    if (x.get(0).getWeight() < epsilon) {
       Iterator<? extends Vector> basisVectors = basisMatrix.iterator();
       for (TreeMultiset<WeightedThing<Vector>> projection : scalarProjections) {
         if (!projection.remove(new WeightedThing<Vector>(null, vector.dot(basisVectors.next())))) {
@@ -206,6 +174,7 @@ public class ProjectionSearch extends UpdatableSearcher implements Iterable<Vect
       }
       return true;
     } else {
+      System.out.printf("%s to %s : %f ", vector, x.get(0).getValue(), x.get(0).getWeight());
       return false;
     }
   }

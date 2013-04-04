@@ -17,10 +17,8 @@
 
 package org.apache.mahout.clustering.streaming.cluster;
 
-import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import org.apache.mahout.common.Pair;
-import org.apache.mahout.common.distance.DistanceMeasure;
 import org.apache.mahout.common.distance.EuclideanDistanceMeasure;
 import org.apache.mahout.math.Centroid;
 import org.apache.mahout.math.DenseVector;
@@ -86,51 +84,9 @@ public class DataUtils {
   }
 
   /**
-   * Estimates the distance cutoff. In StreamingKMeans, the distance between two vectors divided
-   * by this value is used as a probability threshold when deciding whether to form a new cluster
-   * or not.
-   * Small values (comparable to the minimum distance between two points) are preferred as they
-   * guarantee with high likelihood that all but very close points are put in separate clusters
-   * initially. The clusters themselves are actually collapsed periodically when their number goes
-   * over the maximum number of clusters and the distanceCutoff is increased.
-   * So, the returned value is only an initial estimate.
-   * @param data
-   * @param distanceMeasure
-   * @param sampleLimit
-   * @return the minimum distance between the first sampleLimit points
-   * @see StreamingKMeans#clusterInternal(Iterable, boolean)
-   */
-  public static double estimateDistanceCutoff(Iterable<? extends Vector> data,
-                                              DistanceMeasure distanceMeasure,
-                                              int sampleLimit) {
-    Iterable<? extends Vector> limitedData = Iterables.limit(data, sampleLimit);
-    double minDistance = Double.POSITIVE_INFINITY;
-    int i = 1;
-    for (Vector u : limitedData) {
-      for (Vector v : Iterables.skip(limitedData, i)) {
-        double distance = distanceMeasure.distance(u, v);
-        if (minDistance > distance) {
-          minDistance = distance;
-        }
-      }
-      ++i;
-    }
-    return minDistance;
-  }
-
-  /**
-   * Calls estimateDistanceCutoff(data, EuclideanDistance, sampleLimit).
-   * @see DataUtils#estimateDistanceCutoff(Iterable, org.apache.mahout.common.distance.DistanceMeasure, int)
-   */
-  public static double estimateDistanceCutoff(Iterable<? extends Vector> data, int sampleLimit) {
-    return estimateDistanceCutoff(data, new EuclideanDistanceMeasure(), sampleLimit);
-  }
-
-  /**
    * Calls estimateDistanceCutoff(data, EuclideanDistanceMeasure, 100).
-   * @see DataUtils#estimateDistanceCutoff(Iterable, org.apache.mahout.common.distance.DistanceMeasure, int)
    */
   public static double estimateDistanceCutoff(Iterable<? extends Vector> data) {
-    return estimateDistanceCutoff(data, new EuclideanDistanceMeasure(), 100);
+    return ClusteringUtils.estimateDistanceCutoff(data, new EuclideanDistanceMeasure());
   }
 }

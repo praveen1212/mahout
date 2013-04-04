@@ -11,7 +11,7 @@ import org.apache.commons.cli2.commandline.Parser;
 import org.apache.commons.cli2.util.HelpFormatter;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.mahout.math.neighborhood.ProjectionSearch;
+import org.apache.mahout.clustering.streaming.cluster.RandomProjector;
 import org.apache.mahout.clustering.streaming.utils.IOUtils;
 import org.apache.mahout.common.iterator.sequencefile.PathType;
 import org.apache.mahout.common.iterator.sequencefile.SequenceFileDirValueIterable;
@@ -48,7 +48,7 @@ public class SequenceFileToCSV {
           new SequenceFileDirValueIterable<VectorWritable>(new Path(inputFile), PathType.LIST, conf)))) {
         if (projectionDimension != null) {
           if (projectionMatrix == null) {
-            projectionMatrix = ProjectionSearch.generateBasis(projectionDimension, vector.size());
+            projectionMatrix = RandomProjector.generateBasisNormal(projectionDimension, vector.size());
           }
           vectors.add(new Centroid(numVecs++, projectionMatrix.times(vector), 1));
         } else {

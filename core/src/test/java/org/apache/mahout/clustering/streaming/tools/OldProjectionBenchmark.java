@@ -1,8 +1,8 @@
 package org.apache.mahout.clustering.streaming.tools;
 
 import com.google.common.collect.Lists;
+import org.apache.mahout.clustering.streaming.cluster.RandomProjector;
 import org.apache.mahout.common.Pair;
-import org.apache.mahout.math.neighborhood.ProjectionSearch;
 import org.apache.mahout.math.*;
 import org.apache.mahout.math.random.Normal;
 import org.apache.mahout.math.stats.OnlineSummarizer;
@@ -54,7 +54,7 @@ public class OldProjectionBenchmark {
     double firstTime = end - start;
     System.out.printf("Matrix projection done\n");
 
-    List<Vector> projectionVectors = ProjectionSearch.generateVectorBasis(PROJECTED_VECTOR_SIZE,
+    List<Vector> projectionVectors = RandomProjector.generateVectorBasis(PROJECTED_VECTOR_SIZE,
         VECTOR_SIZE);
     List<Vector> projectedVectorList = Lists.newArrayListWithExpectedSize(NUM_VECTORS);
     start = System.currentTimeMillis();

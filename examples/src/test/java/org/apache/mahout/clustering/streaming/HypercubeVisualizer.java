@@ -1,9 +1,9 @@
 package org.apache.mahout.clustering.streaming;
 
 import com.google.common.collect.Lists;
+import org.apache.mahout.clustering.streaming.cluster.RandomProjector;
 import org.apache.mahout.common.Pair;
 import org.apache.mahout.clustering.streaming.cluster.DataUtils;
-import org.apache.mahout.math.neighborhood.ProjectionSearch;
 import org.apache.mahout.math.Centroid;
 import org.apache.mahout.math.Matrix;
 import org.apache.mahout.math.Vector;
@@ -23,7 +23,7 @@ public class HypercubeVisualizer {
     List<Centroid> medians = dataset.getSecond();
 
     if (numDimensions > 3) {
-      Matrix basisMatrix = ProjectionSearch.generateBasis(3, numDimensions);
+      Matrix basisMatrix = RandomProjector.generateBasisNormal(3, numDimensions);
       List<Centroid> newDatapoins = Lists.newArrayList();
       for (int i = 0; i < datapoints.size(); ++i) {
         Centroid c = datapoints.get(i);

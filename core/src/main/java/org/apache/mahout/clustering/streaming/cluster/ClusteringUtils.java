@@ -6,6 +6,7 @@ import org.apache.mahout.common.distance.EuclideanDistanceMeasure;
 import org.apache.mahout.math.Centroid;
 import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.neighborhood.BruteSearch;
+import org.apache.mahout.math.neighborhood.ProjectionSearch;
 import org.apache.mahout.math.neighborhood.UpdatableSearcher;
 import org.apache.mahout.math.stats.OnlineSummarizer;
 
@@ -20,8 +21,8 @@ public class ClusteringUtils {
    * index is i.
    */
   public static List<OnlineSummarizer> summarizeClusterDistances(Iterable<? extends Vector> datapoints,
-                                                                 Iterable<Centroid> centroids) {
-    DistanceMeasure distanceMeasure = new EuclideanDistanceMeasure();
+                                                                 Iterable<Centroid> centroids,
+                                                                 DistanceMeasure distanceMeasure) {
     UpdatableSearcher searcher = new BruteSearch(distanceMeasure);
     searcher.addAll(centroids);
     List<OnlineSummarizer> summarizers = Lists.newArrayList();
@@ -55,5 +56,33 @@ public class ClusteringUtils {
       totalCost += closest.getWeight();
     }
     return totalCost;
+  }
+
+  /**
+   * Estimates the distance cutoff. In StreamingKMeans, the distance between two vectors divided
+   * by this value is used as a probability threshold when deciding whether to form a new cluster
+   * or not.
+   * Small values (comparable to the minimum distance between two points) are preferred as they
+   * guarantee with high likelihood that all but very close points are put in separate clusters
+   * initially. The clusters themselves are actually collapsed periodically when their number goes
+   * over the maximum number of clusters and the distanceCutoff is increased.
+   * So, the returned value is only an initial estimate.
+   * @param data
+   * @param distanceMeasure
+   * @return the minimum distance between the first sampleLimit points
+   * @see org.apache.mahout.clustering.streaming.cluster.StreamingKMeans#clusterInternal(Iterable, boolean)
+   */
+  public static double estimateDistanceCutoff(Iterable<? extends Vector> data,
+                                              DistanceMeasure distanceMeasure) {
+    ProjectionSearch searcher = new ProjectionSearch(distanceMeasure, 3, 1);
+    searcher.addAll(data);
+    double minDistance = Double.POSITIVE_INFINITY;
+    for (Vector u : data) {
+      double closest = searcher.search(u, 2).get(1).getWeight();
+      if (closest < minDistance) {
+        minDistance = closest;
+      }
+    }
+    return minDistance;
   }
 }
