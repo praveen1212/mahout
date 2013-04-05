@@ -39,7 +39,6 @@ public class SequenceFileToCSV {
     }
 
     Configuration conf = new Configuration();
-    conf.set("fs.default.name", "hdfs://localhost:9000/");
     try {
       List<Centroid> vectors = Lists.newArrayList();
       Matrix projectionMatrix = null;
@@ -56,7 +55,7 @@ public class SequenceFileToCSV {
         }
       }
       IOUtils.generateCSVFromVectors(vectors, conf, outputCSVFile);
-      IOUtils.writeCentroidsToSequenceFile(vectors, conf, outputFile);
+      IOUtils.writeCentroidsToSequenceFile(vectors, new Path(outputFile), conf);
     } catch (IOException e) {
       System.out.println(e.getMessage());
     }
@@ -78,7 +77,7 @@ public class SequenceFileToCSV {
     Option outputCSVFileOption = builder.withLongName("outputcsv")
         .withShortName("oc")
         .withRequired(true)
-        .withArgument(argumentBuilder.withName("output").withMaximum(1).create())
+        .withArgument(argumentBuilder.withName("outputcsv").withMaximum(1).create())
         .withDescription("the output CSV file")
         .create();
 

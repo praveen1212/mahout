@@ -49,7 +49,7 @@ public class CSVVectorIteratorTest extends MahoutTestCase {
     } finally {
       Closeables.closeQuietly(writer);
     }
-    Iterator<Vector> csvIter = new CSVVectorIterator(new StringReader(sWriter.getBuffer().toString()));
+    Iterator<Vector> csvIter = new CSVVectorIterator(false, new StringReader(sWriter.getBuffer().toString()));
     int count = 0;
     while (csvIter.hasNext()) {
       csvIter.next();
