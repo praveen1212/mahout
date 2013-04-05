@@ -89,7 +89,7 @@ public class CreateCentroids {
       Map<String, Centroid> actualClusters = ExperimentUtils.computeActualClusters(inputIterable);
       String outputFile = outputFileBase + "-actual.seqfile";
       printWriter.printf("Writing actual clusters to %s\n", outputFile);
-      IOUtils.writeCentroidsToSequenceFile(actualClusters.values(), conf, outputFile);
+      IOUtils.writeCentroidsToSequenceFile(actualClusters.values(), new Path(outputFile), conf);
     }
 
     if (computeBallKMeansCentroids || computeStreamingKMeansCentroids) {
@@ -107,7 +107,7 @@ public class CreateCentroids {
       }
       String outputFile = outputFileBase + suffix + ".seqfile";
       printWriter.printf("Writing %s computed clusters to %s\n", suffix, outputFile);
-      IOUtils.writeCentroidsToSequenceFile(computedClusterPair.getSecond(), conf, outputFile);
+      IOUtils.writeCentroidsToSequenceFile(computedClusterPair.getSecond(), new Path(outputFile), conf);
     }
   }
 

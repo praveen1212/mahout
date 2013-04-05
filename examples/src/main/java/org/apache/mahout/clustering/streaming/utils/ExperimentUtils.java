@@ -1,13 +1,16 @@
 package org.apache.mahout.clustering.streaming.utils;
 
+import com.google.common.base.Function;
+import com.google.common.base.Preconditions;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
 import org.apache.hadoop.io.Text;
 import org.apache.mahout.clustering.streaming.cluster.BallKMeans;
 import org.apache.mahout.clustering.streaming.cluster.StreamingKMeans;
 import org.apache.mahout.common.Pair;
-import org.apache.mahout.common.distance.CosineDistanceMeasure;
 import org.apache.mahout.common.distance.DistanceMeasure;
 import org.apache.mahout.math.Centroid;
+import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.VectorWritable;
 import org.apache.mahout.math.neighborhood.BruteSearch;
 import org.apache.mahout.math.neighborhood.FastProjectionSearch;
@@ -74,14 +77,14 @@ public class ExperimentUtils {
   public static Iterable<Centroid> clusterBallKMeans(List<Centroid> datapoints, int numClusters,
                                                      double trimFraction, boolean randomInit,
                                                      DistanceMeasure distanceMeasure) {
-    BallKMeans clusterer = new BallKMeans(new BruteSearch(new CosineDistanceMeasure()), numClusters, 20,
+    BallKMeans clusterer = new BallKMeans(new BruteSearch(distanceMeasure), numClusters, 20,
         trimFraction, true);
     clusterer.cluster(datapoints, randomInit);
     return clusterer;
   }
 
   public static Iterable<Centroid> clusterStreamingKMeans(List<Centroid> datapoints, int numClusters,
-                                                     DistanceMeasure distanceMeasure) {
+                                                          DistanceMeasure distanceMeasure) {
     StreamingKMeans clusterer = new StreamingKMeans(new FastProjectionSearch(distanceMeasure, 3, 2),
         numClusters, 1e-6);
     clusterer.cluster(datapoints);
@@ -98,4 +101,18 @@ public class ExperimentUtils {
     return clusterer;
   }
 
+  public static Iterable<Centroid> castVectorsToCentroids(final Iterable<Vector> input) {
+    return Iterables.transform(input, new Function<Vector, Centroid>() {
+      private int numVectors = 0;
+      @Override
+      public Centroid apply(Vector input) {
+        Preconditions.checkNotNull(input);
+        if (input instanceof Centroid) {
+          return (Centroid) input;
+        } else {
+          return new Centroid(numVectors++, input, 1);
+        }
+      }
+    });
+  }
 }

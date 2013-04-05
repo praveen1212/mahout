@@ -143,8 +143,11 @@ public class ClusterQuality20NewsGroups {
   }
 
   public void printSummaries(List<Centroid> centroids, double time, String name, int numRun) {
-    printSummariesInternal(ClusteringUtils.summarizeClusterDistances(reducedVectors, centroids, distanceMeasure),
-        time, name, numRun, "train");
+    List<OnlineSummarizer> summarizers =
+        ClusteringUtils.summarizeClusterDistances(reducedVectors, centroids, distanceMeasure);
+    System.out.printf("Dunn Index %f\n", ClusteringUtils.dunnIndex(centroids, distanceMeasure, summarizers));
+    System.out.printf("Davies-Bouldin Index %f\n", ClusteringUtils.daviesBouldinIndex(centroids, distanceMeasure, summarizers));
+    printSummariesInternal(summarizers, time, name, numRun, "train");
     if (testReducedVectors != null) {
       printSummariesInternal(ClusteringUtils.summarizeClusterDistances(testReducedVectors, centroids, distanceMeasure),
           time, name, numRun, "test");
@@ -244,7 +247,9 @@ public class ClusterQuality20NewsGroups {
           // BallKMeans
           20, 0.9f, 10,
           // Searcher
-          CosineDistanceMeasure.class.getName(), ProjectionSearch.class.getName(), 10, 20, true);
+          CosineDistanceMeasure.class.getName(), ProjectionSearch.class.getName(), 3, 1,
+          // run locally or as MapReduce
+          false);
       try {
         if (reducedInputPath == null) {
           getReducedInputPath();

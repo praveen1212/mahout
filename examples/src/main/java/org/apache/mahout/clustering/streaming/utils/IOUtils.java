@@ -107,16 +107,28 @@ public class IOUtils {
   /**
    * Writes centroids to a sequence file.
    * @param centroids the centroids to write.
+   * @param path the path of the output file.
    * @param conf the configuration for the HDFS to write the file to.
-   * @param name the path of the output file.
    * @throws IOException
    */
-  public static void writeCentroidsToSequenceFile(Iterable<Centroid> centroids, Configuration conf, String name) throws IOException {
+  public static void writeCentroidsToSequenceFile(Iterable<Centroid> centroids, Path path,
+                                                  Configuration conf) throws IOException {
     SequenceFile.Writer writer = SequenceFile.createWriter(FileSystem.get(conf), conf,
-        new Path(name), IntWritable.class, CentroidWritable.class);
+        path, IntWritable.class, CentroidWritable.class);
     int i = 0;
     for (Centroid centroid : centroids) {
       writer.append(new IntWritable(i++), new CentroidWritable(centroid));
+    }
+    writer.close();
+  }
+
+  public static void writeVectorsToSequenceFile(Iterable<? extends Vector> datapoints, Path path,
+                                                Configuration conf) throws IOException {
+    SequenceFile.Writer writer = SequenceFile.createWriter(FileSystem.get(conf), conf,
+        path, IntWritable.class, VectorWritable.class);
+    int i = 0;
+    for (Vector vector : datapoints) {
+      writer.append(new IntWritable(i++), new VectorWritable(vector));
     }
     writer.close();
   }
@@ -225,10 +237,6 @@ public class IOUtils {
     double end = System.currentTimeMillis();
     System.out.printf("Finished reading data; initial dimension %d; projected to %d; took %f\n",
         initialDimension, reducedDimension, end - start);
-  }
-
-  public static Pair<List<String>, List<Centroid>> getKeysAndVectors(String inPath, int projectionDimension) throws IOException {
-    return getKeysAndVectors(inPath, projectionDimension, Integer.MAX_VALUE);
   }
 
   /**

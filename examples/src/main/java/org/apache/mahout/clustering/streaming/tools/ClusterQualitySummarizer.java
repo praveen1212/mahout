@@ -1,5 +1,7 @@
 package org.apache.mahout.clustering.streaming.tools;
 
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 import org.apache.commons.cli2.CommandLine;
 import org.apache.commons.cli2.Group;
 import org.apache.commons.cli2.Option;
@@ -14,17 +16,22 @@ import org.apache.mahout.clustering.iterator.ClusterWritable;
 import org.apache.mahout.clustering.streaming.cluster.ClusteringUtils;
 import org.apache.mahout.clustering.streaming.mapreduce.CentroidWritable;
 import org.apache.mahout.clustering.streaming.utils.IOUtils;
+import org.apache.mahout.common.distance.DistanceMeasure;
 import org.apache.mahout.common.distance.SquaredEuclideanDistanceMeasure;
 import org.apache.mahout.common.iterator.sequencefile.PathType;
 import org.apache.mahout.common.iterator.sequencefile.SequenceFileDirValueIterable;
 import org.apache.mahout.math.Centroid;
+import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.VectorWritable;
 import org.apache.mahout.math.stats.OnlineSummarizer;
 
-import java.io.*;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 import java.util.List;
 
-public class SummarizeQuality20NewsGroups {
+public class ClusterQualitySummarizer {
   private Configuration conf;
   private String outputFile;
 
@@ -34,7 +41,11 @@ public class SummarizeQuality20NewsGroups {
   private String trainFile;
   private String testFile;
   private String centroidFile;
+  private String centroidCompareFile;
   private boolean mahoutKMeansFormat;
+  private boolean mahoutKMeansFormatCompare;
+
+  private DistanceMeasure distanceMeasure = new SquaredEuclideanDistanceMeasure();
 
   public void printSummaries(List<OnlineSummarizer> summarizers, String type) {
     double maxDistance = 0;
@@ -75,29 +86,76 @@ public class SummarizeQuality20NewsGroups {
       fileOut.printf("cluster,distance.mean,distance.sd,distance.q0,distance.q1,distance.q2,distance.q3,"
           + "distance.q4,count,is.train\n");
 
-      Iterable<Centroid> centroids;
+      // Reading in the centroids (both pairs, if they exist).
+      List<Centroid> centroids;
+      List<Centroid> centroidsCompare = null;
       if (mahoutKMeansFormat) {
         SequenceFileDirValueIterable<ClusterWritable> clusterIterable =
             new SequenceFileDirValueIterable<ClusterWritable>(new Path(centroidFile), PathType.GLOB, conf);
-        centroids = IOUtils.getCentroidsFromClusterWritableIterable(clusterIterable);
+        centroids = Lists.newArrayList(IOUtils.getCentroidsFromClusterWritableIterable(clusterIterable));
       } else {
         SequenceFileDirValueIterable<CentroidWritable> centroidIterable =
             new SequenceFileDirValueIterable<CentroidWritable>(new Path(centroidFile), PathType.GLOB, conf);
-        centroids = IOUtils.getCentroidsFromCentroidWritableIterable(centroidIterable);
+        centroids = Lists.newArrayList(IOUtils.getCentroidsFromCentroidWritableIterable(centroidIterable));
       }
 
+      if (centroidFile != null) {
+        if (mahoutKMeansFormatCompare) {
+          SequenceFileDirValueIterable<ClusterWritable> clusterCompareIterable =
+              new SequenceFileDirValueIterable<ClusterWritable>(new Path(centroidCompareFile), PathType.GLOB, conf);
+          centroidsCompare = Lists.newArrayList(
+              IOUtils.getCentroidsFromClusterWritableIterable(clusterCompareIterable));
+        } else {
+          SequenceFileDirValueIterable<CentroidWritable> centroidCompareIterable =
+              new SequenceFileDirValueIterable<CentroidWritable>(new Path(centroidCompareFile), PathType.GLOB, conf);
+          centroidsCompare = Lists.newArrayList(
+              IOUtils.getCentroidsFromCentroidWritableIterable(centroidCompareIterable));
+        }
+      }
+
+      // Reading in the "training" set.
       SequenceFileDirValueIterable<VectorWritable> trainIterable =
           new SequenceFileDirValueIterable<VectorWritable>(new Path(trainFile), PathType.GLOB, conf);
-      printSummaries(ClusteringUtils.summarizeClusterDistances(
-          IOUtils.getVectorsFromVectorWritableIterable(trainIterable), centroids,
+      Iterable<Vector> trainDatapoints = IOUtils.getVectorsFromVectorWritableIterable(trainIterable);
+      Iterable<Vector> datapoints = trainDatapoints;
+
+      printSummaries(ClusteringUtils.summarizeClusterDistances(trainDatapoints, centroids,
           new SquaredEuclideanDistanceMeasure()), "train");
 
+      // Also adding in the "test" set.
       if (testFile != null) {
         SequenceFileDirValueIterable<VectorWritable> testIterable =
             new SequenceFileDirValueIterable<VectorWritable>(new Path(testFile), PathType.GLOB, conf);
-        printSummaries(ClusteringUtils.summarizeClusterDistances(
-            IOUtils.getVectorsFromVectorWritableIterable(testIterable), centroids,
+        Iterable<Vector> testDatapoints = IOUtils.getVectorsFromVectorWritableIterable(testIterable);
+
+        printSummaries(ClusteringUtils.summarizeClusterDistances(testDatapoints, centroids,
             new SquaredEuclideanDistanceMeasure()), "test");
+
+        datapoints = Iterables.concat(trainDatapoints, testDatapoints);
+      }
+
+      // At this point, all train/test CSVs have been written. We now compute quality metrics.
+      List<OnlineSummarizer> summaries =
+          ClusteringUtils.summarizeClusterDistances(datapoints, centroids, distanceMeasure);
+      List<OnlineSummarizer> compareSummaries = null;
+      if (centroidsCompare != null) {
+            compareSummaries =
+                ClusteringUtils.summarizeClusterDistances(datapoints, centroidsCompare, distanceMeasure);
+      }
+      System.out.printf("[Dunn Index] First: %f", ClusteringUtils.dunnIndex(centroids, distanceMeasure, summaries));
+      if (compareSummaries != null) {
+        System.out.printf(" Second: %f\n",
+            ClusteringUtils.dunnIndex(centroidsCompare, distanceMeasure, compareSummaries));
+      } else {
+        System.out.printf("\n");
+      }
+      System.out.printf("[Davies-Bouldin Index] First: %f",
+          ClusteringUtils.daviesBouldinIndex(centroids, distanceMeasure, summaries));
+      if (compareSummaries != null) {
+        System.out.printf(" Second: %f\n",
+          ClusteringUtils.daviesBouldinIndex(centroidsCompare, distanceMeasure, compareSummaries));
+      } else {
+        System.out.printf("\n");
       }
 
       if (outputFile != null) {
@@ -134,8 +192,17 @@ public class SummarizeQuality20NewsGroups {
         .withDescription("where to get seq files with the centroids (from Mahout KMeans or StreamingKMeansDriver)")
         .create();
 
+    Option centroidsCompareFileOption = builder.withLongName("centroidsCompare")
+        .withShortName("cc")
+        .withRequired(true)
+        .withArgument(argumentBuilder.withName("centroidsCompare").withMaximum(1).create())
+        .withDescription("where to get seq files with the second set of centroids (from Mahout KMeans or" +
+            "StreamingKMeansDriver)")
+        .create();
+
     Option outputFileOption = builder.withLongName("output")
         .withShortName("o")
+        .withRequired(true)
         .withArgument(argumentBuilder.withName("output").withMaximum(1).create())
         .withDescription("where to dump the CSV file with the results")
         .create();
@@ -146,13 +213,21 @@ public class SummarizeQuality20NewsGroups {
         .withArgument(argumentBuilder.withName("numpoints").withMaximum(1).create())
         .create();
 
+    Option mahoutKMeansCompareFormatOption = builder.withLongName("mahoutkmeansformatCompare")
+        .withShortName("mkmc")
+        .withDescription("if set, read files as (IntWritable, ClusterWritable) pairs")
+        .withArgument(argumentBuilder.withName("numpoints").withMaximum(1).create())
+        .create();
+
     Group normalArgs = new GroupBuilder()
         .withOption(help)
         .withOption(inputFileOption)
         .withOption(testInputFileOption)
         .withOption(outputFileOption)
         .withOption(centroidsFileOption)
+        .withOption(centroidsCompareFileOption)
         .withOption(mahoutKMeansFormatOption)
+        .withOption(mahoutKMeansCompareFormatOption)
         .create();
 
     Parser parser = new Parser();
@@ -171,14 +246,20 @@ public class SummarizeQuality20NewsGroups {
       testFile = (String) cmdLine.getValue(testInputFileOption);
     }
     centroidFile = (String) cmdLine.getValue(centroidsFileOption);
+    if (cmdLine.hasOption(centroidsCompareFileOption)) {
+      centroidCompareFile = (String) cmdLine.getValue(centroidsCompareFileOption);
+    }
     outputFile = (String) cmdLine.getValue(outputFileOption);
     if (cmdLine.hasOption(mahoutKMeansFormatOption)) {
       mahoutKMeansFormat = true;
+    }
+    if (cmdLine.hasOption(mahoutKMeansCompareFormatOption)) {
+      mahoutKMeansFormatCompare = true;
     }
     return true;
   }
 
   public static void main(String[] args) {
-    new SummarizeQuality20NewsGroups().run(args);
+    new ClusterQualitySummarizer().run(args);
   }
 }
