@@ -34,6 +34,7 @@ import org.apache.mahout.math.Centroid;
 import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.VectorWritable;
 import org.apache.mahout.math.neighborhood.BruteSearch;
+import org.apache.mahout.math.neighborhood.FastProjectionSearch;
 import org.apache.mahout.math.neighborhood.LocalitySensitiveHashSearch;
 import org.apache.mahout.math.neighborhood.ProjectionSearch;
 import org.apache.mahout.math.random.WeightedThing;
@@ -83,7 +84,7 @@ public class StreamingKMeansTestMR {
   public static List<Object[]> generateData() {
     return Arrays.asList(new Object[][]{
         {ProjectionSearch.class.getName(), SquaredEuclideanDistanceMeasure.class.getName()},
-        // {FastProjectionSearch.class.getName(), SquaredEuclideanDistanceMeasure.class.getName()},
+        {FastProjectionSearch.class.getName(), SquaredEuclideanDistanceMeasure.class.getName()},
         {LocalitySensitiveHashSearch.class.getName(), SquaredEuclideanDistanceMeasure.class.getName()}
     });
   }

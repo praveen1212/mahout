@@ -18,22 +18,36 @@
 package org.apache.mahout.clustering.streaming.mapreduce;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.SequenceFile;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
 import org.apache.hadoop.util.ToolRunner;
+import org.apache.mahout.clustering.streaming.cluster.StreamingKMeansThread;
 import org.apache.mahout.common.AbstractJob;
 import org.apache.mahout.common.HadoopUtil;
+import org.apache.mahout.common.Pair;
 import org.apache.mahout.common.commandline.DefaultOptionCreator;
+import org.apache.mahout.math.Centroid;
+import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.neighborhood.BruteSearch;
 import org.apache.mahout.math.neighborhood.LocalitySensitiveHashSearch;
+import org.apache.mahout.math.neighborhood.ProjectionSearch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 /**
  * Classifies the vectors into different clusters found by the clustering
@@ -100,6 +114,11 @@ public final class StreamingKMeansDriver extends AbstractJob {
    */
   public static final String SEARCH_SIZE_OPTION = "searchSize";
 
+  /**
+   * If this option is set, will cluster the points locally without running a MapReduce.
+   */
+  private static final String RUN_LOCALLY = "runLocally";
+
   private static final Logger log = LoggerFactory.getLogger(StreamingKMeansDriver.class);
 
   @Override
@@ -146,17 +165,19 @@ public final class StreamingKMeansDriver extends AbstractJob {
     // The default searcher should be something more efficient that BruteSearch (ProjectionSearch, ...). See
     // o.a.m.math.neighborhood.*
     addOption(SEARCHER_CLASS_OPTION, "sc", "The type of searcher to be used when performing nearest " +
-        "neighbor searches. Defaults to BruteSearch.", BruteSearch.class.getCanonicalName());
+        "neighbor searches. Defaults to ProjectionSearch.", ProjectionSearch.class.getCanonicalName());
 
     // In the original paper, the authors used 1 projection vector.
     addOption(NUM_PROJECTIONS_OPTION, "np", "The number of projections considered in estimating the " +
         "distances between vectors. Only used when the distance measure requested is either " +
-        "ProjectionSearch or FastProjectionSearch. If no value is given, defaults to 5.", String.valueOf(5));
+        "ProjectionSearch or FastProjectionSearch. If no value is given, defaults to 3.", String.valueOf(3));
 
     addOption(SEARCH_SIZE_OPTION, "s", "In more efficient searches (non BruteSearch), " +
         "not all distances are calculated for determining the nearest neighbors. The number of " +
         "elements whose distances from the query vector is actually computer is proportional to " +
-        "searchSize. If no value is given, defaults to 3.", String.valueOf(3));
+        "searchSize. If no value is given, defaults to 1.", String.valueOf(1));
+
+    addOption(RUN_LOCALLY, "rl", "Run the clustering locally rather than as a MapReduce", String.valueOf(false));
 
     if (parseArguments(args) == null) {
       return -1;
@@ -172,6 +193,9 @@ public final class StreamingKMeansDriver extends AbstractJob {
 
   private void configureOptionsForWorkers() throws ClassNotFoundException {
     log.info("Starting to configure options for workers");
+
+    boolean runLocally = Boolean.parseBoolean(getOption(RUN_LOCALLY));
+    System.out.printf("%s\n", runLocally);
 
     int numClusters = Integer.parseInt(getOption(DefaultOptionCreator.NUM_CLUSTERS_OPTION));
 
@@ -221,7 +245,8 @@ public final class StreamingKMeansDriver extends AbstractJob {
         /* BallKMeans */
         maxNumIterations, trainTestSplit, numBallKMeansRuns,
         /* Searcher */
-        measureClass, searcherClass,  searchSize, numProjections);
+        measureClass, searcherClass,  searchSize, numProjections,
+        runLocally);
   }
 
   /**
@@ -251,7 +276,8 @@ public final class StreamingKMeansDriver extends AbstractJob {
                                                 int maxNumIterations, float trainTestSplit, int numBallKMeansRuns,
                                                 /* Searcher */
                                                 String measureClass, String searcherClass,
-                                                int searchSize, int numProjections) throws ClassNotFoundException {
+                                                int searchSize, int numProjections,
+                                                boolean runLocally) throws ClassNotFoundException {
     // Checking preconditions for the parameters.
     Preconditions.checkArgument(numClusters > 0, "Invalid number of clusters requested");
 
@@ -293,13 +319,14 @@ public final class StreamingKMeansDriver extends AbstractJob {
     conf.set(SEARCHER_CLASS_OPTION, searcherClass);
     conf.setInt(SEARCH_SIZE_OPTION, searchSize);
     conf.setInt(NUM_PROJECTIONS_OPTION, numProjections);
+    conf.setBoolean(RUN_LOCALLY, runLocally);
     log.info("Parameters are: [k] numClusters {}; " +
-        "[SKM] estimatedNumMapClusters {}; estimatedDistanceCutoff" +
-        "[BKM] maxNumIterations {}; trainTestSplit {}; numBallKMeansRuns {};" +
+        "[SKM] estimatedNumMapClusters {}; estimatedDistanceCutoff {} " +
+        "[BKM] maxNumIterations {}; trainTestSplit {}; numBallKMeansRuns {}; " +
         "[S] measureClass {}; searcherClass {}; searcherSize {}; numProjections {}; " +
-        "maxNumIterations {}", numClusters, estimatedNumMapClusters, estimatedDistanceCutoff,
+        "runLocally {}", numClusters, estimatedNumMapClusters, estimatedDistanceCutoff,
         maxNumIterations, trainTestSplit, numBallKMeansRuns,
-        measureClass, searcherClass, searchSize, numProjections);
+        measureClass, searcherClass, searchSize, numProjections, runLocally);
   }
 
   /**
@@ -312,10 +339,53 @@ public final class StreamingKMeansDriver extends AbstractJob {
    */
   @SuppressWarnings("unchecked")
   public static int run(Configuration conf, Path input, Path output)
-      throws IOException, InterruptedException, ClassNotFoundException {
+      throws IOException, InterruptedException, ClassNotFoundException, ExecutionException {
     log.info("Starting StreamingKMeans clustering for vectors in {}; results are output to {}",
         input.toString(), output.toString());
 
+    if (conf.getBoolean(RUN_LOCALLY, false)) {
+      return runLocally(conf, input, output);
+    } else {
+      return runMapReduce(conf, input, output);
+    }
+  }
+
+  private static int runLocally(Configuration conf, Path input, Path output)
+      throws IOException, ExecutionException, InterruptedException {
+    System.out.printf("Starting local run\n");
+    long start = System.currentTimeMillis();
+    // Run StreamingKMeans step in parallel by spawning 1 thread per input path to process.
+    ExecutorService pool = Executors.newCachedThreadPool();
+    List<Future<Iterable<Centroid>>> intermediateCentroidFutures = Lists.newArrayList();
+    for (FileStatus status : HadoopUtil.listStatus(FileSystem.get(conf), input)) {
+      intermediateCentroidFutures.add(pool.submit(new StreamingKMeansThread(status.getPath(), conf)));
+    }
+    System.out.printf("Finished running Mappers\n");
+    // Merge the resulting "mapper" centroids.
+    List<Centroid> intermediateCentroids = Lists.newArrayList();
+    for (Future<Iterable<Centroid>> futureIterable : intermediateCentroidFutures) {
+      for (Centroid centroid : futureIterable.get()) {
+        intermediateCentroids.add(centroid);
+      }
+    }
+    System.out.printf("Finished StreamingKMeans\n");
+    // Split the centroids in training and test sets
+    Pair<List<Centroid>, List<Centroid>> splitCentroids =
+        StreamingKMeansReducer.splitTrainTest(intermediateCentroids, conf);
+    SequenceFile.Writer writer = SequenceFile.createWriter(FileSystem.get(conf), conf, output, IntWritable.class,
+        CentroidWritable.class);
+    for (Vector finalVector : StreamingKMeansReducer.getBestCentroids(splitCentroids.getFirst(),
+        splitCentroids.getSecond(), conf)) {
+      Centroid finalCentroid = (Centroid)finalVector;
+      writer.append(new IntWritable(finalCentroid.getIndex()), new CentroidWritable(finalCentroid));
+    }
+    long end = System.currentTimeMillis();
+    System.out.printf("Finished; Took %f\n", (end - start) / 1000.0);
+    return 0;
+  }
+
+  @SuppressWarnings("unchecked")
+  public static int runMapReduce(Configuration conf, Path input, Path output) throws IOException, ClassNotFoundException, InterruptedException {
     // Prepare Job for submission.
     Job job = HadoopUtil.prepareJob(input, output, SequenceFileInputFormat.class,
         StreamingKMeansMapper.class, IntWritable.class, CentroidWritable.class,

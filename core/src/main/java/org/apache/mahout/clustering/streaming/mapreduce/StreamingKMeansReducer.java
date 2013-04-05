@@ -17,12 +17,16 @@
 
 package org.apache.mahout.clustering.streaming.mapreduce;
 
+import com.google.common.base.Function;
+import com.google.common.base.Preconditions;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import org.apache.commons.lang.math.RandomUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.mahout.clustering.streaming.cluster.BallKMeans;
+import org.apache.mahout.common.Pair;
 import org.apache.mahout.common.commandline.DefaultOptionCreator;
 import org.apache.mahout.math.Centroid;
 import org.apache.mahout.math.Vector;
@@ -39,10 +43,7 @@ public class StreamingKMeansReducer extends Reducer<IntWritable, CentroidWritabl
 
   private Configuration conf;
 
-  private int numClusters;
-  private int maxNumIterations;
   private double trainTestSplit;
-  private int numRuns;
 
   private static final Logger log = LoggerFactory.getLogger(StreamingKMeansReducer.class);
 
@@ -51,18 +52,34 @@ public class StreamingKMeansReducer extends Reducer<IntWritable, CentroidWritabl
     // At this point the configuration received from the Driver is assumed to be valid.
     // No other checks are made.
     conf = context.getConfiguration();
-    numClusters = conf.getInt(DefaultOptionCreator.NUM_CLUSTERS_OPTION, 1);
-    maxNumIterations = conf.getInt(StreamingKMeansDriver.MAX_NUM_ITERATIONS, 10);
-    trainTestSplit = conf.getFloat(StreamingKMeansDriver.TRAIN_TEST_SPLIT, 0.9f);
-    numRuns = conf.getInt(StreamingKMeansDriver.NUM_BALLKMEANS_RUNS, 10);
   }
 
   @Override
   public void reduce(IntWritable key, Iterable<CentroidWritable> centroids,
                      Context context) throws IOException, InterruptedException {
+    Pair<List<Centroid>, List<Centroid>> splitCentroids = splitTrainTestRaw(centroids, conf);
+    int index = 0;
+    for (Vector centroid : getBestCentroids(splitCentroids.getFirst(), splitCentroids.getSecond(), conf)) {
+      context.write(new IntWritable(index), new CentroidWritable((Centroid)centroid));
+      ++index;
+    }
+  }
+
+  public static Pair<List<Centroid>, List<Centroid>> splitTrainTestRaw(Iterable<CentroidWritable> centroids,
+                                                                       Configuration conf) {
     // New lists must be created because Hadoop iterators mutate the contents of the Writable in
     // place, without allocating new references when iterating through the centroids Iterable.
+    return splitTrainTest(Iterables.transform(centroids, new Function<CentroidWritable, Centroid>() {
+      @Override
+      public Centroid apply(CentroidWritable input) {
+        Preconditions.checkNotNull(input);
+        return input.getCentroid().clone();
+      }
+    }), conf);
+  }
 
+  public static Pair<List<Centroid>, List<Centroid>> splitTrainTest(Iterable<Centroid> centroids,
+                                                                    Configuration conf) {
     // We split the incoming centroids in two groups for training and testing.
     // The idea is that we want to see how well our clusters model the distribution and so for this we only
     // "train" (adjust them) on the training set and see how well the centroids we get fit the test points.
@@ -70,10 +87,10 @@ public class StreamingKMeansReducer extends Reducer<IntWritable, CentroidWritabl
     //
     // The cost that we're trying to minimize is the sum of all the distances from each training point to
     // its closest centroid.
+    float trainTestSplit = conf.getFloat(StreamingKMeansDriver.TRAIN_TEST_SPLIT, 0.9f);
     List<Centroid> trainIntermediateCentroids = Lists.newArrayList();
     List<Centroid> testIntermediateCentroids = Lists.newArrayList();
-    for (CentroidWritable centroidWritable : centroids) {
-      Centroid currCentroid = centroidWritable.getCentroid().clone();
+    for (Centroid currCentroid : centroids) {
       if (RandomUtils.nextDouble() <= trainTestSplit) {
         trainIntermediateCentroids.add(currCentroid);
       } else {
@@ -82,6 +99,14 @@ public class StreamingKMeansReducer extends Reducer<IntWritable, CentroidWritabl
     }
     log.info("Split data set into {} training vectors and {} test vectors",
         trainIntermediateCentroids.size(), testIntermediateCentroids.size());
+    return new Pair<List<Centroid>, List<Centroid>>(trainIntermediateCentroids, testIntermediateCentroids);
+  }
+
+  public static Iterable<Vector> getBestCentroids(List<Centroid> trainIntermediateCentroids,
+                                                  List<Centroid> testIntermediateCentroids, Configuration conf) {
+    int numClusters = conf.getInt(DefaultOptionCreator.NUM_CLUSTERS_OPTION, 1);
+    int maxNumIterations = conf.getInt(StreamingKMeansDriver.MAX_NUM_ITERATIONS, 10);
+    int numRuns = conf.getInt(StreamingKMeansDriver.NUM_BALLKMEANS_RUNS, 10);
 
     // Run multiple BallKMeans run picking the one with the best cost.
     UpdatableSearcher bestSearcher = null;
@@ -116,12 +141,6 @@ public class StreamingKMeansReducer extends Reducer<IntWritable, CentroidWritabl
       List<WeightedThing<Vector>> closest = bestSearcher.search(centroid, 1);
       ((Centroid)(closest.get(0).getValue())).addWeight(centroid.getWeight());
     }
-
-    // Output the best centroids.
-    int index = 0;
-    for (Vector centroid : bestSearcher) {
-      context.write(new IntWritable(index), new CentroidWritable((Centroid)centroid));
-      ++index;
-    }
+    return bestSearcher;
   }
 }
