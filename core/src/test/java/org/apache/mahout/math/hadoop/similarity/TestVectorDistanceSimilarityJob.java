@@ -45,7 +45,6 @@ import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -87,7 +86,7 @@ public class TestVectorDistanceSimilarityJob extends MahoutTestCase {
 
     VectorDistanceMapper mapper = new VectorDistanceMapper();
     setField(mapper, "measure", new EuclideanDistanceMeasure());
-    Collection<NamedVector> seedVectors = new ArrayList<NamedVector>();
+    Collection<NamedVector> seedVectors = Lists.newArrayList();
     Vector seed1 = new RandomAccessSparseVector(2);
     seed1.set(0, 1);
     seed1.set(1, 1);
@@ -117,7 +116,7 @@ public class TestVectorDistanceSimilarityJob extends MahoutTestCase {
 
     VectorDistanceInvertedMapper mapper = new VectorDistanceInvertedMapper();
     setField(mapper, "measure", new EuclideanDistanceMeasure());
-    Collection<NamedVector> seedVectors = new ArrayList<NamedVector>();
+    Collection<NamedVector> seedVectors = Lists.newArrayList();
     Vector seed1 = new RandomAccessSparseVector(2);
     seed1.set(0, 1);
     seed1.set(1, 1);
@@ -226,7 +225,7 @@ public class TestVectorDistanceSimilarityJob extends MahoutTestCase {
     }
   }
 
-  private List<VectorWritable> getPointsWritable(double[][] raw) {
+  private static List<VectorWritable> getPointsWritable(double[][] raw) {
     List<VectorWritable> points = Lists.newArrayList();
     for (double[] fr : raw) {
       Vector vec = new RandomAccessSparseVector(fr.length);

@@ -18,10 +18,10 @@
 package org.apache.mahout.clustering.classify;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import com.google.common.collect.Lists;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -161,7 +161,7 @@ public final class ClusterClassificationDriver extends AbstractJob {
    * @throws IOException
    */
   private static List<Cluster> populateClusterModels(Path clusterOutputPath, Configuration conf) throws IOException {
-    List<Cluster> clusterModels = new ArrayList<Cluster>();
+    List<Cluster> clusterModels = Lists.newArrayList();
     Path finalClustersPath = finalClustersPath(conf, clusterOutputPath);
     Iterator<?> it = new SequenceFileDirValueIterator<Writable>(finalClustersPath, PathType.LIST,
         PathFilters.partFilter(), null, false, conf);

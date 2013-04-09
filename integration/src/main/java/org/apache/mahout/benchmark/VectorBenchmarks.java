@@ -18,7 +18,6 @@
 package org.apache.mahout.benchmark;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Collections;
 import java.util.Iterator;
@@ -39,7 +38,7 @@ import org.apache.commons.cli2.builder.ArgumentBuilder;
 import org.apache.commons.cli2.builder.DefaultOptionBuilder;
 import org.apache.commons.cli2.builder.GroupBuilder;
 import org.apache.commons.cli2.commandline.Parser;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -144,7 +143,7 @@ public class VectorBenchmarks {
     }
     int implId = implType.get(implName);
     if (!statsMap.containsKey(benchmarkName)) {
-      statsMap.put(benchmarkName, new ArrayList<String[]>());
+      statsMap.put(benchmarkName, Lists.<String[]>newArrayList());
     }
     List<String[]> implStats = statsMap.get(benchmarkName);
     while (implStats.size() < implId + 1) {
@@ -752,7 +751,7 @@ public class VectorBenchmarks {
         
       }    
       
-      int numClusters=25;
+      int numClusters = 25;
       if (cmdLine.hasOption(numClustersOpt)) {
         numClusters = Integer.parseInt((String) cmdLine.getValue(numClustersOpt));
       }

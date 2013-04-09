@@ -19,6 +19,7 @@ package org.apache.mahout.classifier.naivebayes;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.google.common.io.Closeables;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -44,7 +45,6 @@ import org.apache.mahout.math.map.OpenObjectIntHashMap;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.regex.Pattern;
 
@@ -97,7 +97,7 @@ public final class BayesUtils {
 
   /** Write the list of labels into a map file */
   public static int writeLabelIndex(Configuration conf, Iterable<String> labels, Path indexPath)
-      throws IOException {
+    throws IOException {
     FileSystem fs = FileSystem.get(indexPath.toUri(), conf);
     SequenceFile.Writer writer = new SequenceFile.Writer(fs, conf, indexPath, Text.class, IntWritable.class);
     int i = 0;
@@ -115,7 +115,7 @@ public final class BayesUtils {
                                     Iterable<Pair<Text,IntWritable>> labels) throws IOException {
     FileSystem fs = FileSystem.get(indexPath.toUri(), conf);
     SequenceFile.Writer writer = new SequenceFile.Writer(fs, conf, indexPath, Text.class, IntWritable.class);
-    Collection<String> seen = new HashSet<String>();
+    Collection<String> seen = Sets.newHashSet();
     int i = 0;
     try {
       for (Object label : labels) {
@@ -141,8 +141,8 @@ public final class BayesUtils {
 
   public static OpenObjectIntHashMap<String> readIndexFromCache(Configuration conf) throws IOException {
     OpenObjectIntHashMap<String> index = new OpenObjectIntHashMap<String>();
-    for (Pair<Writable,IntWritable> entry :
-         new SequenceFileIterable<Writable,IntWritable>(HadoopUtil.cachedFile(conf), conf)) {
+    for (Pair<Writable,IntWritable> entry
+        : new SequenceFileIterable<Writable,IntWritable>(HadoopUtil.cachedFile(conf), conf)) {
       index.put(entry.getFirst().toString(), entry.getSecond().get());
     }
     return index;
@@ -150,9 +150,9 @@ public final class BayesUtils {
 
   public static Map<String,Vector> readScoresFromCache(Configuration conf) throws IOException {
     Map<String,Vector> sumVectors = Maps.newHashMap();
-    for (Pair<Text,VectorWritable> entry :
-         new SequenceFileDirIterable<Text,VectorWritable>(HadoopUtil.cachedFile(conf),
-        PathType.LIST, PathFilters.partFilter(), conf)) {
+    for (Pair<Text,VectorWritable> entry
+        : new SequenceFileDirIterable<Text,VectorWritable>(HadoopUtil.cachedFile(conf),
+          PathType.LIST, PathFilters.partFilter(), conf)) {
       sumVectors.put(entry.getFirst().toString(), entry.getSecond().get());
     }
     return sumVectors;

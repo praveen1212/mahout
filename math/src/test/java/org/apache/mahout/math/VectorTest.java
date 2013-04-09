@@ -17,11 +17,11 @@
 
 package org.apache.mahout.math;
 
+import com.google.common.collect.Sets;
 import org.apache.mahout.math.function.Functions;
 import org.junit.Test;
 
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.Iterator;
 
 public final class VectorTest extends MahoutTestCase {
@@ -52,7 +52,7 @@ public final class VectorTest extends MahoutTestCase {
     }
 
     int elements = 0;
-    for (Vector.Element e : vector) {
+    for (Vector.Element ignore : vector) {
       elements++;
     }
     assertEquals(n, elements);
@@ -340,7 +340,7 @@ public final class VectorTest extends MahoutTestCase {
   @Test
   public void testIterator() {
 
-    Collection<Integer> expectedIndices = new HashSet<Integer>();
+    Collection<Integer> expectedIndices = Sets.newHashSet();
     int i = 1;
     while (i <= 20) {
       expectedIndices.add(i * (i + 1) / 2);
@@ -367,7 +367,7 @@ public final class VectorTest extends MahoutTestCase {
   }
 
   private static void doTestIterators(Vector vector, Collection<Integer> expectedIndices) {
-    expectedIndices = new HashSet<Integer>(expectedIndices);
+    expectedIndices = Sets.newHashSet(expectedIndices);
     Iterator<Vector.Element> allIterator = vector.iterator();
     int index = 0;
     while (allIterator.hasNext()) {

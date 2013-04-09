@@ -20,12 +20,11 @@
 package org.apache.mahout.clustering.topdown.postprocessor;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -140,7 +139,7 @@ public final class ClusterOutputPostProcessorTest extends MahoutTestCase {
   private List<Vector> getVectorsInCluster(Path clusterPath) throws IOException {
     Path[] partFilePaths = FileUtil.stat2Paths(fs.globStatus(clusterPath));
     FileStatus[] listStatus = fs.listStatus(partFilePaths);
-    List<Vector> vectors = new ArrayList<Vector>();
+    List<Vector> vectors = Lists.newArrayList();
     for (FileStatus partFile : listStatus) {
       SequenceFile.Reader topLevelClusterReader = new SequenceFile.Reader(fs, partFile.getPath(), conf);
       Writable clusterIdAsKey = new LongWritable();

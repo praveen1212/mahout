@@ -18,13 +18,12 @@
 package org.apache.mahout.clustering.classify;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
 import com.google.common.collect.Sets;
 
-import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -69,9 +68,9 @@ public class ClusterClassificationDriverTest extends MahoutTestCase {
     super.setUp();
     Configuration conf = new Configuration();
     fs = FileSystem.get(conf);
-    firstCluster = new ArrayList<Vector>();
-    secondCluster = new ArrayList<Vector>();
-    thirdCluster = new ArrayList<Vector>();
+    firstCluster = Lists.newArrayList();
+    secondCluster = Lists.newArrayList();
+    thirdCluster = Lists.newArrayList();
     
   }
   

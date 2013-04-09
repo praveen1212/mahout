@@ -28,11 +28,11 @@ import java.io.IOException;
 public class MergeVectorsReducer extends
     Reducer<WritableComparable<?>,VectorWritable,WritableComparable<?>,VectorWritable> {
 
-  private VectorWritable result = new VectorWritable();
+  private final VectorWritable result = new VectorWritable();
 
   @Override
   public void reduce(WritableComparable<?> key, Iterable<VectorWritable> vectors, Context ctx)
-      throws IOException, InterruptedException {
+    throws IOException, InterruptedException {
     Vector merged = VectorWritable.merge(vectors.iterator()).get();
     result.set(new SequentialAccessSparseVector(merged));
     ctx.write(key, result);
