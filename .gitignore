@@ -27,3 +27,7 @@ math/.settings/
 integration/.settings/
 .DS_Store
 *.patch
+*.csv
+*.seqfile
+*.crc
+*.pdf
