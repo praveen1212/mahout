@@ -139,10 +139,8 @@ public class ProjectionSearch extends UpdatableSearcher implements Iterable<Vect
 
     // If searchSize * scalarProjections.size() is small enough not to cause much memory pressure,
     // this is probably just as fast as a priority queue here.
-    double numNonDefault = 0;
     List<WeightedThing<Vector>> top = Lists.newArrayList();
     for (Vector candidate : candidates) {
-      numNonDefault += candidate.getNumNondefaultElements();
       top.add(new WeightedThing<Vector>(candidate, distanceMeasure.distance(query, candidate)));
     }
     Collections.sort(top);
@@ -168,7 +166,7 @@ public class ProjectionSearch extends UpdatableSearcher implements Iterable<Vect
     if (x.get(0).getWeight() < epsilon) {
       Iterator<? extends Vector> basisVectors = basisMatrix.iterator();
       for (TreeMultiset<WeightedThing<Vector>> projection : scalarProjections) {
-        if (!projection.remove(new WeightedThing<Vector>(null, vector.dot(basisVectors.next())))) {
+        if (!projection.remove(new WeightedThing<Vector>(vector, vector.dot(basisVectors.next())))) {
           throw new RuntimeException("Internal inconsistency in ProjectionSearch");
         }
       }

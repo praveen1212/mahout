@@ -32,6 +32,11 @@ public final class WeightedThing<T> implements Comparable<WeightedThing<T>> {
     this.weight = weight;
   }
 
+  public WeightedThing(double weight) {
+    this.value = null;
+    this.weight = weight;
+  }
+
   public T getValue() {
     return value;
   }

@@ -119,7 +119,7 @@ public class FastProjectionSearch extends UpdatableSearcher {
     for (int i = 0; i < basisMatrix.numRows(); ++i) {
       List<WeightedThing<Vector>> currProjections = scalarProjections.get(i);
       int middle = Collections.binarySearch(currProjections,
-          new WeightedThing<Vector>(null, projection.get(i)));
+          new WeightedThing<Vector>(projection.get(i)));
       if (middle < 0) {
         middle = -(middle + 1);
       }
@@ -154,13 +154,13 @@ public class FastProjectionSearch extends UpdatableSearcher {
     for (int i = 0; i < basisMatrix.numRows(); ++i) {
       List<WeightedThing<Vector>> currProjections = scalarProjections.get(i);
       int middle = Collections.binarySearch(currProjections,
-          new WeightedThing<Vector>(null, projection.get(i)));
+          new WeightedThing<Vector>(projection.get(i)));
       if (middle < 0) {
         isProjected = false;
         break;
       }
       double oldWeight = currProjections.get(middle).getWeight();
-      scalarProjections.get(i).set(middle, new WeightedThing<Vector>(null, oldWeight));
+      scalarProjections.get(i).set(middle, new WeightedThing<Vector>(oldWeight));
     }
     if (isProjected) {
       ++numPendingRemovals;
