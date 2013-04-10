@@ -730,19 +730,82 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
       throw new CardinalityException(size, other.size());
     }
 
-    /* special case: we only need to iterate over the non-zero elements of the vector to add */
-    if (Functions.PLUS.equals(function) || Functions.PLUS_ABS.equals(function)) {
-      Iterator<Vector.Element> nonZeroElements = other.iterateNonZero();
-      while (nonZeroElements.hasNext()) {
-        Vector.Element e = nonZeroElements.next();
-        setQuick(e.index(), function.apply(getQuick(e.index()), e.get()));
+    boolean isDensifying = function.apply(0, 0) != 0;
+    if (isDensifying || !isSequentialAccess() || !other.isSequentialAccess()) {
+      /* special case: we only need to iterate over the non-zero elements of the vector to add */
+      if (Functions.PLUS.equals(function) || Functions.PLUS_ABS.equals(function)) {
+        Iterator<Vector.Element> nonZeroElements = other.iterateNonZero();
+        while (nonZeroElements.hasNext()) {
+          Vector.Element e = nonZeroElements.next();
+          setQuick(e.index(), function.apply(getQuick(e.index()), e.get()));
+        }
+      } else {
+        for (int i = 0; i < size; i++) {
+          setQuick(i, function.apply(getQuick(i), other.getQuick(i)));
+        }
       }
     } else {
-      for (int i = 0; i < size; i++) {
-        setQuick(i, function.apply(getQuick(i), other.getQuick(i)));
+      Iterator<Element> thisNonZero = this.iterateNonZero();
+      Iterator<Element> thatNonZero = other.iterateNonZero();
+      Element thisElement = null;
+      Element thatElement = null;
+      boolean advanceThis = true;
+      boolean advanceThat = true;
+      OrderedIntDoubleMapping thisUpdates = new OrderedIntDoubleMapping();
+
+      while (thisNonZero.hasNext() && thatNonZero.hasNext()) {
+        if (advanceThis) {
+          thisElement = thisNonZero.next();
+        }
+        if (advanceThat) {
+          thatElement = thatNonZero.next();
+        }
+        if (thisElement.index() == thatElement.index()) {
+          thisElement.set(function.apply(thisElement.get(), thatElement.get()));
+          advanceThis = true;
+          advanceThat = true;
+          continue;
+        }
+        if (thisElement.index() < thatElement.index()) {
+          thisElement.set(function.apply(thatElement.get(), 0));
+          advanceThis = true;
+          advanceThat = false;
+        } else {
+          double result = function.apply(0, thisElement.get());
+          if (result != 0) {
+            thisUpdates.set(thatElement.index(), result);
+          }
+          advanceThis = false;
+          advanceThat = true;
+        }
       }
+
+      while (thisNonZero.hasNext()) {
+        thisElement = thisNonZero.next();
+        thisElement.set(function.apply(thisElement.get(), 0));
+      }
+      while (thatNonZero.hasNext()) {
+        thatElement = thatNonZero.next();
+        double result = function.apply(0, thatElement.get());
+        if (result != 0) {
+          thisUpdates.set(thatElement.index(), result);
+        }
+      }
+      assignPairs(thisUpdates);
     }
     return this;
+  }
+
+  /**
+   * Used internally by assign() to update multiple indices and values at once.
+   * Only really useful for sparse vectors (especially SequentialAccessSparseVector).
+   *
+   * If someone ever adds a new type of sparse vectors, this method must merge (index, value) pairs into the vector.
+   *
+   * @param updates a mapping of indices to values to merge in the vector.
+   */
+  protected void assignPairs(OrderedIntDoubleMapping updates) {
+    throw new UnsupportedOperationException("assignPairs() is not implemented in AbstractVector; override if needed");
   }
 
   @Override

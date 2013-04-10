@@ -17,11 +17,11 @@
 
 package org.apache.mahout.math;
 
-import java.util.Iterator;
-
 import com.google.common.collect.AbstractIterator;
 import org.apache.mahout.math.list.IntArrayList;
 import org.apache.mahout.math.map.OpenIntDoubleHashMap;
+
+import java.util.Iterator;
 
 
 /** Implements vector that only stores non-zero doubles */
@@ -107,6 +107,13 @@ public class RandomAccessSparseVector extends AbstractVector {
       setQuick(e.index(), e.get());
     }
     return this;
+  }
+
+  @Override
+  protected void assignPairs(OrderedIntDoubleMapping updates) {
+    for (int i = 0; i < updates.getNumMappings(); ++i) {
+      values.put(updates.getIndices()[i], updates.getValues()[i]);
+    }
   }
 
   /**

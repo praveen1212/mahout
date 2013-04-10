@@ -17,12 +17,12 @@
 
 package org.apache.mahout.math;
 
-import java.util.Arrays;
-import java.util.Iterator;
-
 import com.google.common.collect.AbstractIterator;
 import org.apache.mahout.math.function.DoubleDoubleFunction;
 import org.apache.mahout.math.function.PlusMult;
+
+import java.util.Arrays;
+import java.util.Iterator;
 
 /** Implements vector as an array of doubles */
 public class DenseVector extends AbstractVector {

@@ -133,6 +133,47 @@ final class OrderedIntDoubleMapping implements Serializable, Cloneable {
     }
   }
 
+  /**
+   * Merges the updates in linear time by allocating new arrays and iterating through the existing indices and values
+   * and the updates' indices and values at the same time while selecting the minimum index to set at each step.
+   * @param updates another list of mappings to be merged in.
+   */
+  public void merge(OrderedIntDoubleMapping updates) {
+    int updateIndices[] = updates.getIndices();
+    double updateValues[] = updates.getValues();
+
+    int newNumMappings = numMappings + updates.getNumMappings();
+    int newCapacity = Math.max((int) (1.2 * newNumMappings), newNumMappings + 1);
+    int newIndices[] = new int[newCapacity];
+    double newValues[] = new double[newCapacity];
+
+    int k = 0;
+    int i = 0, j = 0;
+    for (; i < numMappings && j < updates.getNumMappings(); ++k) {
+      if (indices[i] < updateIndices[j]) {
+        newIndices[k] = indices[i];
+        newValues[k] = values[i];
+        ++i;
+      } else {
+        newIndices[k] = updateIndices[j];
+        newValues[k] = updateValues[j];
+        ++j;
+      }
+    }
+
+    for (; i < numMappings; ++i, ++k) {
+      newIndices[k] = indices[i];
+      newValues[k] = values[i];
+    }
+    for (; j < updates.getNumMappings(); ++j, ++k) {
+      newIndices[k] = updateIndices[j];
+      newValues[k] = updateValues[j];
+    }
+
+    indices = newIndices;
+    values = newValues;
+  }
+
   @Override
   public int hashCode() {
     int result = 0;

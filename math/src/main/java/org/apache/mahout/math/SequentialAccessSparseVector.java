@@ -19,7 +19,6 @@ package org.apache.mahout.math;
 
 import com.google.common.collect.AbstractIterator;
 import com.google.common.primitives.Doubles;
-import org.apache.mahout.math.function.Functions;
 
 import java.util.Arrays;
 import java.util.Iterator;
@@ -146,6 +145,11 @@ public class SequentialAccessSparseVector extends AbstractVector {
   }
 
   @Override
+  protected void assignPairs(OrderedIntDoubleMapping updates) {
+    values.merge(updates);
+  }
+
+  @Override
   public String toString() {
     StringBuilder result = new StringBuilder();
     result.append('{');
@@ -179,11 +183,22 @@ public class SequentialAccessSparseVector extends AbstractVector {
     return true;
   }
 
+  /**
+   * Warning! This takes O(log n) time as it does a binary search behind the scenes!
+   * Only use it when STRICTLY necessary.
+   * @param index an int index.
+   * @return the value at that position in the vector.
+   */
   @Override
   public double getQuick(int index) {
     return values.get(index);
   }
 
+  /**
+   * Warning! This takes O(log n) time as it does a binary search behind the scenes!
+   * Only use it when STRICTLY necessary.
+   * @param index an int index.
+   */
   @Override
   public void setQuick(int index, double value) {
     invalidateCachedLength();
@@ -209,25 +224,6 @@ public class SequentialAccessSparseVector extends AbstractVector {
   public Iterator<Element> iterator() {
     return new AllIterator();
   }
-
-  @Override
-  public Vector minus(Vector that) {
-    if (size() != that.size()) {
-      throw new CardinalityException(size(), that.size());
-    }
-    // Here we compute "that - this" since it's not fast to randomly access "this"
-    // and then invert at the end
-    Vector result = that.clone();
-    Iterator<Element> iter = this.iterateNonZero();
-    while (iter.hasNext()) {
-      Element thisElement = iter.next();
-      int index = thisElement.index();
-      result.setQuick(index, that.getQuick(index) - thisElement.get());
-    }
-    result.assign(Functions.NEGATE);
-    return result;
-  }
-
 
   private final class NonDefaultIterator extends AbstractIterator<Element> {
 
