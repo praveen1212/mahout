@@ -25,7 +25,7 @@ import org.apache.mahout.math.function.DoubleDoubleFunction;
  */
 public class Centroid extends WeightedVector {
   public Centroid(WeightedVector original) {
-    super(original.getVector(), original.getWeight(), original.getIndex());
+    super(original.getVector().like().assign(original), original.getWeight(), original.getIndex());
   }
 
   public Centroid(int key, Vector initialValue) {
@@ -38,9 +38,9 @@ public class Centroid extends WeightedVector {
 
   public static Centroid create(int key, Vector initialValue) {
     if (initialValue instanceof WeightedVector) {
-      return new Centroid(key, initialValue, ((WeightedVector) initialValue).getWeight());
+      return new Centroid(key, new DenseVector(initialValue), ((WeightedVector) initialValue).getWeight());
     } else {
-      return new Centroid(key, initialValue, 1);
+      return new Centroid(key, new DenseVector(initialValue), 1);
     }
   }
 
