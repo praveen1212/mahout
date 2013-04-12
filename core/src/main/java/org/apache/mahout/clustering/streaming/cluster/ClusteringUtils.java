@@ -5,9 +5,14 @@ import com.google.common.collect.Lists;
 import org.apache.mahout.common.distance.DistanceMeasure;
 import org.apache.mahout.common.distance.EuclideanDistanceMeasure;
 import org.apache.mahout.math.Centroid;
+import org.apache.mahout.math.DenseMatrix;
+import org.apache.mahout.math.Matrix;
 import org.apache.mahout.math.Vector;
+import org.apache.mahout.math.neighborhood.BruteSearch;
 import org.apache.mahout.math.neighborhood.ProjectionSearch;
+import org.apache.mahout.math.neighborhood.Searcher;
 import org.apache.mahout.math.neighborhood.UpdatableSearcher;
+import org.apache.mahout.math.random.WeightedThing;
 import org.apache.mahout.math.stats.OnlineSummarizer;
 
 import java.util.List;
@@ -162,5 +167,59 @@ public class ClusteringUtils {
       }
     }
     return minDunnIndex / maxIntraClusterDistance;
+  }
+
+  public static double choose2(double n) {
+    return n * (n - 1) / 2;
+  }
+
+  public static Matrix getConfusionMatrix(List<Centroid> rowCentroids, List<Centroid> columnCentroids,
+                                          Iterable<? extends Vector> datapoints, DistanceMeasure distanceMeasure) {
+    Searcher rowSearcher = new BruteSearch(distanceMeasure);
+    rowSearcher.addAll(rowCentroids);
+    Searcher columnSearcher = new BruteSearch(distanceMeasure);
+    columnSearcher.addAll(columnCentroids);
+
+    int numRows = rowCentroids.size();
+    int numCols = columnCentroids.size();
+    Matrix confusionMatrix = new DenseMatrix(numRows, numCols);
+
+    for (Vector vector : datapoints) {
+      WeightedThing<Vector> closestRowCentroid = rowSearcher.search(vector, 1).get(0);
+      WeightedThing<Vector> closestColumnCentroid = columnSearcher.search(vector, 1).get(0);
+      int row = ((Centroid) closestRowCentroid.getValue()).getIndex();
+      int column = ((Centroid) closestColumnCentroid.getValue()).getIndex();
+      confusionMatrix.set(row, column, confusionMatrix.get(row, column) + 1);
+    }
+
+    return confusionMatrix;
+  }
+
+  public static double getAdjustedRandIndex(Matrix confusionMatrix) {
+    int numRows = confusionMatrix.numRows();
+    int numCols = confusionMatrix.numCols();
+    double rowChoiceSum = 0;
+    double columnChoiceSum = 0;
+    double totalChoiceSum = 0;
+    double total = 0;
+    for (int i = 0; i < numRows; ++i) {
+      double rowSum = 0;
+      for (int j = 0; j < numCols; ++j) {
+        rowSum += confusionMatrix.get(i, j);
+        totalChoiceSum += choose2(confusionMatrix.get(i, j));
+      }
+      total += rowSum;
+      rowChoiceSum += choose2(rowSum);
+    }
+    for (int j = 0; j < numCols; ++j) {
+      double columnSum = 0;
+      for (int i = 0; i < numRows; ++i) {
+        columnSum += confusionMatrix.get(i, j);
+      }
+      columnChoiceSum += choose2(columnSum);
+    }
+    double rowColumnChoiceSumDivTotal = rowChoiceSum * columnChoiceSum / choose2(total);
+    return (totalChoiceSum - rowColumnChoiceSumDivTotal)
+        / ((rowChoiceSum + columnChoiceSum) / 2 - rowColumnChoiceSumDivTotal);
   }
 }
