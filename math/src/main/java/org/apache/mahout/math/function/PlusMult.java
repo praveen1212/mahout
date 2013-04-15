@@ -37,9 +37,11 @@ package org.apache.mahout.math.function;
  * </ul> 
  * <tt>a</tt> and <tt>b</tt> are variables, <tt>constant</tt> is fixed, but for performance reasons publicly accessible.
  * Intended to be passed to <tt>matrix.assign(otherMatrix,function)</tt> methods.
+ *
+ * f(x, 0) = x + 0 * constant = x.
  */
 
-public final class PlusMult implements DoubleDoubleFunction {
+public final class PlusMult implements DDFXZeroEqualsX {
 
   private double multiplicator;
 
