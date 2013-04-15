@@ -17,12 +17,14 @@
 
 package org.apache.mahout.math;
 
-import com.google.common.collect.AbstractIterator;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+
 import org.apache.mahout.math.function.DoubleDoubleFunction;
 import org.apache.mahout.math.function.PlusMult;
 
-import java.util.Arrays;
-import java.util.Iterator;
+import com.google.common.base.Preconditions;
 
 /** Implements vector as an array of doubles */
 public class DenseVector extends AbstractVector {

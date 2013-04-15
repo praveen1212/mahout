@@ -19,9 +19,13 @@ package org.apache.mahout.math;
 
 import com.google.common.collect.AbstractIterator;
 import com.google.common.primitives.Doubles;
+import org.apache.mahout.math.function.Functions;
 
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
+
+import com.google.common.primitives.Doubles;
 
 /**
  * <p>
@@ -54,7 +58,7 @@ public class SequentialAccessSparseVector extends AbstractVector {
   }
 
   public SequentialAccessSparseVector(int cardinality) {
-    this(cardinality, cardinality / 8); // arbitrary estimate of 'sparseness'
+    this(cardinality, Math.min(100, cardinality/1000)); // arbitrary estimate of 'sparseness'
   }
 
   public SequentialAccessSparseVector(int cardinality, int size) {
@@ -225,42 +229,51 @@ public class SequentialAccessSparseVector extends AbstractVector {
     return new AllIterator();
   }
 
-  private final class NonDefaultIterator extends AbstractIterator<Element> {
-
+  private final class NonDefaultIterator implements Iterator<Element> {
     private final NonDefaultElement element = new NonDefaultElement();
 
     @Override
-    protected Element computeNext() {
-      int numMappings = values.getNumMappings();
-      if (numMappings <= 0 || element.getNextOffset() >= numMappings) {
-        return endOfData();
+    public boolean hasNext() {
+      return element.getNextOffset() < values.getNumMappings();
+    }
+
+    @Override
+    public Element next() {
+      if (!hasNext()) {
+        throw new NoSuchElementException();
       }
       element.advanceOffset();
       return element;
     }
 
+    @Override
+    public void remove() {
+      throw new UnsupportedOperationException();
+    }
   }
 
-  private final class AllIterator extends AbstractIterator<Element> {
-
+  private final class AllIterator implements Iterator<Element> {
     private final AllElement element = new AllElement();
 
     @Override
-    protected Element computeNext() {
-      int numMappings = values.getNumMappings();
-      if (numMappings <= 0 || element.getNextIndex() > values.getIndices()[numMappings - 1]) {
-        if (element.index() >= SequentialAccessSparseVector.this.size() - 1) {
-          return endOfData();
-        } else {
-          element.advanceIndex();
-          return element;
-        }
-      } else {
-        element.advanceIndex();
-        return element;
-      }
+    public boolean hasNext() {
+      return element.getNextIndex() < SequentialAccessSparseVector.this.size();
     }
 
+    @Override
+    public Element next() {
+      if (!hasNext()) {
+        throw new NoSuchElementException();
+      }
+
+      element.advanceIndex();
+      return element;
+    }
+
+    @Override
+    public void remove() {
+      throw new UnsupportedOperationException();
+    }
   }
 
   private final class NonDefaultElement implements Element {
