@@ -322,7 +322,7 @@ public final class Functions {
   };
 
   /** Function that returns <tt>a / b</tt>. */
-  public static final DoubleDoubleFunction DIV = new DoubleDoubleFunction() {
+  public static final DDFZeroYEqualsZero DIV = new DDFZeroYEqualsZero() {
 
     @Override
     public double apply(double a, double b) {
@@ -421,7 +421,7 @@ public final class Functions {
   };
 
   /** Function that returns <tt>a - b</tt>. */
-  public static final DoubleDoubleFunction MINUS = plusMult(-1);
+  public static final DDFXZeroEqualsX MINUS = plusMult(-1);
   /*
   new DoubleDoubleFunction() {
     public final double apply(double a, double b) { return a - b; }
@@ -429,7 +429,7 @@ public final class Functions {
   */
 
   /** Function that returns <tt>a % b</tt>. */
-  public static final DoubleDoubleFunction MOD = new DoubleDoubleFunction() {
+  public static final DDFZeroYEqualsZero MOD = new DDFZeroYEqualsZero() {
 
     @Override
     public double apply(double a, double b) {
@@ -438,7 +438,7 @@ public final class Functions {
   };
 
   /** Function that returns <tt>a * b</tt>. */
-  public static final DoubleDoubleFunction MULT = new DoubleDoubleFunction() {
+  public static final DDFZeroYEqualsZero MULT = new DDFZeroYEqualsZero() {
 
     @Override
     public double apply(double a, double b) {
@@ -447,7 +447,7 @@ public final class Functions {
   };
   
   /** Function that returns <tt>a + b</tt>. */
-  public static final DoubleDoubleFunction PLUS = new DoubleDoubleFunction() {
+  public static final DDFXZeroEqualsX PLUS = new DDFXZeroEqualsX() {
     
     @Override
     public double apply(double a, double b) {
@@ -456,7 +456,7 @@ public final class Functions {
   };
 
   /** Function that returns <tt>Math.abs(a) + Math.abs(b)</tt>. */
-  public static final DoubleDoubleFunction PLUS_ABS = new DoubleDoubleFunction() {
+  public static final DDFXZeroEqualsX PLUS_ABS = new DDFXZeroEqualsX() {
 
     @Override
     public double apply(double a, double b) {
@@ -792,7 +792,7 @@ public final class Functions {
    * Constructs a function that returns <tt>a + b*constant</tt>. <tt>a</tt> and <tt>b</tt> are variables,
    * <tt>constant</tt> is fixed.
    */
-  public static DoubleDoubleFunction plusMult(double constant) {
+  public static DDFXZeroEqualsX plusMult(double constant) {
     return new PlusMult(constant);
     /*
     return new DoubleDoubleFunction() {
