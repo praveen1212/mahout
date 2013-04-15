@@ -191,7 +191,7 @@ public class DenseVector extends AbstractVector {
     int indices[] = updates.getIndices();
     double values[] = updates.getValues();
     for (int i = 0; i < numUpdates; ++i) {
-      values[indices[i]] = values[i];
+      this.values[indices[i]] = values[i];
     }
   }
 
