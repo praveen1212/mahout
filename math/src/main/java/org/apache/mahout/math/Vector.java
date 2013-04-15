@@ -18,10 +18,10 @@
 package org.apache.mahout.math;
 
 
+import java.util.Iterator;
+
 import org.apache.mahout.math.function.DoubleDoubleFunction;
 import org.apache.mahout.math.function.DoubleFunction;
-
-import java.util.Iterator;
 
 /**
  * The basic interface including numerous convenience functions <p/> NOTE: All implementing classes must have a
@@ -235,7 +235,7 @@ public interface Vector extends Cloneable, Iterable<Vector.Element> {
    * @return a new Vector x such that norm(x, power) == 1
    */
   Vector normalize(double power);
-  
+
   /**
    * Return a new vector containing the log(1 + entry)/ L_2 norm  values of the recipient
    *
@@ -315,6 +315,13 @@ public interface Vector extends Cloneable, Iterable<Vector.Element> {
    * @return an int
    */
   int getNumNondefaultElements();
+
+  /**
+   * Return the number of non zero elements in the vector.
+   *
+   * @return an int
+   */
+  int getNumNonZeroElements();
 
   /**
    * Return a new vector containing the product of each value of the recipient and the argument

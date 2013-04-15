@@ -1104,8 +1104,8 @@ public final class VectorTest extends MahoutTestCase {
     }
     assertEquals(8, i);
 
-    // Check if the non default elements are correct.
-    assertEquals(8, vector.getNumNondefaultElements());
+    // Check if the non zero elements are correct.
+    assertEquals(8, vector.getNumNonZeroElements());
 
     // Set one element to 0.
     it = vector.iterateNonZero();
@@ -1118,7 +1118,7 @@ public final class VectorTest extends MahoutTestCase {
       ++i;
     }
     assertEquals(8, i);
-    assertEquals(7, vector.getNumNondefaultElements());
+    assertEquals(7, vector.getNumNonZeroElements());
 
     // Remove one element
     it = vector.iterateNonZero();
@@ -1132,6 +1132,6 @@ public final class VectorTest extends MahoutTestCase {
     }
     assertEquals(7, i); // This just got messed up.
     // TODO: throw an exception if the underlying hashmap or array length is modified.
-    assertEquals(7, vector.getNumNondefaultElements());
+    assertEquals(7, vector.getNumNonZeroElements());
   }
 }

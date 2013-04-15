@@ -30,7 +30,7 @@ public class PearsonCorrelationSimilarity extends CosineSimilarity {
     }
 
     // center non-zero elements
-    double average = vector.norm(1) / vector.getNumNondefaultElements();
+    double average = vector.norm(1) / vector.getNumNonZeroElements();
     Iterator<Vector.Element> it = vector.iterateNonZero();
     while (it.hasNext()) {
       Vector.Element e = it.next();
