@@ -19,11 +19,7 @@ package org.apache.mahout.math;
 
 import com.google.common.collect.AbstractIterator;
 import com.google.common.collect.Maps;
-import org.apache.mahout.math.function.DoubleDoubleFunction;
-import org.apache.mahout.math.function.Functions;
-import org.apache.mahout.math.function.PlusMult;
-import org.apache.mahout.math.function.DoubleFunction;
-import org.apache.mahout.math.function.VectorFunction;
+import org.apache.mahout.math.function.*;
 
 import java.util.Iterator;
 import java.util.Map;
@@ -423,7 +419,7 @@ public abstract class AbstractMatrix implements Matrix {
     if (rows != other.rowSize()) {
       throw new CardinalityException(rows, other.rowSize());
     }
-    int columns = columnSize();    
+    int columns = columnSize();
     if (columns != other.columnSize()) {
       throw new CardinalityException(columns, other.columnSize());
     }
@@ -456,7 +452,7 @@ public abstract class AbstractMatrix implements Matrix {
     if (rows != other.rowSize()) {
       throw new CardinalityException(rows, other.rowSize());
     }
-    int columns = columnSize();    
+    int columns = columnSize();
     if (columns != other.columnSize()) {
       throw new CardinalityException(columns, other.columnSize());
     }
@@ -487,7 +483,7 @@ public abstract class AbstractMatrix implements Matrix {
     if (columns < data.length) {
       throw new CardinalityException(columns, data.length);
     }
-    int rows = rowSize();    
+    int rows = rowSize();
     if (row < 0 || row >= rows) {
       throw new IndexException(row, rowSize());
     }
@@ -726,4 +722,15 @@ public abstract class AbstractMatrix implements Matrix {
     }
   }
 
+  @Override
+  public String toString() {
+    String s = "{\n";
+    Iterator<MatrixSlice> it = iterator();
+    while (it.hasNext()) {
+      MatrixSlice next = it.next();
+      s += "  " + next.index() + "  =>\t" + next.vector() + "\n";
+    }
+    s += "}";
+    return s;
+  }
 }
