@@ -37,11 +37,9 @@ package org.apache.mahout.math.function;
  * </ul> 
  * <tt>a</tt> and <tt>b</tt> are variables, <tt>constant</tt> is fixed, but for performance reasons publicly accessible.
  * Intended to be passed to <tt>matrix.assign(otherMatrix,function)</tt> methods.
- *
- * f(x, 0) = x + 0 * constant = x.
  */
 
-public final class PlusMult implements LikeRightPlus {
+public final class PlusMult extends DoubleDoubleFunction {
 
   private double multiplicator;
 
@@ -67,6 +65,42 @@ public final class PlusMult implements LikeRightPlus {
 
   public double getMultiplicator() {
     return multiplicator;
+  }
+
+  /**
+   * x + 0 * c = x
+   * @return true iff f(x, 0) = x for any x
+   */
+  @Override
+  public boolean isLikeRightPlus() {
+    return true;
+  }
+
+  /**
+   * 0 + y * c = y * c != 0
+   * @return true iff f(0, y) = 0 for any y
+   */
+  @Override
+  public boolean isLikeLeftMult() {
+    return false;
+  }
+
+  /**
+   * x + 0 * c = x != 0
+   * @return true iff f(x, 0) = 0 for any x
+   */
+  @Override
+  public boolean isLikeRightMult() {
+    return false;
+  }
+
+  /**
+   * x + y * c = y + x * c iff c = 1
+   * @return true iff f(x, y) = f(y, x) for any x, y
+   */
+  @Override
+  public boolean isCommutative() {
+    return multiplicator == 1;
   }
 
   public void setMultiplicator(double multiplicator) {

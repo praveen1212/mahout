@@ -91,6 +91,16 @@ public class DelegatingVector implements Vector, LengthCachingVector {
     return delegate.getElement(index);
   }
 
+  /**
+   * Merge a set of (index, value) pairs into the vector.
+   *
+   * @param updates
+   */
+  @Override
+  public void mergeUpdates(OrderedIntDoubleMapping updates) {
+    delegate.mergeUpdates(updates);
+  }
+
   @Override
   public Vector minus(Vector that) {
     return delegate.minus(that);
@@ -262,6 +272,14 @@ public class DelegatingVector implements Vector, LengthCachingVector {
   @Override
   public boolean isSequentialAccess() {
     return delegate.isSequentialAccess();
+  }
+
+  /**
+   * @return true iff this implementation can access ANY element in constant time.
+   */
+  @Override
+  public boolean isRandomAccess() {
+    return delegate.isRandomAccess();
   }
 
   @Override

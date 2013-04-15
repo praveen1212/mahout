@@ -108,6 +108,11 @@ public interface Vector extends Cloneable, Iterable<Vector.Element> {
   boolean isSequentialAccess();
 
   /**
+   * @return true iff this implementation can access ANY element in constant time.
+   */
+  boolean isRandomAccess();
+
+  /**
    * Return a copy of the recipient
    *
    * @return a new Vector
@@ -139,6 +144,12 @@ public interface Vector extends Cloneable, Iterable<Vector.Element> {
    * @return The Vector.Element Object
    */
   Element getElement(int index);
+
+  /**
+   * Merge a set of (index, value) pairs into the vector.
+   * @param updates
+   */
+  void mergeUpdates(OrderedIntDoubleMapping updates);
 
   /**
    * A holder for information about a specific item in the Vector. <p/> When using with an Iterator, the implementation
@@ -360,7 +371,7 @@ public interface Vector extends Cloneable, Iterable<Vector.Element> {
   /**
    * Examples speak louder than words:  aggregate(plus, pow(2)) is another way to say
    * getLengthSquared(), aggregate(max, abs) is norm(Double.POSITIVE_INFINITY).  To sum all of the postive values,
-   * aggregate(plus, max(0)).  
+   * aggregate(plus, max(0)).
    * @param aggregator used to combine the current value of the aggregation with the result of map.apply(nextValue)
    * @param map a function to apply to each element of the vector in turn before passing to the aggregator
    * @return the final aggregation

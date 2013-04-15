@@ -322,11 +322,19 @@ public final class Functions {
   };
 
   /** Function that returns <tt>a / b</tt>. */
-  public static final LikeLeftMult DIV = new LikeLeftMult() {
-
+  public static final DoubleDoubleFunction DIV = new DoubleDoubleFunction() {
     @Override
     public double apply(double a, double b) {
       return a / b;
+    }
+
+    /**
+     * 0 / y = 0
+     * @return true iff f(0, y) = 0 for any y
+     */
+    @Override
+    public boolean isLikeLeftMult() {
+      return true;
     }
   };
 
@@ -336,6 +344,15 @@ public final class Functions {
     @Override
     public double apply(double a, double b) {
       return a == b ? 1 : 0;
+    }
+
+    /**
+     * x = y iff y = x
+     * @return true iff f(x, y) = f(y, x) for any x, y
+     */
+    @Override
+    public boolean isCommutative() {
+      return true;
     }
   };
 
@@ -409,6 +426,15 @@ public final class Functions {
     public double apply(double a, double b) {
       return Math.max(a, b);
     }
+
+    /**
+     * max(x, y) = max(y, x)
+     * @return true iff f(x, y) = f(y, x) for any x, y
+     */
+    @Override
+    public boolean isCommutative() {
+      return true;
+    }
   };
 
   /** Function that returns <tt>Math.min(a,b)</tt>. */
@@ -418,43 +444,91 @@ public final class Functions {
     public double apply(double a, double b) {
       return Math.min(a, b);
     }
+
+    /**
+     * min(x, y) = min(y, x)
+     * @return true iff f(x, y) = f(y, x) for any x, y
+     */
+    @Override
+    public boolean isCommutative() {
+      return true;
+    }
   };
 
   /** Function that returns <tt>a - b</tt>. */
-  public static final LikeRightPlus MINUS = plusMult(-1);
+  public static final DoubleDoubleFunction MINUS = plusMult(-1);
 
   /** Function that returns <tt>a % b</tt>. */
-  public static final LikeLeftMult MOD = new LikeLeftMult() {
+  public static final DoubleDoubleFunction MOD = new DoubleDoubleFunction() {
 
     @Override
     public double apply(double a, double b) {
       return a % b;
     }
+
+    /**
+     * 0 % x = 0
+     * @return true iff f(0, y) = 0 for any y
+     */
+    @Override
+    public boolean isLikeLeftMult() {
+      return true;
+    }
   };
 
   /** Function that returns <tt>a * b</tt>. */
-  public static final LikeMult MULT = new LikeMult() {
+  public static final DoubleDoubleFunction MULT = new DoubleDoubleFunction() {
     @Override
     public double apply(double a, double b) {
       return a * b;
     }
+
+    /**
+     * 0 * y = 0
+     * @return true iff f(0, y) = 0 for any y
+     */
+    @Override
+    public boolean isLikeLeftMult() {
+      return true;
+    }
+
+    /**
+     * x * 0 = 0
+     * @return true iff f(x, 0) = 0 for any x
+     */
+    @Override
+    public boolean isLikeRightMult() {
+      return true;
+    }
+
+    /**
+     * x * y = y * x
+     * @return true iff f(x, y) = f(y, x) for any x, y
+     */
+    @Override
+    public boolean isCommutative() {
+      return true;
+    }
   };
   
   /** Function that returns <tt>a + b</tt>. */
-  public static final LikeRightPlus PLUS = new LikeRightPlus() {
-    
-    @Override
-    public double apply(double a, double b) {
-      return a + b;
-    }
-  };
+  public static final DoubleDoubleFunction PLUS = plusMult(1);
 
   /** Function that returns <tt>Math.abs(a) + Math.abs(b)</tt>. */
-  public static final LikeRightPlus PLUS_ABS = new LikeRightPlus() {
+  public static final DoubleDoubleFunction PLUS_ABS = new DoubleDoubleFunction() {
 
     @Override
     public double apply(double a, double b) {
       return Math.abs(a) + Math.abs(b);
+    }
+
+    /**
+     * abs(x) + abs(y) = abs(y) + abs(x)
+     * @return true iff f(x, y) = f(y, x) for any x, y
+     */
+    @Override
+    public boolean isCommutative() {
+      return super.isCommutative();    //To change body of overridden methods use File | Settings | File Templates.
     }
   };
 
@@ -786,7 +860,7 @@ public final class Functions {
    * Constructs a function that returns <tt>a + b*constant</tt>. <tt>a</tt> and <tt>b</tt> are variables,
    * <tt>constant</tt> is fixed.
    */
-  public static LikeRightPlus plusMult(double constant) {
+  public static DoubleDoubleFunction plusMult(double constant) {
     return new PlusMult(constant);
   }
 

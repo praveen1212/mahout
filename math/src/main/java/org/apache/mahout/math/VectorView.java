@@ -17,9 +17,9 @@
 
 package org.apache.mahout.math;
 
-import java.util.Iterator;
-
 import com.google.common.collect.AbstractIterator;
+
+import java.util.Iterator;
 
 /** Implements subset view of a Vector */
 public class VectorView extends AbstractVector {
@@ -61,6 +61,14 @@ public class VectorView extends AbstractVector {
   @Override
   public boolean isSequentialAccess() {
     return vector.isSequentialAccess();
+  }
+
+  /**
+   * @return true iff this implementation can access ANY element in constant time.
+   */
+  @Override
+  public boolean isRandomAccess() {
+    return vector.isRandomAccess();
   }
 
   @Override
@@ -197,5 +205,23 @@ public class VectorView extends AbstractVector {
       result += delta * delta;
     }
     return result;
+  }
+
+  /**
+   * Used internally by assign() to update multiple indices and values at once.
+   * Only really useful for sparse vectors (especially SequentialAccessSparseVector).
+   * <p/>
+   * If someone ever adds a new type of sparse vectors, this method must merge (index, value) pairs into the vector.
+   *
+   * @param updates a mapping of indices to values to merge in the vector.
+   */
+  @Override
+  public void mergeUpdates(OrderedIntDoubleMapping updates) {
+    // TODO: see what the best thing to do here is.
+    OrderedIntDoubleMapping internalUpdates = updates;
+    for (int i = 0; i < internalUpdates.getNumMappings(); ++i) {
+      internalUpdates.setIndexAt(i, internalUpdates.indexAt(i) + offset);
+    }
+    vector.mergeUpdates(internalUpdates);
   }
 }

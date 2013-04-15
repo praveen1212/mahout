@@ -84,6 +84,14 @@ public class MatrixVectorView extends AbstractVector {
   }
 
   /**
+   * @return true iff this implementation can access ANY element in constant time.
+   */
+  @Override
+  public boolean isRandomAccess() {
+    return true;
+  }
+
+  /**
    * Iterates over all elements <p/> * NOTE: Implementations may choose to reuse the Element returned
    * for performance reasons, so if you need a copy of it, you should call {@link #getElement(int)} for
    * the given index
@@ -185,5 +193,22 @@ public class MatrixVectorView extends AbstractVector {
     r.rowStride = rowStride;
     r.columnStride = columnStride;
     return r;
+  }
+
+  /**
+   * Used internally by assign() to update multiple indices and values at once.
+   * Only really useful for sparse vectors (especially SequentialAccessSparseVector).
+   * <p/>
+   * If someone ever adds a new type of sparse vectors, this method must merge (index, value) pairs into the vector.
+   *
+   * @param updates a mapping of indices to values to merge in the vector.
+   */
+  @Override
+  public void mergeUpdates(OrderedIntDoubleMapping updates) {
+    int indices[] = updates.getIndices();
+    double values[] = updates.getValues();
+    for (int i = 0; i < updates.getNumMappings(); ++i) {
+      matrix.setQuick(row + rowStride * indices[i], column + columnStride * indices[i], values[i]);
+    }
   }
 }

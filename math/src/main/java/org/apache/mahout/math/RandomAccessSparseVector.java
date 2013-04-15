@@ -109,6 +109,13 @@ public class RandomAccessSparseVector extends AbstractVector {
     return this;
   }
 
+  @Override
+  public void mergeUpdates(OrderedIntDoubleMapping updates) {
+    for (int i = 0; i < updates.getNumMappings(); ++i) {
+      values.put(updates.getIndices()[i], updates.getValues()[i]);
+    }
+  }
+
   /**
    * @return false
    */
@@ -123,6 +130,14 @@ public class RandomAccessSparseVector extends AbstractVector {
   @Override
   public boolean isSequentialAccess() {
     return false;
+  }
+
+  /**
+   * @return true iff this implementation can access ANY element in constant time.
+   */
+  @Override
+  public boolean isRandomAccess() {
+    return true;
   }
 
   @Override
@@ -167,30 +182,51 @@ public class RandomAccessSparseVector extends AbstractVector {
     return new AllIterator();
   }
 
-  private final class NonDefaultIterator extends AbstractIterator<Element> {
+  private final class NonDefaultIterator implements Iterator<Element> {
+    private final class NonDefaultElement implements Element {
+      @Override
+      public double get() {
+        return mapElement.get();
+      }
 
-    private final RandomAccessElement element = new RandomAccessElement();
-    private final IntArrayList indices = new IntArrayList();
-    private int offset;
+      @Override
+      public int index() {
+        return mapElement.index();
+      }
+
+      @Override
+      public void set(double value) {
+        invalidateCachedLength();
+        mapElement.set(value);
+      }
+    }
+
+    private final NonDefaultElement element = new NonDefaultElement();
+    private final Iterator<MapElement> iterator;
+    private MapElement mapElement;
 
     private NonDefaultIterator() {
-      values.keys(indices);
+      this.iterator = values.iterator();
     }
 
     @Override
-    protected Element computeNext() {
-      if (offset >= indices.size()) {
-        return endOfData();
+    public boolean hasNext() {
+      return iterator.hasNext();
       }
-      element.index = indices.get(offset);
-      offset++;
+
+    @Override
+    public Element next() {
+      mapElement = iterator.next(); // This will throw an exception at the end of ennumeration.
       return element;
     }
 
+    @Override
+    public void remove() {
+      throw new UnsupportedOperationException();
+  }
   }
 
-  private final class AllIterator extends AbstractIterator<Element> {
-
+  private final class AllIterator implements Iterator<Element> {
     private final RandomAccessElement element = new RandomAccessElement();
 
     private AllIterator() {
@@ -198,19 +234,26 @@ public class RandomAccessSparseVector extends AbstractVector {
     }
 
     @Override
-    protected Element computeNext() {
-      if (element.index + 1 < size()) {
-        element.index++;
-        return element;
-      } else {
-        return endOfData();
-      }
+    public boolean hasNext() {
+      return element.index + 1 < size();
     }
 
+    @Override
+    public Element next() {
+      if (!hasNext()) {
+        throw new NoSuchElementException();
+      }
+        element.index++;
+        return element;
+      }
+
+    @Override
+    public void remove() {
+      throw new UnsupportedOperationException();
+  }
   }
 
   private final class RandomAccessElement implements Element {
-
     int index;
 
     @Override
@@ -233,5 +276,4 @@ public class RandomAccessSparseVector extends AbstractVector {
       }
     }
   }
-  
 }

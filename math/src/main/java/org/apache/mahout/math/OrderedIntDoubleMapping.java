@@ -19,7 +19,7 @@ package org.apache.mahout.math;
 
 import java.io.Serializable;
 
-final class OrderedIntDoubleMapping implements Serializable, Cloneable {
+public final class OrderedIntDoubleMapping implements Serializable, Cloneable {
 
   static final double DEFAULT_VALUE = 0.0;
 
@@ -44,28 +44,28 @@ final class OrderedIntDoubleMapping implements Serializable, Cloneable {
     this.numMappings = numMappings;
   }
 
-  int[] getIndices() {
+  public int[] getIndices() {
     return indices;
   }
 
-  int indexAt(int offset) {
+  public int indexAt(int offset) {
     return indices[offset];
   }
 
-  void setIndexAt(int offset, int index) {
+  public void setIndexAt(int offset, int index) {
     indices[offset] = index;
   }
 
-  double[] getValues() {
+  public double[] getValues() {
     return values;
   }
 
-  void setValueAt(int offset, double value) {
+  public void setValueAt(int offset, double value) {
     values[offset] = value;
   }
 
 
-  int getNumMappings() {
+  public int getNumMappings() {
     return numMappings;
   }
   

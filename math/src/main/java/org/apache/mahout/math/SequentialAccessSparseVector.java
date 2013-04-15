@@ -17,15 +17,11 @@
 
 package org.apache.mahout.math;
 
-import com.google.common.collect.AbstractIterator;
 import com.google.common.primitives.Doubles;
-import org.apache.mahout.math.function.Functions;
 
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
-
-import com.google.common.primitives.Doubles;
 
 /**
  * <p>
@@ -58,7 +54,7 @@ public class SequentialAccessSparseVector extends AbstractVector {
   }
 
   public SequentialAccessSparseVector(int cardinality) {
-    this(cardinality, Math.min(100, cardinality/1000)); // arbitrary estimate of 'sparseness'
+    this(cardinality, Math.min(100, cardinality / 1000)); // arbitrary estimate of 'sparseness'
   }
 
   public SequentialAccessSparseVector(int cardinality, int size) {
@@ -149,7 +145,7 @@ public class SequentialAccessSparseVector extends AbstractVector {
   }
 
   @Override
-  protected void assignPairs(OrderedIntDoubleMapping updates) {
+  public void mergeUpdates(OrderedIntDoubleMapping updates) {
     values.merge(updates);
   }
 
@@ -185,6 +181,14 @@ public class SequentialAccessSparseVector extends AbstractVector {
   @Override
   public boolean isSequentialAccess() {
     return true;
+  }
+
+  /**
+   * @return true iff this implementation can access ANY element in constant time.
+   */
+  @Override
+  public boolean isRandomAccess() {
+    return false;
   }
 
   /**

@@ -45,6 +45,19 @@ public class ConstantVector extends AbstractVector {
   }
 
   /**
+   * Used internally by assign() to update multiple indices and values at once.
+   * Only really useful for sparse vectors (especially SequentialAccessSparseVector).
+   * <p/>
+   * If someone ever adds a new type of sparse vectors, this method must merge (index, value) pairs into the vector.
+   *
+   * @param updates a mapping of indices to values to merge in the vector.
+   */
+  @Override
+  public void mergeUpdates(OrderedIntDoubleMapping updates) {
+    throw new UnsupportedOperationException("Cannot mutate a ConstantVector");
+  }
+
+  /**
    * @return true iff this implementation should be considered dense -- that it explicitly represents
    *         every value
    */
@@ -60,6 +73,14 @@ public class ConstantVector extends AbstractVector {
    */
   @Override
   public boolean isSequentialAccess() {
+    return true;
+  }
+
+  /**
+   * @return true iff this implementation can access ANY element in constant time.
+   */
+  @Override
+  public boolean isRandomAccess() {
     return true;
   }
 

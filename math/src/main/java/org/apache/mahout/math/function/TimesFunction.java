@@ -16,7 +16,7 @@
  */
 package org.apache.mahout.math.function;
 
-public final class TimesFunction implements DoubleDoubleFunction {
+public final class TimesFunction extends DoubleDoubleFunction {
 
   /**
    * Computes the product of two numbers.

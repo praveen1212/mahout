@@ -17,13 +17,12 @@
 
 package org.apache.mahout.math;
 
-import java.util.Iterator;
-
+import com.google.common.base.Preconditions;
 import org.apache.mahout.common.RandomUtils;
-import org.apache.mahout.math.function.DoubleDoubleFunction;
-import org.apache.mahout.math.function.DoubleFunction;
-import org.apache.mahout.math.function.Functions;
+import org.apache.mahout.math.function.*;
 import org.apache.mahout.math.set.OpenIntHashSet;
+
+import java.util.Iterator;
 
 /** Implementations of generic capabilities like sum of elements and dot products */
 public abstract class AbstractVector implements Vector, LengthCachingVector {
@@ -37,6 +36,7 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     this.size = size;
   }
 
+  // TODO: Investigate the kinds of functions used here and possible optimizations.
   @Override
   public double aggregate(DoubleDoubleFunction aggregator, DoubleFunction map) {
     if (size < 1) {
@@ -49,16 +49,120 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     return result;
   }
 
-  @Override
-  public double aggregate(Vector other, DoubleDoubleFunction aggregator, DoubleDoubleFunction combiner) {
-    if (size < 1) {
-      throw new IllegalArgumentException("Cannot aggregate empty vector");
-    }
-    double result = combiner.apply(getQuick(0), other.getQuick(0));
-    for (int i = 1; i < size; i++) {
-      result = aggregator.apply(result, combiner.apply(getQuick(i), other.getQuick(i)));
+  protected double aggregateLikeDotProductIterateOne(double result,
+                                                     Iterator<Element> thisIterator, Vector other,
+                                                     DoubleDoubleFunction aggregator, DoubleDoubleFunction combiner,
+                                                     boolean swap) {
+    Element thisElement;
+    Element thatElement;
+    while (thisIterator.hasNext()) {
+      thisElement = thisIterator.next();
+      thatElement = other.getElement(thisElement.index());
+      if (thatElement.get() != 0) {
+        result = aggregator.apply(result,
+            swap ? combiner.apply(thatElement.get(), thisElement.get()) :
+                combiner.apply(thisElement.get(), thatElement.get()));
+      }
     }
     return result;
+  }
+
+  protected double aggregateLikeDotProductIterateBoth(double result,
+                                                      Iterator<Element> thisIterator, Iterator<Element> thatIterator,
+                                                      DoubleDoubleFunction aggregator, DoubleDoubleFunction combiner) {
+    Element thisElement = null;
+    Element thatElement = null;
+    boolean advanceThis = true;
+    boolean advanceThat = true;
+    while (thisIterator.hasNext() && thatIterator.hasNext()) {
+      if (advanceThis) {
+        thisElement = thisIterator.next();
+      }
+      if (advanceThat) {
+        thatElement = thatIterator.next();
+      }
+      if (thisElement.index() == thatElement.index()) {
+        result = aggregator.apply(result, combiner.apply(thisElement.get(), thatElement.get()));
+        advanceThis = true;
+        advanceThat = true;
+      } else {
+        if (thisElement.index() < thatElement.index()) { // f(x, 0) = 0
+          advanceThis = true;
+          advanceThat = false;
+        } else { // f(0, y) = 0
+          advanceThis = false;
+          advanceThat = true;
+        }
+      }
+    }
+    return result;
+  }
+
+  public double aggregateLikeDotProduct(Vector other, DoubleDoubleFunction aggregator, DoubleDoubleFunction combiner) {
+    Preconditions.checkArgument(size == other.size(), "Vector sizes differ");
+    Preconditions.checkArgument(size > 0, "Cannot aggregate empty vectors");
+
+    Iterator<Element> thisIterator = iterateNonZero();
+    Iterator<Element> thatIterator = other.iterateNonZero();
+    if (!thisIterator.hasNext() || !thatIterator.hasNext()) {
+      return 0;
+    }
+    Element thisElement = thisIterator.next();
+    Element thatElement = thatIterator.next();
+    double result;
+    if (thisElement.index() == thatElement.index()) {
+      result = combiner.apply(thisElement.get(), thatElement.get());
+    } else {
+      result = 0;
+      thisIterator = iterateNonZero();
+      thatIterator = other.iterateNonZero();
+    }
+
+    int numNondefaultThis = this.getNumNondefaultElements();
+    int numNondefaultThat = other.getNumNondefaultElements();
+    double bothCost = numNondefaultThis + numNondefaultThat;
+    double oneCostThis = other.isRandomAccess() ?
+        numNondefaultThis : (numNondefaultThis * Functions.LOG2.apply(numNondefaultThat));
+    double oneCostThat = isRandomAccess() ?
+        numNondefaultThat : (numNondefaultThat * Functions.LOG2.apply(numNondefaultThis));
+
+    if (oneCostThis <= oneCostThat && oneCostThis <= bothCost) {
+      return aggregateLikeDotProductIterateOne(result, thisIterator, other, aggregator, combiner, false);
+    }
+    if (oneCostThat < oneCostThis && oneCostThat <= bothCost) {
+      return aggregateLikeDotProductIterateOne(result, thatIterator, this, aggregator, combiner, true);
+    }
+    return aggregateLikeDotProductIterateBoth(result, thisIterator, thatIterator, aggregator, combiner);
+  }
+
+  @Override
+  public double aggregate(Vector other, DoubleDoubleFunction aggregator, DoubleDoubleFunction combiner) {
+    Preconditions.checkArgument(size == other.size(), "Vector sizes differ");
+    Preconditions.checkArgument(size > 0, "Cannot aggregate empty vectors");
+
+    if ((isSequentialAccess() && other.isSequentialAccess()) || aggregator.isCommutative()) {
+      if (aggregator.isLikeRightPlus() && combiner.isLikeRightMult()) {
+        return aggregateLikeDotProduct(other, aggregator, combiner);
+      }
+
+      Iterator<Element> thisIterator = this.iterator();
+      Iterator<Element> thatIterator = other.iterator();
+      Element thisElement = thisIterator.next();
+      Element thatElement = thatIterator.next();
+      double result = combiner.apply(thisElement.get(), thatElement.get());
+      while (thisIterator.hasNext() && thatIterator.hasNext()) {
+        thisElement = thisIterator.next();
+        thatElement = thatIterator.next();
+        result = aggregator.apply(result, combiner.apply(thisElement.get(), thatElement.get()));
+      }
+      return result;
+    } else {
+      double result = combiner.apply(getQuick(0), other.getQuick(0));
+      for (int i = 1; i < size(); ++i) {
+        result = aggregator.apply(result, combiner.apply(getQuick(i), other.getQuick(i)));
+      }
+      return result;
+    }
   }
 
   /**
@@ -93,6 +197,7 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     }
   }
 
+  // TODO: should be assign + like
   @Override
   public Vector divide(double x) {
     if (x == 1.0) {
@@ -107,6 +212,7 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     return result;
   }
 
+  // TODO: should be in terms of aggregate
   @Override
   public double dot(Vector x) {
     if (size != x.size()) {
@@ -194,6 +300,7 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     return result;
   }
 
+  // TODO: should be in terms of aggregate
   protected double dotSelf() {
     double result = 0.0;
     Iterator<Element> i = iterateNonZero();
@@ -217,6 +324,7 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     return new LocalElement(index);
   }
 
+  // TODO: should be in terms of assign
   @Override
   public Vector minus(Vector that) {
     if (size != that.size()) {
@@ -281,6 +389,8 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     }
   }
 
+  // p-norm, where p = power
+  // TODO: express as an aggregate
   @Override
   public double norm(double power) {
     if (power < 0.0) {
@@ -526,6 +636,7 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     return r;
   }
 
+  // TODO: express as aggregate
   @Override
   public double maxValue() {
     double result = Double.NEGATIVE_INFINITY;
@@ -542,6 +653,7 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     return result;
   }
 
+  // TODO: express as aggregate
   @Override
   public int maxValueIndex() {
     int result = -1;
@@ -570,6 +682,7 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     return result;
   }
 
+  // TODO: express as aggregate
   @Override
   public double minValue() {
     double result = Double.POSITIVE_INFINITY;
@@ -586,6 +699,7 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     return result;
   }
 
+  // TODO: express as aggregate
   @Override
   public int minValueIndex() {
     int result = -1;
@@ -614,6 +728,7 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     return result;
   }
 
+  // TODO: express as aggregate
   @Override
   public Vector plus(double x) {
     Vector result = like().assign(this);
@@ -627,6 +742,7 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     return result;
   }
 
+  // TODO: express as aggregate
   @Override
   public Vector plus(Vector x) {
     if (size != x.size()) {
@@ -656,6 +772,7 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     setQuick(index, value);
   }
 
+  // TODO: express as aggregate
   @Override
   public Vector times(double x) {
     if (x == 0.0) {
@@ -676,6 +793,7 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     return result;
   }
 
+  // TODO: express as assign
   @Override
   public Vector times(Vector x) {
     if (size != x.size()) {
@@ -711,6 +829,7 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     return result;
   }
 
+  // TODO: use iterators
   @Override
   public Vector assign(double value) {
     for (int i = 0; i < size; i++) {
@@ -719,6 +838,7 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     return this;
   }
 
+  // TODO: use iterators
   @Override
   public Vector assign(double[] values) {
     if (size != values.length) {
@@ -730,6 +850,7 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     return this;
   }
 
+  // TODO: use iterators
   @Override
   public Vector assign(Vector other) {
     if (size != other.size()) {
@@ -761,6 +882,61 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     return this;
   }
 
+  /*
+  @Override
+  public Vector assign(Vector other, DoubleDoubleFunction function) {
+    if (size != other.size()) {
+      throw new CardinalityException(size, other.size());
+    }
+
+      // special case: we only need to iterate over the non-zero elements of the vector to add
+    if (Functions.PLUS.equals(function) || Functions.PLUS_ABS.equals(function)) {
+      Iterator<Vector.Element> nonZeroElements = other.iterateNonZero();
+      while (nonZeroElements.hasNext()) {
+        Vector.Element e = nonZeroElements.next();
+        setQuick(e.index(), function.apply(getQuick(e.index()), e.get()));
+      }
+    } else {
+      for (int i = 0; i < size; i++) {
+        setQuick(i, function.apply(getQuick(i), other.getQuick(i)));
+      }
+    }
+    return this;
+  }
+  */
+
+  /**
+   * Assigns the current vector, x the value of f(x, y) where f is applied to every component of x and y sequentially.
+   * xi = f(xi, yi).
+   * Let:
+   * - d = cardinality of x and y (they must be equal for the assignment to be possible);
+   * - nx = number of nonzero elements in x;
+   * - ny = number of nonzero elements in y;
+   *
+   * If the function is densifying (f(0, 0) != 0), the resulting vector will be dense and the complexity
+   * of this function is O(d).
+   * Otherwise, the worst-case complexity if O(nx + ny).
+   *
+   * Note, that for two classes of functions we can do better:
+   * a. if f(x, 0) = x (function instanceof LikeRightPlus), the zeros in y can't affect the values of x, so it's
+   * enough to iterate through the nonzero values of y to compute the result. For each nonzero yi, we need to find
+   * the corresponding xi and update it accordingly.
+   * b. if f(0, y) = 0 (function instanceof LikeLeftMult), the zeros in x are not affected by any value, so it's
+   * enough to iterate through the nonzero values of x to compute the result. For each nonzero xi, we need to find
+   * the corresponding yi and update xi accordingly.
+   * Finding a random element in a vector given its index however is O(log n) for sequential access sparse vectors
+   * (because of binary search).
+   * Therefore, in case a. if x is sequential, the complexity is O(ny * log nx) otherwise it's O(ny + nx).
+   * Similarly, in case a. if x is sequential, the complexity is O(nx * log ny) otherwise it's O(nx + ny).
+   *
+   * Practically, we use a. or b. even for sequential vectors when m * log n < m + n that is m < n / (log n - 1),
+   * where n is the number of nonzero elements in the sequential vector and m is the number of elements in the other
+   * vector.
+   *
+   * @param other    a Vector containing the second arguments to the function (y).
+   * @param function a DoubleDoubleFunction to apply (f).
+   * @return this vector, after being updated.
+   */
   @Override
   public Vector assign(Vector other, DoubleDoubleFunction function) {
     if (size != other.size()) {
@@ -768,67 +944,114 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     }
 
     boolean isDensifying = function.apply(0, 0) != 0;
+    if (isDensifying) {
+      // Sanity checks that the function don't claim to implement the special interfaces.
+      if (function.isLikeRightPlus()) {
+        throw new IllegalArgumentException("Invalid function definition. f(0, 0) != 0 but it claims that f(x, 0) = x");
+      }
+      if (function.isLikeLeftMult()) {
+        throw new IllegalArgumentException("Invalid function definition. f(0, 0) != 0 but it claims that f(0, y) = 0");
+      }
+    }
+
+    Iterator<Element> thisIterator;
+    Iterator<Element> thatIterator;
+    Element thisElement;
+    Element thatElement;
+    // The resulting vector will be dense so we'll just iterate through all the elements.
     if (isDensifying || !isSequentialAccess() || !other.isSequentialAccess()) {
-      /* special case: we only need to iterate over the non-zero elements of the vector to add */
-      if (Functions.PLUS.equals(function) || Functions.PLUS_ABS.equals(function)) {
-        Iterator<Vector.Element> nonZeroElements = other.iterateNonZero();
-        while (nonZeroElements.hasNext()) {
-          Vector.Element e = nonZeroElements.next();
-          setQuick(e.index(), function.apply(getQuick(e.index()), e.get()));
+      if (isSequentialAccess() && other.isSequentialAccess()) {
+        thisIterator = this.iterator();
+        thatIterator = other.iterator();
+        while (thisIterator.hasNext() && thatIterator.hasNext()) {
+          thisElement = thisIterator.next();
+          thisElement.set(function.apply(thisElement.get(), thatIterator.next().get()));
         }
       } else {
-        for (int i = 0; i < size; i++) {
+        for (int i = 0; i < size; ++i) {
           setQuick(i, function.apply(getQuick(i), other.getQuick(i)));
         }
       }
     } else {
-      Iterator<Element> thisNonZero = this.iterateNonZero();
-      Iterator<Element> thatNonZero = other.iterateNonZero();
-      Element thisElement = null;
-      Element thatElement = null;
-      boolean advanceThis = true;
-      boolean advanceThat = true;
-      OrderedIntDoubleMapping thisUpdates = new OrderedIntDoubleMapping();
-
-      while (thisNonZero.hasNext() && thatNonZero.hasNext()) {
-        if (advanceThis) {
-          thisElement = thisNonZero.next();
+      // We can get away with just iterating through the non-zero elements in both vectors.
+      // If however our function is special (xZeroX or zeroYZero is true) we can just iterate through one of the
+      // vectors.
+      double nx = getNumNondefaultElements();
+      double ny = other.getNumNondefaultElements();
+      if (function.isLikeRightPlus() && (isRandomAccess()
+          || (!isRandomAccess() && ny < (nx / (Functions.LOG2.apply(nx) - 1))))) {
+        // When f(x, 0) = x, the 0s in "other" will not affect "this" in any way. So, we can just iterate though
+        // the non-zero values in "other" and apply the function where we need to.
+        thatIterator = other.iterateNonZero();
+        OrderedIntDoubleMapping thisUpdates = new OrderedIntDoubleMapping();
+        while (thatIterator.hasNext()) {
+          thatElement = thatIterator.next();
+          thisElement = this.getElement(thatElement.index());
+          if (thisElement.get() == 0) {
+            thisUpdates.set(thatElement.index(), function.apply(0, thatElement.get()));
+          } else {
+            thisElement.set(function.apply(thisElement.get(), thatElement.get()));
+          }
         }
-        if (advanceThat) {
-          thatElement = thatNonZero.next();
-        }
-        if (thisElement.index() == thatElement.index()) {
+        mergeUpdates(thisUpdates);
+      } else if (function.isLikeLeftMult() && (other.isRandomAccess()
+          || (!other.isRandomAccess() && nx < (ny / Functions.LOG2.apply(ny) - 1)))) {
+        // When f(0, y) = 0, the 0s in "this" will not be affected "this" in any way. So, we can just iterate though
+        // the non-zero values in "other" and apply the function where we need to.
+        thisIterator = iterateNonZero();
+        while (thisIterator.hasNext()) {
+          thisElement = thisIterator.next();
+          thatElement = other.getElement(thisElement.index());
           thisElement.set(function.apply(thisElement.get(), thatElement.get()));
-          advanceThis = true;
-          advanceThat = true;
-          continue;
         }
-        if (thisElement.index() < thatElement.index()) {
-          thisElement.set(function.apply(thatElement.get(), 0));
-          advanceThis = true;
-          advanceThat = false;
-        } else {
-          double result = function.apply(0, thisElement.get());
+      } else {
+        thisIterator = this.iterateNonZero();
+        thatIterator = other.iterateNonZero();
+        thisElement = thatElement = null;
+        boolean advanceThis = true;
+        boolean advanceThat = true;
+        OrderedIntDoubleMapping thisUpdates = new OrderedIntDoubleMapping();
+
+        while (thisIterator.hasNext() && thatIterator.hasNext()) {
+          if (advanceThis) {
+            thisElement = thisIterator.next();
+          }
+          if (advanceThat) {
+            thatElement = thatIterator.next();
+          }
+          if (thisElement.index() == thatElement.index()) {
+            thisElement.set(function.apply(thisElement.get(), thatElement.get()));
+            advanceThis = true;
+            advanceThat = true;
+          } else {
+            if (thisElement.index() < thatElement.index()) { // f(x, 0)
+              thisElement.set(function.apply(thisElement.get(), 0));
+              advanceThis = true;
+              advanceThat = false;
+            } else {
+              double result = function.apply(0, thatElement.get());
+              if (result != 0) { // f(0, y) != 0
+                thisUpdates.set(thatElement.index(), result);
+              }
+              advanceThis = false;
+              advanceThat = true;
+            }
+          }
+        }
+
+        while (thisIterator.hasNext()) {
+          thisElement = thisIterator.next();
+          thisElement.set(function.apply(thisElement.get(), 0));
+        }
+        while (thatIterator.hasNext()) {
+          thatElement = thatIterator.next();
+          double result = function.apply(0, thatElement.get());
           if (result != 0) {
             thisUpdates.set(thatElement.index(), result);
           }
-          advanceThis = false;
-          advanceThat = true;
         }
+        mergeUpdates(thisUpdates);
       }
-
-      while (thisNonZero.hasNext()) {
-        thisElement = thisNonZero.next();
-        thisElement.set(function.apply(thisElement.get(), 0));
-      }
-      while (thatNonZero.hasNext()) {
-        thatElement = thatNonZero.next();
-        double result = function.apply(0, thatElement.get());
-        if (result != 0) {
-          thisUpdates.set(thatElement.index(), result);
-        }
-      }
-      assignPairs(thisUpdates);
     }
     return this;
   }
@@ -841,10 +1064,9 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
    *
    * @param updates a mapping of indices to values to merge in the vector.
    */
-  protected void assignPairs(OrderedIntDoubleMapping updates) {
-    throw new UnsupportedOperationException("assignPairs() is not implemented in AbstractVector; override if needed");
-  }
+  public abstract void mergeUpdates(OrderedIntDoubleMapping updates);
 
+  // TODO: looks fishy, why the getQuick()?
   @Override
   public Matrix cross(Vector other) {
     Matrix result = matrixLike(size, other.size());

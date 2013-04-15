@@ -126,6 +126,14 @@ public class NamedVector implements Vector {
     return delegate.isSequentialAccess();
   }
 
+  /**
+   * @return true iff this implementation can access ANY element in constant time.
+   */
+  @Override
+  public boolean isRandomAccess() {
+    return delegate.isSequentialAccess();
+  }
+
   @Override
   public Iterator<Element> iterator() {
     return delegate.iterator();
@@ -139,6 +147,16 @@ public class NamedVector implements Vector {
   @Override
   public Element getElement(int index) {
     return delegate.getElement(index);
+  }
+
+  /**
+   * Merge a set of (index, value) pairs into the vector.
+   *
+   * @param updates
+   */
+  @Override
+  public void mergeUpdates(OrderedIntDoubleMapping updates) {
+    delegate.mergeUpdates(updates);
   }
 
   @Override

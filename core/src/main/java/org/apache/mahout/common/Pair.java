@@ -20,10 +20,10 @@ package org.apache.mahout.common;
 import java.io.Serializable;
 
 /** A simple (ordered) pair of two objects. Elements may be null. */
-public final class Pair<A,B> implements Comparable<Pair<A,B>>, Serializable {
+public class Pair<A ,B> implements Comparable<Pair<A, B>>, Serializable {
   
-  private final A first;
-  private final B second;
+  protected A first;
+  protected B second;
   
   public Pair(A first, B second) {
     this.first = first;
