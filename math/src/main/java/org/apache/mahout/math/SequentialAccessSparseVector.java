@@ -17,11 +17,11 @@
 
 package org.apache.mahout.math;
 
-import com.google.common.primitives.Doubles;
-
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+
+import com.google.common.primitives.Doubles;
 
 /**
  * <p>
@@ -54,7 +54,7 @@ public class SequentialAccessSparseVector extends AbstractVector {
   }
 
   public SequentialAccessSparseVector(int cardinality) {
-    this(cardinality, Math.min(100, cardinality / 1000)); // arbitrary estimate of 'sparseness'
+    this(cardinality, Math.min(100, cardinality/1000)); // arbitrary estimate of 'sparseness'
   }
 
   public SequentialAccessSparseVector(int cardinality, int size) {
@@ -78,7 +78,7 @@ public class SequentialAccessSparseVector extends AbstractVector {
       // in order as items are added, so it's better to sort the other
       // Vector's elements by index and then add them to this
       copySortedRandomAccessSparseVector(other);
-    }    
+    }
   }
 
   // Sorts a RandomAccessSparseVectors Elements before adding them to this
@@ -281,7 +281,6 @@ public class SequentialAccessSparseVector extends AbstractVector {
   }
 
   private final class NonDefaultElement implements Element {
-
     private int offset = -1;
 
     void advanceOffset() {
@@ -310,7 +309,6 @@ public class SequentialAccessSparseVector extends AbstractVector {
   }
 
   private final class AllElement implements Element {
-
     private int index = -1;
     private int nextOffset;
 
@@ -355,7 +353,7 @@ public class SequentialAccessSparseVector extends AbstractVector {
   private static final class OrderedElement implements Comparable<OrderedElement> {
     private final int index;
     private final double value;
-    
+
     OrderedElement(int index, double value) {
       this.index = index;
       this.value = value;
@@ -381,7 +379,5 @@ public class SequentialAccessSparseVector extends AbstractVector {
       OrderedElement other = (OrderedElement) o;
       return index == other.index && value == other.value;
     }
-
   }
-  
 }

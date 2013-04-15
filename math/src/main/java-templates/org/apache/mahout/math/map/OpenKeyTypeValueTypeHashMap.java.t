@@ -441,7 +441,7 @@ public class Open${keyTypeCap}${valueTypeCap}HashMap extends Abstract${keyTypeCa
   @Override
   public boolean put(${keyType} key, ${valueType} value) {
     int i = indexOfInsertion(key);
-    if (i < 0) { //already contained
+    if (i < 0) { // already contained
       i = -i - 1;
       this.values[i] = value;
       return false;

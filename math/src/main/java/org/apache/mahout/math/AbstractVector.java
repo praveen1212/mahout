@@ -17,13 +17,15 @@
 
 package org.apache.mahout.math;
 
-import com.google.common.base.Preconditions;
-import org.apache.mahout.common.RandomUtils;
-import org.apache.mahout.math.function.*;
-import org.apache.mahout.math.set.OpenIntHashSet;
-
 import java.util.Iterator;
 
+import org.apache.mahout.common.RandomUtils;
+import org.apache.mahout.math.function.DoubleDoubleFunction;
+import org.apache.mahout.math.function.DoubleFunction;
+import org.apache.mahout.math.function.Functions;
+import org.apache.mahout.math.set.OpenIntHashSet;
+
+import com.google.common.base.Preconditions;
 /** Implementations of generic capabilities like sum of elements and dot products */
 public abstract class AbstractVector implements Vector, LengthCachingVector {
 
@@ -829,6 +831,18 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     return result;
   }
 
+  @Override
+  public int getNumNondefaultElements() {
+    int count = 0;
+    Iterator<Element> it = iterateNonZero();
+    while (it.hasNext()) {
+      if (it.next().get() != 0.0) {
+        count++;
+      }
+    }
+    return count;
+  }
+
   // TODO: use iterators
   @Override
   public Vector assign(double value) {
@@ -889,7 +903,7 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
       throw new CardinalityException(size, other.size());
     }
 
-      // special case: we only need to iterate over the non-zero elements of the vector to add
+    // special case: we only need to iterate over the non-zero elements of the vector to add
     if (Functions.PLUS.equals(function) || Functions.PLUS_ABS.equals(function)) {
       Iterator<Vector.Element> nonZeroElements = other.iterateNonZero();
       while (nonZeroElements.hasNext()) {

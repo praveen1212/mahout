@@ -17,14 +17,16 @@
 
 package org.apache.mahout.math;
 
-import com.google.common.collect.Sets;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+import java.util.Set;
+
 import org.apache.mahout.math.Vector.Element;
 import org.apache.mahout.math.function.Functions;
 import org.junit.Test;
 
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.NoSuchElementException;
+import com.google.common.collect.Sets;
 
 public final class VectorTest extends MahoutTestCase {
 
@@ -926,23 +928,26 @@ public final class VectorTest extends MahoutTestCase {
   public void testIteratorRasv() {
     testIterator(new RandomAccessSparseVector(99));
     testEmptyAllIterator(new RandomAccessSparseVector(0));
+    testExample1NonZeroIterator(new RandomAccessSparseVector(13));
   }
 
   @Test
   public void testIteratorSasv() {
     testIterator(new SequentialAccessSparseVector(99));
     testEmptyAllIterator(new SequentialAccessSparseVector(0));
+    testExample1NonZeroIterator(new SequentialAccessSparseVector(13));
   }
 
   @Test
   public void testIteratorDense() {
     testIterator(new DenseVector(99));
     testEmptyAllIterator(new DenseVector(0));
+    testExample1NonZeroIterator(new DenseVector(13));
   }
 
   private void testIterator(Vector vector) {
-    testSkipsLast(vector.like());
     testSkips(vector.like());
+    testSkipsLast(vector.like());
     testEmptyNonZeroIterator(vector.like());
     testSingleNonZeroIterator(vector.like());
   }
@@ -1077,5 +1082,56 @@ public final class VectorTest extends MahoutTestCase {
     } catch (NoSuchElementException e) {
       // expected;
     }
+  }
+
+  // Test NonZeroIterator on double[] { 0, 2, 0, 0, 8, 3, 0, 6, 0, 1, 1, 2, 1 }
+  private void testExample1NonZeroIterator(Vector vector) {
+    double[] val = new double[] { 0, 2, 0, 0, 8, 3, 0, 6, 0, 1, 1, 2, 1 };
+    for (int i = 0; i < val.length; ++i) {
+      vector.set(i, val[i]);
+    }
+
+    Set<Integer> expected = Sets.newHashSet(1, 4, 5, 7, 9, 10, 11, 12);
+    Set<Double> expectedValue = Sets.newHashSet(2.0, 8.0, 3.0, 6.0, 1.0);
+    // Test non zero iterator.
+    Iterator<Element> it = vector.iterateNonZero();
+    int i = 0;
+    while (it.hasNext()) {
+      Element e = it.next();
+      assertTrue(expected.contains(e.index()));
+      assertTrue(expectedValue.contains(e.get()));
+      ++i;
+    }
+    assertEquals(8, i);
+
+    // Check if the non default elements are correct.
+    assertEquals(8, vector.getNumNondefaultElements());
+
+    // Set one element to 0.
+    it = vector.iterateNonZero();
+    i = 0;
+    while (it.hasNext()) {
+      Element e = it.next();
+      if (e.index() == 5) {
+        e.set(0.0);
+      }
+      ++i;
+    }
+    assertEquals(8, i);
+    assertEquals(7, vector.getNumNondefaultElements());
+
+    // Remove one element
+    it = vector.iterateNonZero();
+    i = 0;
+    while (it.hasNext()) {
+      Element e = it.next();
+      if (e.index() == 5) {
+        vector.set(5, 0.0);
+      }
+      ++i;
+    }
+    assertEquals(7, i); // This just got messed up.
+    // TODO: throw an exception if the underlying hashmap or array length is modified.
+    assertEquals(7, vector.getNumNondefaultElements());
   }
 }

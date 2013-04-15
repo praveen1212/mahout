@@ -17,11 +17,11 @@
 
 package org.apache.mahout.math;
 
-import org.apache.mahout.math.map.OpenIntDoubleHashMap;
-import org.apache.mahout.math.map.OpenIntDoubleHashMap.MapElement;
-
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+
+import org.apache.mahout.math.map.OpenIntDoubleHashMap;
+import org.apache.mahout.math.map.OpenIntDoubleHashMap.MapElement;
 
 
 /** Implements vector that only stores non-zero doubles */
@@ -156,11 +156,6 @@ public class RandomAccessSparseVector extends AbstractVector {
   }
 
   @Override
-  public int getNumNondefaultElements() {
-    return values.size();
-  }
-
-  @Override
   public RandomAccessSparseVector like() {
     return new RandomAccessSparseVector(size(), values.size());
   }
@@ -201,9 +196,11 @@ public class RandomAccessSparseVector extends AbstractVector {
       }
     }
 
-    private final NonDefaultElement element = new NonDefaultElement();
-    private final Iterator<MapElement> iterator;
+
     private MapElement mapElement;
+    private final NonDefaultElement element = new NonDefaultElement();
+
+    private final Iterator<MapElement> iterator;
 
     private NonDefaultIterator() {
       this.iterator = values.iterator();
@@ -212,7 +209,7 @@ public class RandomAccessSparseVector extends AbstractVector {
     @Override
     public boolean hasNext() {
       return iterator.hasNext();
-      }
+    }
 
     @Override
     public Element next() {
@@ -223,7 +220,7 @@ public class RandomAccessSparseVector extends AbstractVector {
     @Override
     public void remove() {
       throw new UnsupportedOperationException();
-  }
+    }
   }
 
   private final class AllIterator implements Iterator<Element> {
@@ -243,14 +240,14 @@ public class RandomAccessSparseVector extends AbstractVector {
       if (!hasNext()) {
         throw new NoSuchElementException();
       }
-        element.index++;
-        return element;
-      }
+      element.index++;
+      return element;
+    }
 
     @Override
     public void remove() {
       throw new UnsupportedOperationException();
-  }
+    }
   }
 
   private final class RandomAccessElement implements Element {
