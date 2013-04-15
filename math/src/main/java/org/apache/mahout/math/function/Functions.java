@@ -322,7 +322,7 @@ public final class Functions {
   };
 
   /** Function that returns <tt>a / b</tt>. */
-  public static final DDFZeroYEqualsZero DIV = new DDFZeroYEqualsZero() {
+  public static final LikeLeftMult DIV = new LikeLeftMult() {
 
     @Override
     public double apply(double a, double b) {
@@ -421,15 +421,10 @@ public final class Functions {
   };
 
   /** Function that returns <tt>a - b</tt>. */
-  public static final DDFXZeroEqualsX MINUS = plusMult(-1);
-  /*
-  new DoubleDoubleFunction() {
-    public final double apply(double a, double b) { return a - b; }
-  };
-  */
+  public static final LikeRightPlus MINUS = plusMult(-1);
 
   /** Function that returns <tt>a % b</tt>. */
-  public static final DDFZeroYEqualsZero MOD = new DDFZeroYEqualsZero() {
+  public static final LikeLeftMult MOD = new LikeLeftMult() {
 
     @Override
     public double apply(double a, double b) {
@@ -438,8 +433,7 @@ public final class Functions {
   };
 
   /** Function that returns <tt>a * b</tt>. */
-  public static final DDFZeroYEqualsZero MULT = new DDFZeroYEqualsZero() {
-
+  public static final LikeMult MULT = new LikeMult() {
     @Override
     public double apply(double a, double b) {
       return a * b;
@@ -447,7 +441,7 @@ public final class Functions {
   };
   
   /** Function that returns <tt>a + b</tt>. */
-  public static final DDFXZeroEqualsX PLUS = new DDFXZeroEqualsX() {
+  public static final LikeRightPlus PLUS = new LikeRightPlus() {
     
     @Override
     public double apply(double a, double b) {
@@ -456,7 +450,7 @@ public final class Functions {
   };
 
   /** Function that returns <tt>Math.abs(a) + Math.abs(b)</tt>. */
-  public static final DDFXZeroEqualsX PLUS_ABS = new DDFXZeroEqualsX() {
+  public static final LikeRightPlus PLUS_ABS = new LikeRightPlus() {
 
     @Override
     public double apply(double a, double b) {
@@ -792,13 +786,8 @@ public final class Functions {
    * Constructs a function that returns <tt>a + b*constant</tt>. <tt>a</tt> and <tt>b</tt> are variables,
    * <tt>constant</tt> is fixed.
    */
-  public static DDFXZeroEqualsX plusMult(double constant) {
+  public static LikeRightPlus plusMult(double constant) {
     return new PlusMult(constant);
-    /*
-    return new DoubleDoubleFunction() {
-      public final double apply(double a, double b) { return a + b*constant; }
-    };
-    */
   }
 
   /** Constructs a function that returns <tt>Math.pow(a,b)</tt>. <tt>a</tt> is a variable, <tt>b</tt> is fixed. */

@@ -2,12 +2,12 @@ package org.apache.mahout.math.function;
 
 /**
  * Empty interface that should be implemented by functions f(x, y) where:
- * f(0, y) = 0 for any y.
+ * f(x, 0) = 0 for any x.
  *
  * This specialized interface enables faster vector operations.
  * If a function has this property, it should implement this interface.
  *
- * This is true for functions like MULT: 0 * y = 0.
+ * This is true for functions like MULT: x * 0 = 0.
  */
-public interface DDFZeroYEqualsZero extends DoubleDoubleFunction {
+public interface LikeRightMult extends DoubleDoubleFunction {
 }

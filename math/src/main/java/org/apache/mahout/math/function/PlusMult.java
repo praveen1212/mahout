@@ -41,7 +41,7 @@ package org.apache.mahout.math.function;
  * f(x, 0) = x + 0 * constant = x.
  */
 
-public final class PlusMult implements DDFXZeroEqualsX {
+public final class PlusMult implements LikeRightPlus {
 
   private double multiplicator;
 
