@@ -155,6 +155,12 @@ public class DenseVector extends AbstractVector {
   }
 
   @Override
+  public void incrementQuick(int index, double increment) {
+    invalidateCachedLength();
+    values[index] += increment;
+  }
+
+  @Override
   public Vector assign(double value) {
     invalidateCachedLength();
     Arrays.fill(values, value);

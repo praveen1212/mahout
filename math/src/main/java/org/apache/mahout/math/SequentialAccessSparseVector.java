@@ -54,7 +54,8 @@ public class SequentialAccessSparseVector extends AbstractVector {
   }
 
   public SequentialAccessSparseVector(int cardinality) {
-    this(cardinality, Math.min(100, cardinality/1000)); // arbitrary estimate of 'sparseness'
+    this(cardinality, Math.min(100, cardinality / 1000 < 10 ? 10 : cardinality / 1000)); // arbitrary estimate of
+                                                                                           // 'sparseness'
   }
 
   public SequentialAccessSparseVector(int cardinality, int size) {
@@ -214,13 +215,19 @@ public class SequentialAccessSparseVector extends AbstractVector {
   }
 
   @Override
-  public int getNumNondefaultElements() {
-    return values.getNumMappings();
+  public void incrementQuick(int index, double increment) {
+    invalidateCachedLength();
+    values.increment(index, increment);
   }
 
   @Override
   public SequentialAccessSparseVector like() {
     return new SequentialAccessSparseVector(size(), values.getNumMappings());
+  }
+
+  @Override
+  public int getNumNondefaultElements() {
+    return values.getNumMappings();
   }
 
   @Override

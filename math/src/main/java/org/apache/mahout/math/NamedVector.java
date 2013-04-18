@@ -255,6 +255,11 @@ public class NamedVector implements Vector {
   }
 
   @Override
+  public void incrementQuick(int index, double increment) {
+    delegate.incrementQuick(index, increment);
+  }
+
+  @Override
   public int getNumNonZeroElements() {
     return delegate.getNumNonZeroElements();
   }
