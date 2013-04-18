@@ -124,7 +124,7 @@ public final class FileBasedSparseBinaryMatrix extends AbstractMatrix {
 
     // compute offsets and write row headers
     for (MatrixSlice row : m) {
-      int nondefaultElements = row.vector().getNumNondefaultElements();
+      int nondefaultElements = row.vector().getNumNonZeroElements();
       out.writeInt(nondefaultElements);
     }
 
