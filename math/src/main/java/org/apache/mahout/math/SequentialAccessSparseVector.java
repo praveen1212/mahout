@@ -17,11 +17,11 @@
 
 package org.apache.mahout.math;
 
+import com.google.common.primitives.Doubles;
+
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
-
-import com.google.common.primitives.Doubles;
 
 /**
  * <p>
@@ -124,25 +124,6 @@ public class SequentialAccessSparseVector extends AbstractVector {
   @Override
   public SequentialAccessSparseVector clone() {
     return new SequentialAccessSparseVector(size(), values.clone());
-  }
-
-  @Override
-  public Vector assign(Vector other) {
-    int size = size();
-    if (size != other.size()) {
-      throw new CardinalityException(size, other.size());
-    }
-    if (other instanceof SequentialAccessSparseVector) {
-      values = ((SequentialAccessSparseVector)other).values.clone();
-    } else {
-      values = new OrderedIntDoubleMapping();
-      Iterator<Element> othersElems = other.iterateNonZero();
-      while (othersElems.hasNext()) {
-        Element elem = othersElems.next();
-        setQuick(elem.index(), elem.get());
-      }
-    }
-    return this;
   }
 
   @Override

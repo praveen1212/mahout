@@ -17,11 +17,11 @@
 
 package org.apache.mahout.math;
 
-import java.util.Iterator;
-import java.util.NoSuchElementException;
-
 import org.apache.mahout.math.map.OpenIntDoubleHashMap;
 import org.apache.mahout.math.map.OpenIntDoubleHashMap.MapElement;
+
+import java.util.Iterator;
+import java.util.NoSuchElementException;
 
 
 /** Implements vector that only stores non-zero doubles */
@@ -165,6 +165,11 @@ public class RandomAccessSparseVector extends AbstractVector {
   @Override
   public RandomAccessSparseVector like() {
     return new RandomAccessSparseVector(size(), values.size());
+  }
+
+  @Override
+  public int getNumNondefaultElements() {
+    return values.size();
   }
 
   /**

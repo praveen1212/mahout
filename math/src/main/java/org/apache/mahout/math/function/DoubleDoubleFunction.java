@@ -74,4 +74,11 @@ public abstract class DoubleDoubleFunction {
   public boolean isCommutative() {
     return false;
   }
+
+  /**
+   * @return true iff f(x, f(y, z)) = f(f(x, y), z) for any x, y, z
+   */
+  public boolean isAssociative() {
+    return false;
+  }
 }

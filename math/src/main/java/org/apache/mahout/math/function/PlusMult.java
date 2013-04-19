@@ -26,6 +26,8 @@ It is provided "as is" without expressed or implied warranty.
 
 package org.apache.mahout.math.function;
 
+import org.apache.mahout.math.jet.math.Constants;
+
 /**
  * Only for performance tuning of compute intensive linear algebraic computations.
  * Constructs functions that return one of
@@ -100,7 +102,19 @@ public final class PlusMult extends DoubleDoubleFunction {
    */
   @Override
   public boolean isCommutative() {
-    return multiplicator == 1;
+    return Math.abs(multiplicator - 1.0) < Constants.EPSILON;
+  }
+
+  /**
+   * f(x, f(y, z)) = x + c * (y + c * z) = x + c * y + c^2  * z
+   * f(f(x, y), z) = (x + c * y) + c * z = x + c * y + c * z
+   * true only for c = 0 or c = 1
+   * @return true iff f(x, f(y, z)) = f(f(x, y), z) for any x, y, z
+   */
+  @Override
+  public boolean isAssociative() {
+    return Math.abs(multiplicator - 0.0) < Constants.EPSILON ||
+        Math.abs(multiplicator - 1.0) < Constants.EPSILON;
   }
 
   public void setMultiplicator(double multiplicator) {

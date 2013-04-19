@@ -17,17 +17,8 @@
 
 package org.apache.mahout.benchmark;
 
-import java.io.IOException;
-import java.text.DecimalFormat;
-import java.util.BitSet;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Random;
-import java.util.concurrent.TimeUnit;
-import java.util.regex.Pattern;
-
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import org.apache.commons.cli2.CommandLine;
 import org.apache.commons.cli2.Group;
 import org.apache.commons.cli2.Option;
@@ -42,13 +33,7 @@ import org.apache.mahout.common.CommandLineUtil;
 import org.apache.mahout.common.RandomUtils;
 import org.apache.mahout.common.TimingStatistics;
 import org.apache.mahout.common.commandline.DefaultOptionCreator;
-import org.apache.mahout.common.distance.ChebyshevDistanceMeasure;
-import org.apache.mahout.common.distance.CosineDistanceMeasure;
-import org.apache.mahout.common.distance.EuclideanDistanceMeasure;
-import org.apache.mahout.common.distance.ManhattanDistanceMeasure;
-import org.apache.mahout.common.distance.MinkowskiDistanceMeasure;
-import org.apache.mahout.common.distance.SquaredEuclideanDistanceMeasure;
-import org.apache.mahout.common.distance.TanimotoDistanceMeasure;
+import org.apache.mahout.common.distance.*;
 import org.apache.mahout.math.DenseVector;
 import org.apache.mahout.math.RandomAccessSparseVector;
 import org.apache.mahout.math.SequentialAccessSparseVector;
@@ -56,8 +41,12 @@ import org.apache.mahout.math.Vector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
+import java.io.IOException;
+import java.text.DecimalFormat;
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 public class VectorBenchmarks {
   private static final int MAX_TIME_MS = 500;
@@ -389,7 +378,7 @@ public class VectorBenchmarks {
     new PlusBenchmark(mark).benchmark();
     new MinusBenchmark(mark).benchmark();
     new TimesBenchmark(mark).benchmark();
-    new SerializationBenchmark(mark).benchmark();
+    // new SerializationBenchmark(mark).benchmark();
 
     DistanceBenchmark distanceBenchmark = new DistanceBenchmark(mark);
     distanceBenchmark.benchmark(new CosineDistanceMeasure());

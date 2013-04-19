@@ -17,14 +17,6 @@
 
 package org.apache.mahout.math;
 
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.NoSuchElementException;
-
-import com.google.common.base.Preconditions;
-import org.apache.mahout.math.function.DoubleDoubleFunction;
-import org.apache.mahout.math.function.PlusMult;
-
 import com.google.common.base.Preconditions;
 
 import java.util.Arrays;
@@ -168,24 +160,8 @@ public class DenseVector extends AbstractVector {
   }
 
   @Override
-  public Vector assign(Vector other, DoubleDoubleFunction function) {
-    if (size() != other.size()) {
-      throw new CardinalityException(size(), other.size());
-    }
-    // is there some other way to know if function.apply(0, x) = x for all x?
-    if (function instanceof PlusMult) {
-      Iterator<Element> it = other.iterateNonZero();
-      Element e;
-      while (it.hasNext() && (e = it.next()) != null) {
-        values[e.index()] = function.apply(values[e.index()], e.get());
-      }
-    } else {
-      for (int i = 0; i < size(); i++) {
-        values[i] = function.apply(values[i], other.getQuick(i));
-      }
-    }
-    invalidateCachedLength();
-    return this;
+  public int getNumNondefaultElements() {
+    return values.length;
   }
 
   public Vector assign(DenseVector vector) {

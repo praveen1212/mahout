@@ -150,6 +150,7 @@ public final class OrderedIntDoubleMapping implements Serializable, Cloneable {
 
     indices = newIndices;
     values = newValues;
+    numMappings = newNumMappings;
   }
 
   @Override

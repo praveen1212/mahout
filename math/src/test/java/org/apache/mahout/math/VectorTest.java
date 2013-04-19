@@ -891,40 +891,6 @@ public final class VectorTest extends MahoutTestCase {
   }
 
   @Test
-  public void testMergeDiff() {
-    Vector left = new SequentialAccessSparseVector(20);
-    Vector right = new SequentialAccessSparseVector(20);
-
-    assertEquals(0, AbstractVector.mergeDiff(left, right), 0);
-
-    left.set(5, 1.5);
-    assertEquals(1.5 * 1.5, AbstractVector.mergeDiff(left, right), 0);
-
-    right.set(4, 3.1);
-    assertEquals(3.1 * 3.1 + 1.5 * 1.5, AbstractVector.mergeDiff(left, right), 0);
-
-    left.set(3, 1.2);
-    assertEquals(1.2 * 1.2 + 3.1 * 3.1 + 1.5 * 1.5, AbstractVector.mergeDiff(left, right), 0);
-
-    left.set(6, 2);
-    right.set(6, 2);
-    right.set(8, 2);
-    assertEquals(1.2 * 1.2 + 3.1 * 3.1 + 1.5 * 1.5 + 2 * 2, AbstractVector.mergeDiff(left, right), 0);
-  }
-
-  @Test
-  public void testRandomScanDiff() {
-    Vector left = new SequentialAccessSparseVector(20);
-    Vector right = new SequentialAccessSparseVector(20);
-    left.set(4, 1.1);
-    left.set(6, 2.1);
-    right.set(7, 3.1);
-    right.set(4, 1.2);
-
-    assertEquals(0.1 * 0.1 + 2.1 * 2.1 + 3.1 * 3.1, AbstractVector.randomScanDiff(left, right), 0);
-  }
-
-  @Test
   public void testIteratorRasv() {
     testIterator(new RandomAccessSparseVector(99));
     testEmptyAllIterator(new RandomAccessSparseVector(0));

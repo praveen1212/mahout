@@ -91,13 +91,15 @@ public class PermutedVectorView extends AbstractVector {
   }
 
   /**
+   * If the view is permuted, the elements cannot be accessed in the same order.
+   *
    * @return true iff this implementation should be considered to be iterable in index order in an
    *         efficient way. In particular this implies that {@link #iterator()} and {@link
    *         #iterateNonZero()} return elements in ascending order by index.
    */
   @Override
   public boolean isSequentialAccess() {
-    return vector.isSequentialAccess();
+    return false;
   }
 
   /**
