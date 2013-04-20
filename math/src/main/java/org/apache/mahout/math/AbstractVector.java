@@ -185,22 +185,24 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     Preconditions.checkArgument(size == other.size(), "Vector sizes differ");
     Preconditions.checkArgument(size > 0, "Cannot aggregate empty vectors");
 
-    if ((isSequentialAccess() && other.isSequentialAccess()) || aggregator.isCommutative()) {
-      if (aggregator.isLikeRightPlus() && combiner.isLikeRightMult()) {
+    if ((Math.abs(combiner.apply(0.0, 0.0) - 0.0) < Constants.EPSILON)
+        && ((isSequentialAccess() && other.isSequentialAccess())
+            || (aggregator.isAssociative() && aggregator.isCommutative()))) {
+      if (aggregator.isLikeRightPlus()) {
         return aggregateLikeDotProduct(other, aggregator, combiner);
+      }  else {
+        Iterator<Element> thisIterator = this.iterator();
+        Iterator<Element> thatIterator = other.iterator();
+        Element thisElement = thisIterator.next();
+        Element thatElement = thatIterator.next();
+        double result = combiner.apply(thisElement.get(), thatElement.get());
+        while (thisIterator.hasNext() && thatIterator.hasNext()) {
+          thisElement = thisIterator.next();
+          thatElement = thatIterator.next();
+          result = aggregator.apply(result, combiner.apply(thisElement.get(), thatElement.get()));
+        }
+        return result;
       }
-
-      Iterator<Element> thisIterator = this.iterator();
-      Iterator<Element> thatIterator = other.iterator();
-      Element thisElement = thisIterator.next();
-      Element thatElement = thatIterator.next();
-      double result = combiner.apply(thisElement.get(), thatElement.get());
-      while (thisIterator.hasNext() && thatIterator.hasNext()) {
-        thisElement = thisIterator.next();
-        thatElement = thatIterator.next();
-        result = aggregator.apply(result, combiner.apply(thisElement.get(), thatElement.get()));
-      }
-      return result;
     } else {
       double result = combiner.apply(getQuick(0), other.getQuick(0));
       for (int i = 1; i < size(); ++i) {
@@ -355,6 +357,7 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
 
   @Override
   public double getDistanceSquared(Vector v) {
+    // return minus(v).aggregate(Functions.PLUS, Functions.pow(2));
     return aggregate(v, Functions.PLUS, Functions.MINUS_SQUARED);
   }
 
@@ -642,7 +645,7 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
       throw new CardinalityException(size, other.size());
     }
 
-    boolean isDensifying = function.apply(0, 0) != 0;
+    boolean isDensifying = Math.abs(function.apply(0.0, 0.0) - 0.0) > Constants.EPSILON;
     if (isDensifying) {
       // Sanity checks that the function don't claim to implement the special interfaces.
       if (function.isLikeRightPlus()) {
@@ -658,18 +661,12 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     Element thisElement;
     Element thatElement;
     // The resulting vector will be dense so we'll just iterate through all the elements.
-    if (isDensifying || !isSequentialAccess() || !other.isSequentialAccess()) {
-      if (isSequentialAccess() && other.isSequentialAccess()) {
-        thisIterator = this.iterator();
-        thatIterator = other.iterator();
-        while (thisIterator.hasNext() && thatIterator.hasNext()) {
-          thisElement = thisIterator.next();
-          thisElement.set(function.apply(thisElement.get(), thatIterator.next().get()));
-        }
-      } else {
-        for (int i = 0; i < size; ++i) {
-          setQuick(i, function.apply(getQuick(i), other.getQuick(i)));
-        }
+    if (isDensifying) {
+      thisIterator = this.iterator();
+      thatIterator = other.iterator();
+      while (thisIterator.hasNext() && thatIterator.hasNext()) {
+        thisElement = thisIterator.next();
+        thisElement.set(function.apply(thisElement.get(), thatIterator.next().get()));
       }
     } else {
       // We can get away with just iterating through the non-zero elements in both vectors.
