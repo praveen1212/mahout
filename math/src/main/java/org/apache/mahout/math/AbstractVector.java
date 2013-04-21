@@ -195,7 +195,7 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     return result;
   }
 
-  protected double aggregateSkipZeros(Vector other, DoubleDoubleFunction aggregator, DoubleDoubleFunction combiner) {
+  private double aggregateSkipZeros(Vector other, DoubleDoubleFunction aggregator, DoubleDoubleFunction combiner) {
     Preconditions.checkArgument(size == other.size(), "Vector sizes differ");
     Preconditions.checkArgument(size > 0, "Cannot aggregate empty vectors");
     Preconditions.checkArgument(aggregator.isLikeRightPlus() && aggregator.isAssociative() && aggregator.isCommutative(),
@@ -203,18 +203,29 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
 
     Iterator<Element> thisIterator = iterateNonZero();
     Iterator<Element> thatIterator = other.iterateNonZero();
-    if (!thisIterator.hasNext() || !thatIterator.hasNext()) {
-      return 0;
-    }
-    Element thisElement = thisIterator.next();
-    Element thatElement = thatIterator.next();
+    Element thisElement;
+    Element thatElement;
     double result;
-    if (thisElement.index() == thatElement.index()) {
-      result = combiner.apply(thisElement.get(), thatElement.get());
+    if (thisIterator.hasNext() && thatIterator.hasNext()) {
+      thisElement = thisIterator.next();
+      thatElement = thatIterator.next();
+      if (thisElement.index() == thatElement.index()) {
+        result = combiner.apply(thisElement.get(), thatElement.get());
+      } else if (thisElement.index() < thatElement.index()) {
+        result = combiner.apply(thisElement.get(), 0);
+        thatIterator = other.iterateNonZero();
+      } else {
+        result = combiner.apply(0, thatElement.get());
+        thisIterator = iterateNonZero();
+      }
+    } else if (thisIterator.hasNext() && !thatIterator.hasNext()) {
+      thisElement = thisIterator.next();
+      result = combiner.apply(thisElement.get(), 0);
+    } else if (!thisIterator.hasNext() && thatIterator.hasNext()) {
+      thatElement = thatIterator.next();
+      result = combiner.apply(0, thatElement.get());
     } else {
-      result = 0;
-      thisIterator = iterateNonZero();
-      thatIterator = other.iterateNonZero();
+      return 0;
     }
 
     if (combiner.isLikeMult()) {
@@ -244,8 +255,7 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     Preconditions.checkArgument(size > 0, "Cannot aggregate empty vectors");
 
     if ((Math.abs(combiner.apply(0.0, 0.0) - 0.0) < Constants.EPSILON)
-        && ((isSequentialAccess() && other.isSequentialAccess())
-            || (aggregator.isAssociative() && aggregator.isCommutative()))) {
+        && (isSequentialAccess() && other.isSequentialAccess())) {
       if (aggregator.isLikeRightPlus()) {
           return aggregateSkipZeros(other, aggregator, combiner);
       }  else {
@@ -665,6 +675,181 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     return this;
   }
 
+  protected Vector assignSkipZerosIterateOne(Iterator<Element> thisIterator, Vector other,
+                                             DoubleDoubleFunction function, boolean swap) {
+    Element thisElement;
+    Element thatElement;
+    OrderedIntDoubleMapping updates = new OrderedIntDoubleMapping();
+    while (thisIterator.hasNext()) {
+      thisElement = thisIterator.next();
+      thatElement = other.getElement(thisElement.index());
+      if (swap) {
+        if (thatElement.get() != 0.0) {
+          thatElement.set(function.apply(thatElement.get(), thisElement.get()));
+        } else {
+          updates.set(thatElement.index(), function.apply(thatElement.get(), thisElement.get()));
+        }
+      } else {
+        thisElement.set(function.apply(thisElement.get(), thatElement.get()));
+      }
+    }
+    if (swap) {
+      mergeUpdates(updates);
+    }
+    invalidateCachedLength();
+    return this;
+  }
+
+  protected Vector assignSkipZerosIterateBoth(Iterator<Element> thisIterator, Iterator<Element> thatIterator,
+                                              DoubleDoubleFunction function) {
+    Element thisElement = null;
+    Element thatElement = null;
+    boolean advanceThis = true;
+    boolean advanceThat = true;
+    while (thisIterator.hasNext() && thatIterator.hasNext()) {
+      if (advanceThis) {
+        thisElement = thisIterator.next();
+      }
+      if (advanceThat) {
+        thatElement = thatIterator.next();
+      }
+      if (thisElement.index() == thatElement.index()) {
+        thisElement.set(function.apply(thisElement.get(), thatElement.get()));
+        advanceThis = true;
+        advanceThat = true;
+      } else {
+        if (thisElement.index() < thatElement.index()) { // f(x, 0) = 0
+          advanceThis = true;
+          advanceThat = false;
+        } else { // f(0, y) = 0
+          advanceThis = false;
+          advanceThat = true;
+        }
+      }
+    }
+    invalidateCachedLength();
+    return this;
+  }
+
+  private Vector assignIterateBoth(Iterator<Element> thisIterator, Iterator<Element> thatIterator,
+                                   DoubleDoubleFunction function) {
+    Element thisElement = null;
+    Element thatElement = null;
+    boolean advanceThis = true;
+    boolean advanceThat = true;
+    OrderedIntDoubleMapping thisUpdates = new OrderedIntDoubleMapping();
+
+    while (advanceThis || advanceThat) {
+      if (advanceThis) {
+        if (thisIterator.hasNext()) {
+          thisElement = thisIterator.next();
+        } else {
+          thisElement = null;
+        }
+      }
+      if (advanceThat) {
+        if (thatIterator.hasNext()) {
+          thatElement = thatIterator.next();
+        } else {
+          thatElement = null;
+        }
+      }
+      if (thisElement != null && thatElement != null) { // both vectors have nonzero elements
+        if (thisElement.index() == thatElement.index()) {
+          thisElement.set(function.apply(thisElement.get(), thatElement.get()));
+          advanceThis = true;
+          advanceThat = true;
+        } else {
+          if (thisElement.index() < thatElement.index()) { // f(x, 0)
+            thisElement.set(function.apply(thisElement.get(), 0));
+            advanceThis = true;
+            advanceThat = false;
+          } else {
+            double result = function.apply(0, thatElement.get());
+            if (result != 0) { // f(0, y) != 0
+              thisUpdates.set(thatElement.index(), result);
+            }
+            advanceThis = false;
+            advanceThat = true;
+          }
+        }
+      } else if (thisElement != null) { // just the first one still has nonzeros
+        thisElement.set(function.apply(thisElement.get(), 0));
+        advanceThis = true;
+        advanceThat = false;
+      } else if (thatElement != null) { // just the second one has nonzeros
+        double result = function.apply(0, thatElement.get());
+        if (result != 0) {
+          thisUpdates.set(thatElement.index(), result);
+        }
+        advanceThis = false;
+        advanceThat = true;
+      } else { // we're done, both are empty
+        break;
+      }
+    }
+    mergeUpdates(thisUpdates);
+    invalidateCachedLength();
+    return this;
+  }
+
+  private Vector assignForLoop(Vector other, DoubleDoubleFunction function) {
+    for (int i = 0; i < size; ++i) {
+      setQuick(i, function.apply(getQuick(i), other.getQuick(i)));
+    }
+    invalidateCachedLength();
+    return this;
+  }
+
+  private Vector assignIterators(Vector other, DoubleDoubleFunction function) {
+    Iterator<Element> thisIterator = this.iterator();
+    Iterator<Element> thatIterator = other.iterator();
+    Element thisElement;
+    while (thisIterator.hasNext() && thatIterator.hasNext()) {
+      thisElement = thisIterator.next();
+      thisElement.set(function.apply(thisElement.get(), thatIterator.next().get()));
+    }
+    invalidateCachedLength();
+    return this;
+  }
+
+  private Vector assignSkipZeros(Vector other, DoubleDoubleFunction function) {
+    Preconditions.checkArgument(size == other.size(), "Vector sizes differ");
+
+    Iterator<Element> thisIterator = iterateNonZero();
+    Iterator<Element> thatIterator = other.iterateNonZero();
+
+    int numNondefaultThis = this.getNumNondefaultElements();
+    int numNondefaultThat = other.getNumNondefaultElements();
+    double bothCost = numNondefaultThis + numNondefaultThat;
+    double oneCostThis = other.isRandomAccess() ?
+        numNondefaultThis : (numNondefaultThis * Functions.LOG2.apply(numNondefaultThat));
+    double oneCostThat = isRandomAccess() ?
+        numNondefaultThat : (numNondefaultThat * Functions.LOG2.apply(numNondefaultThis));
+
+    // f(x, 0) = x; iterate through other (y); could make this more dense f(0, y) != 0 necessarily
+    if (function.isLikeRightPlus() && (!isSequentialAccess() || !function.isLikeLeftMult()
+        || (oneCostThat < oneCostThis) && oneCostThat <= bothCost)) {
+      return assignSkipZerosIterateOne(thatIterator, this, function, true);
+    }
+
+    // f(0, y) = 0; iterate through this (x); will never make this more dense
+    if (function.isLikeLeftMult() && (!other.isSequentialAccess() || !function.isLikeRightPlus()
+        || (oneCostThis <= oneCostThat && oneCostThis <= bothCost))) {
+      return assignSkipZerosIterateOne(thisIterator, other, function, false);
+    }
+
+    if (isSequentialAccess() && other.isSequentialAccess()) {
+      if (function.isLikeRightPlus() && function.isLikeLeftMult()) {
+        return assignSkipZerosIterateBoth(thisIterator, thatIterator, function);
+      }
+      return assignIterateBoth(thisIterator, thatIterator, function);
+    } else {
+      // If neither property holds, and the vectors are not sequential access, we have to loop through them.
+      return assignForLoop(other, function);
+    }
+  }
+
   /**
    * Assigns the current vector, x the value of f(x, y) where f is applied to every component of x and y sequentially.
    * xi = f(xi, yi).
@@ -704,119 +889,15 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     }
 
     boolean isDensifying = Math.abs(function.apply(0.0, 0.0) - 0.0) > Constants.EPSILON;
-    if (isDensifying) {
-      // Sanity checks that the function don't claim to implement the special interfaces.
-      if (function.isLikeRightPlus()) {
-        throw new IllegalArgumentException("Invalid function definition. f(0, 0) != 0 but it claims that f(x, 0) = x");
-      }
-      if (function.isLikeLeftMult()) {
-        throw new IllegalArgumentException("Invalid function definition. f(0, 0) != 0 but it claims that f(0, y) = 0");
-      }
-    }
-
-    Iterator<Element> thisIterator;
-    Iterator<Element> thatIterator;
-    Element thisElement;
-    Element thatElement;
     // The resulting vector will be dense so we'll just iterate through all the elements.
     if (isDensifying) {
-      thisIterator = this.iterator();
-      thatIterator = other.iterator();
-      while (thisIterator.hasNext() && thatIterator.hasNext()) {
-        thisElement = thisIterator.next();
-        thisElement.set(function.apply(thisElement.get(), thatIterator.next().get()));
+      if (isSequentialAccess() && other.isSequentialAccess()) {
+        assignIterators(other, function);
+      } else {
+        assignForLoop(other, function);
       }
     } else {
-      // We can get away with just iterating through the non-zero elements in both vectors.
-      // If however our function is special (xZeroX or zeroYZero is true) we can just iterate through one of the
-      // vectors.
-      double nx = getNumNondefaultElements();
-      double ny = other.getNumNondefaultElements();
-      if (function.isLikeRightPlus() && (isRandomAccess()
-          || (!isRandomAccess() && ny < (nx / (Functions.LOG2.apply(nx) - 1))))) {
-        // When f(x, 0) = x, the 0s in "other" will not affect "this" in any way. So, we can just iterate though
-        // the non-zero values in "other" and apply the function where we need to.
-        thatIterator = other.iterateNonZero();
-        OrderedIntDoubleMapping thisUpdates = new OrderedIntDoubleMapping();
-        while (thatIterator.hasNext()) {
-          thatElement = thatIterator.next();
-          thisElement = this.getElement(thatElement.index());
-          if (thisElement.get() == 0) {
-            thisUpdates.set(thatElement.index(), function.apply(0, thatElement.get()));
-          } else {
-            thisElement.set(function.apply(thisElement.get(), thatElement.get()));
-          }
-        }
-        mergeUpdates(thisUpdates);
-      } else if (function.isLikeLeftMult() && (other.isRandomAccess()
-          || (!other.isRandomAccess() && nx < (ny / Functions.LOG2.apply(ny) - 1)))) {
-        // When f(0, y) = 0, the 0s in "this" will not be affected "this" in any way. So, we can just iterate though
-        // the non-zero values in "other" and apply the function where we need to.
-        thisIterator = iterateNonZero();
-        while (thisIterator.hasNext()) {
-          thisElement = thisIterator.next();
-          thatElement = other.getElement(thisElement.index());
-          thisElement.set(function.apply(thisElement.get(), thatElement.get()));
-        }
-      } else {
-        thisIterator = this.iterateNonZero();
-        thatIterator = other.iterateNonZero();
-        thisElement = thatElement = null;
-        boolean advanceThis = true;
-        boolean advanceThat = true;
-        OrderedIntDoubleMapping thisUpdates = new OrderedIntDoubleMapping();
-
-        while (advanceThis || advanceThat) {
-          if (advanceThis) {
-            if (thisIterator.hasNext()) {
-              thisElement = thisIterator.next();
-            } else {
-              thisElement = null;
-            }
-          }
-          if (advanceThat) {
-            if (thatIterator.hasNext()) {
-              thatElement = thatIterator.next();
-            } else {
-              thatElement = null;
-            }
-          }
-          if (thisElement != null && thatElement != null) { // both vectors have nonzero elements
-            if (thisElement.index() == thatElement.index()) {
-              thisElement.set(function.apply(thisElement.get(), thatElement.get()));
-              advanceThis = true;
-              advanceThat = true;
-            } else {
-              if (thisElement.index() < thatElement.index()) { // f(x, 0)
-                thisElement.set(function.apply(thisElement.get(), 0));
-                advanceThis = true;
-                advanceThat = false;
-              } else {
-                double result = function.apply(0, thatElement.get());
-                if (result != 0) { // f(0, y) != 0
-                  thisUpdates.set(thatElement.index(), result);
-                }
-                advanceThis = false;
-                advanceThat = true;
-              }
-            }
-          } else if (thisElement != null) { // just the first one still has nonzeros
-            thisElement.set(function.apply(thisElement.get(), 0));
-            advanceThis = true;
-            advanceThat = false;
-          } else if (thatElement != null) { // just the second one has nonzeros
-            double result = function.apply(0, thatElement.get());
-            if (result != 0) {
-              thisUpdates.set(thatElement.index(), result);
-            }
-            advanceThis = false;
-            advanceThat = true;
-          } else { // we're done, both are empty
-            break;
-          }
-        }
-        mergeUpdates(thisUpdates);
-      }
+      return assignSkipZeros(other, function);
     }
     invalidateCachedLength();
     return this;
