@@ -255,8 +255,7 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     Preconditions.checkArgument(size > 0, "Cannot aggregate empty vectors");
 
     if ((Math.abs(combiner.apply(0.0, 0.0) - 0.0) < Constants.EPSILON)
-        && ((isSequentialAccess() && other.isSequentialAccess())
-            || (aggregator.isAssociative() && aggregator.isCommutative()))) {
+        && (isSequentialAccess() && other.isSequentialAccess())) {
       if (aggregator.isLikeRightPlus()) {
           return aggregateSkipZeros(other, aggregator, combiner);
       }  else {
@@ -339,6 +338,9 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
   }
 
   protected double dotSelf() {
+    if (size == 0) {
+      return 0;
+    }
     return aggregate(Functions.PLUS, Functions.pow(2));
   }
 
