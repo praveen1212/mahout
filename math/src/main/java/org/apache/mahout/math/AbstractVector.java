@@ -195,7 +195,7 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     return result;
   }
 
-  protected double aggregateSkipZeros(Vector other, DoubleDoubleFunction aggregator, DoubleDoubleFunction combiner) {
+  private double aggregateSkipZeros(Vector other, DoubleDoubleFunction aggregator, DoubleDoubleFunction combiner) {
     Preconditions.checkArgument(size == other.size(), "Vector sizes differ");
     Preconditions.checkArgument(size > 0, "Cannot aggregate empty vectors");
     Preconditions.checkArgument(aggregator.isLikeRightPlus() && aggregator.isAssociative() && aggregator.isCommutative(),
@@ -203,18 +203,29 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
 
     Iterator<Element> thisIterator = iterateNonZero();
     Iterator<Element> thatIterator = other.iterateNonZero();
-    if (!thisIterator.hasNext() || !thatIterator.hasNext()) {
-      return 0;
-    }
-    Element thisElement = thisIterator.next();
-    Element thatElement = thatIterator.next();
+    Element thisElement;
+    Element thatElement;
     double result;
-    if (thisElement.index() == thatElement.index()) {
-      result = combiner.apply(thisElement.get(), thatElement.get());
+    if (thisIterator.hasNext() && thatIterator.hasNext()) {
+      thisElement = thisIterator.next();
+      thatElement = thatIterator.next();
+      if (thisElement.index() == thatElement.index()) {
+        result = combiner.apply(thisElement.get(), thatElement.get());
+      } else if (thisElement.index() < thatElement.index()) {
+        result = combiner.apply(thisElement.get(), 0);
+        thatIterator = other.iterateNonZero();
+      } else {
+        result = combiner.apply(0, thatElement.get());
+        thisIterator = iterateNonZero();
+      }
+    } else if (thisIterator.hasNext() && !thatIterator.hasNext()) {
+      thisElement = thisIterator.next();
+      result = combiner.apply(thisElement.get(), 0);
+    } else if (!thisIterator.hasNext() && thatIterator.hasNext()) {
+      thatElement = thatIterator.next();
+      result = combiner.apply(0, thatElement.get());
     } else {
-      result = 0;
-      thisIterator = iterateNonZero();
-      thatIterator = other.iterateNonZero();
+      return 0;
     }
 
     if (combiner.isLikeMult()) {
