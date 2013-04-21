@@ -13,7 +13,7 @@ import org.apache.mahout.math.Centroid;
 import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.VectorWritable;
 import org.apache.mahout.math.neighborhood.BruteSearch;
-import org.apache.mahout.math.neighborhood.FastProjectionSearch;
+import org.apache.mahout.math.neighborhood.ProjectionSearch;
 
 import java.util.List;
 import java.util.Map;
@@ -77,7 +77,7 @@ public class ExperimentUtils {
   public static Iterable<Centroid> clusterBallKMeans(List<Centroid> datapoints, int numClusters,
                                                      double trimFraction, boolean randomInit,
                                                      DistanceMeasure distanceMeasure) {
-    BallKMeans clusterer = new BallKMeans(new BruteSearch(distanceMeasure), numClusters, 20,
+    BallKMeans clusterer = new BallKMeans(new ProjectionSearch(distanceMeasure, 3, 2), numClusters, 20,
         trimFraction, true);
     clusterer.cluster(datapoints, randomInit);
     return clusterer;
@@ -85,7 +85,7 @@ public class ExperimentUtils {
 
   public static Iterable<Centroid> clusterStreamingKMeans(List<Centroid> datapoints, int numClusters,
                                                           DistanceMeasure distanceMeasure) {
-    StreamingKMeans clusterer = new StreamingKMeans(new FastProjectionSearch(distanceMeasure, 3, 2),
+    StreamingKMeans clusterer = new StreamingKMeans(new ProjectionSearch(distanceMeasure, 3, 2),
         numClusters, 1e-6);
     clusterer.cluster(datapoints);
     return clusterer;
@@ -93,7 +93,7 @@ public class ExperimentUtils {
 
   public static Iterable<Centroid> clusterOneByOneStreamingKMeans(List<Centroid> datapoints, int numClusters,
                                                      DistanceMeasure distanceMeasure) {
-    StreamingKMeans clusterer = new StreamingKMeans(new FastProjectionSearch(distanceMeasure, 3, 2),
+    StreamingKMeans clusterer = new StreamingKMeans(new ProjectionSearch(distanceMeasure, 3, 2),
         numClusters, 1e-6);
     for (Centroid datapoint : datapoints) {
       clusterer.cluster(datapoint);

@@ -1,5 +1,8 @@
 package org.apache.mahout.clustering.streaming.tools;
 
+import com.google.common.base.Function;
+import com.google.common.base.Preconditions;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import org.apache.commons.cli2.CommandLine;
 import org.apache.commons.cli2.Group;
@@ -9,14 +12,17 @@ import org.apache.commons.cli2.builder.DefaultOptionBuilder;
 import org.apache.commons.cli2.builder.GroupBuilder;
 import org.apache.commons.cli2.commandline.Parser;
 import org.apache.commons.cli2.util.HelpFormatter;
+import org.apache.commons.lang.math.RandomUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.SequenceFile;
 import org.apache.hadoop.io.Text;
-import org.apache.mahout.clustering.iterator.ClusterWritable;
-import org.apache.mahout.clustering.kmeans.KMeansDriver;
-import org.apache.mahout.clustering.kmeans.RandomSeedGenerator;
+import org.apache.mahout.clustering.Cluster;
+import org.apache.mahout.clustering.classify.ClusterClassifier;
+import org.apache.mahout.clustering.iterator.ClusterIterator;
+import org.apache.mahout.clustering.iterator.KMeansClusteringPolicy;
+import org.apache.mahout.clustering.kmeans.Kluster;
 import org.apache.mahout.clustering.streaming.cluster.ClusteringUtils;
 import org.apache.mahout.clustering.streaming.mapreduce.CentroidWritable;
 import org.apache.mahout.clustering.streaming.mapreduce.StreamingKMeansDriver;
@@ -30,6 +36,8 @@ import org.apache.mahout.common.distance.DistanceMeasure;
 import org.apache.mahout.common.iterator.sequencefile.PathType;
 import org.apache.mahout.common.iterator.sequencefile.SequenceFileDirValueIterable;
 import org.apache.mahout.math.Centroid;
+import org.apache.mahout.math.Matrix;
+import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.VectorWritable;
 import org.apache.mahout.math.neighborhood.ProjectionSearch;
 import org.apache.mahout.math.stats.OnlineSummarizer;
@@ -38,6 +46,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
@@ -84,7 +93,29 @@ public class ClusterQuality20NewsGroups {
   }
 
   public List<Centroid> clusterKMeans() {
+    System.out.printf("Clustering %d vectors with %d dimensions\n",
+        reducedVectors.size(), reducedVectors.get(0).size());
+    List<Cluster> initialClusters = new ArrayList<Cluster>();
+    for (int i = 0; i < 20; ++i) {
+      Centroid randomCentroid = reducedVectors.get(RandomUtils.nextInt(reducedVectors.size()));
+      initialClusters.add(new Kluster(randomCentroid.getVector(), i, distanceMeasure));
+    }
+    ClusterClassifier prior = new ClusterClassifier(initialClusters,  new KMeansClusteringPolicy(0.01));
+    ClusterClassifier clustered = ClusterIterator.iterate(Iterables.transform(reducedVectors,
+        new Function<Centroid, Vector>() {
+          @Override
+          public Vector apply(Centroid centroid) {
+            Preconditions.checkNotNull(centroid);
+            return centroid.getVector();
+          }
+        }), prior, 10);
+
     List<Centroid> kmCentroids = Lists.newArrayList();
+    for (Cluster cluster : clustered.getModels()) {
+      kmCentroids.add(new Centroid(cluster.getId(), cluster.getCenter(), cluster.getTotalObservations()));
+    }
+
+    /*
     try {
       // If the reduced vectors haven't been written yet, write them.
       if (reducedInputPath == null) {
@@ -112,6 +143,7 @@ public class ClusterQuality20NewsGroups {
     } catch (Exception e) {
       e.printStackTrace();
     }
+    */
     return kmCentroids;
   }
 
@@ -147,11 +179,24 @@ public class ClusterQuality20NewsGroups {
         ClusteringUtils.summarizeClusterDistances(reducedVectors, centroids, distanceMeasure);
     System.out.printf("Dunn Index %f\n", ClusteringUtils.dunnIndex(centroids, distanceMeasure, summarizers));
     System.out.printf("Davies-Bouldin Index %f\n", ClusteringUtils.daviesBouldinIndex(centroids, distanceMeasure, summarizers));
-    printSummariesInternal(summarizers, time, name, numRun, "train");
-    if (testReducedVectors != null) {
+    // printSummariesInternal(summarizers, time, name, numRun, "train");
+    /* if (testReducedVectors != null) {
       printSummariesInternal(ClusteringUtils.summarizeClusterDistances(testReducedVectors, centroids, distanceMeasure),
           time, name, numRun, "test");
+    } */
+  }
+
+  public void printAdjustedRandIndex(List<Centroid> rowCentroids, List<Centroid> columnCentroids) {
+    Matrix confusionMatrix = ClusteringUtils.getConfusionMatrix(rowCentroids, columnCentroids,
+        reducedVectors, distanceMeasure);
+    System.out.printf("Confusion matrix %s\n", confusionMatrix);
+    for (int i = 0; i < confusionMatrix.numRows(); ++i) {
+      for (int j = 0; j < confusionMatrix.numCols(); ++j) {
+        System.out.printf("%3.0f ", confusionMatrix.get(i, j));
+      }
+      System.out.printf("\n");
     }
+    System.out.printf("Adjusted Rand Index: %f\n", ClusteringUtils.getAdjustedRandIndex(confusionMatrix));
   }
 
   public void runInstance(int numRun) throws ClassNotFoundException {
@@ -160,10 +205,11 @@ public class ClusterQuality20NewsGroups {
     long end;
     double time;
 
+    List<Centroid> kmCentroids = null;
     if (clusterMahoutKMeans) {
       System.out.printf("Clustering MahoutKMeans\n");
       start = System.currentTimeMillis();
-      List<Centroid> kmCentroids = clusterKMeans();
+       kmCentroids = clusterKMeans();
       end = System.currentTimeMillis();
       time = (end - start) / 1000.0;
       System.out.printf("Took %f[s]\n", time);
@@ -179,6 +225,7 @@ public class ClusterQuality20NewsGroups {
       time = (end - start) / 1000.0;
       System.out.printf("Took %f[s]\n", time);
       printSummaries(bkmCentroids, time, "bkm", numRun);
+      printAdjustedRandIndex(kmCentroids, bkmCentroids);
 
       System.out.printf("Clustering BallKMeans random centers\n");
       start = System.currentTimeMillis();
@@ -188,6 +235,8 @@ public class ClusterQuality20NewsGroups {
       time = (end - start) / 1000.0;
       System.out.printf("Took %f[s]\n", time);
       printSummaries(rBkmCentroids, time, "bkmr", numRun);
+      printAdjustedRandIndex(kmCentroids, rBkmCentroids);
+      printAdjustedRandIndex(bkmCentroids, rBkmCentroids);
     }
 
     if (clusterStreamingKMeans) {
@@ -237,6 +286,7 @@ public class ClusterQuality20NewsGroups {
         time = (end - start) / 1000.0;
         System.out.printf("Took %f[s]\n", time);
         printSummaries(boskmCentroids, time, "boskm", numRun);
+        printAdjustedRandIndex(kmCentroids, boskmCentroids);
       }
     }
 
@@ -345,7 +395,7 @@ public class ClusterQuality20NewsGroups {
 
     Option projectOption = builder.withLongName("project")
         .withShortName("p")
-        .withRequired(true)
+        .withRequired(false)
         .withDescription("if set, projects the input vectors down to the requested number of dimensions")
         .withArgument(argumentBuilder.withName("project").withMaximum(1).create())
         .create();

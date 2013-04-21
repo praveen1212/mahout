@@ -22,8 +22,12 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
 import org.apache.mahout.common.RandomUtils;
+import org.apache.mahout.math.Centroid;
+import org.apache.mahout.math.Matrix;
+import org.apache.mahout.math.MatrixSlice;
+import org.apache.mahout.math.Vector;
+import org.apache.mahout.math.jet.math.Constants;
 import org.apache.mahout.math.neighborhood.UpdatableSearcher;
-import org.apache.mahout.math.*;
 import org.apache.mahout.math.random.WeightedThing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -93,7 +97,7 @@ public class StreamingKMeans implements Iterable<Centroid> {
   // Parameter that controls the growth of the distanceCutoff. After n increases of the
   // distanceCutoff starting at d_0, the final value is d_0 * beta^n (distance cutoffs increase following a geometric
   // progression with ratio beta).
-  private double beta;
+  private double beta = 4;
 
   // Multiplying clusterLogFactor with numProcessedDatapoints gets an estimate of the suggested
   // number of clusters. This mirrors the recommended number of clusters for n points where there should be k actual
@@ -111,6 +115,8 @@ public class StreamingKMeans implements Iterable<Centroid> {
   // Logs the progress of the clustering.
   private Logger progressLogger;
 
+  private long time;
+
   /**
    * Calls StreamingKMeans(searcher, numClusters, initialDistanceCutoff, 1.3, 10, 1.5).
    * @see StreamingKMeans#StreamingKMeans(org.apache.mahout.math.neighborhood.UpdatableSearcher, int,
@@ -118,7 +124,7 @@ public class StreamingKMeans implements Iterable<Centroid> {
    */
   public StreamingKMeans(UpdatableSearcher searcher, int numClusters,
                          double initialDistanceCutoff) {
-    this(searcher, numClusters, initialDistanceCutoff, 1.3, 10, 1.5,
+    this(searcher, numClusters, initialDistanceCutoff, 1.3, 10, 2,
         LoggerFactory.getLogger(StreamingKMeans.class));
   }
 
@@ -150,6 +156,7 @@ public class StreamingKMeans implements Iterable<Centroid> {
     this.clusterLogFactor = clusterLogFactor;
     this.clusterOvershoot = clusterOvershoot;
     this.progressLogger = logger;
+    this.time = System.currentTimeMillis();
   }
 
   /**
@@ -236,8 +243,7 @@ public class StreamingKMeans implements Iterable<Centroid> {
    *                         nearly the same.
    * @return the UpdatableSearcher containing the resulting centroids.
    */
-  private UpdatableSearcher clusterInternal(Iterable<Centroid> datapoints,
-                                            boolean collapseClusters) {
+  private UpdatableSearcher clusterInternal(Iterable<Centroid> datapoints, boolean collapseClusters) {
     int oldNumProcessedDataPoints = numProcessedDatapoints;
     // We clear the centroids we have in case of cluster collapse, the old clusters are the
     // datapoints but we need to re-cluster them.
@@ -251,7 +257,7 @@ public class StreamingKMeans implements Iterable<Centroid> {
       // Assign the first datapoint to the first cluster.
       // Adding a vector to a searcher would normally just reference the copy,
       // but we could potentially mutate it and so we need to make a clone.
-      centroids.add(Iterables.get(datapoints, 0));
+      centroids.add(Iterables.get(datapoints, 0).clone());
       numCentroidsToSkip = 1;
       ++numProcessedDatapoints;
     }
@@ -281,19 +287,32 @@ public class StreamingKMeans implements Iterable<Centroid> {
         // We know that all the points we inserted in the centroids searcher are (or extend)
         // WeightedVector, so the cast will always succeed.
         Centroid centroid = (Centroid)closestPair.getValue();
+        /*
+        if ((!collapseClusters && numProcessedDatapoints != ClusteringUtils.totalWeight(centroids)) ||
+            (collapseClusters && oldNumProcessedDataPoints != ClusteringUtils.totalWeight(centroids))){
+          System.out.printf("Stop\n");
+        }
+        if (!collapseClusters) {
+          System.out.printf("[pre] collapse %s; num datapoints %d; total weight %f; this %f; row %f\n", collapseClusters, numProcessedDatapoints,
+              ClusteringUtils.totalWeight(centroids), centroid.getWeight(), row.getWeight());
+        }
+        */
         // We will update the centroid by removing it from the searcher and reinserting it to
         // ensure consistency.
-        if (!centroids.remove(centroid, 1e-7)) {
+        if (!centroids.remove(centroid, Constants.EPSILON)) {
           throw new RuntimeException("Unable to remove centroid");
         }
         centroid.update(row);
         centroids.add(centroid);
+
+        /*
+        if (!collapseClusters) {
+          System.out.printf("[post] collapse %s; num datapoints %d; total weight %f; this %f; row %f\n", collapseClusters, numProcessedDatapoints,
+              ClusteringUtils.totalWeight(centroids), centroid.getWeight(), row.getWeight());
+        }
+        */
       }
-
-      progressLogger.debug("numProcessedDataPoints: {}, numClusters: {}, " +
-          "distanceCutoff: {}, numCentroids: {}", numProcessedDatapoints, numClusters,
-          distanceCutoff, centroids.size());
-
+      ++numProcessedDatapoints;
 
       if (!collapseClusters && centroids.size() > clusterOvershoot * numClusters) {
         numClusters = (int) Math.max(numClusters, clusterLogFactor * Math.log(numProcessedDatapoints));
@@ -312,11 +331,14 @@ public class StreamingKMeans implements Iterable<Centroid> {
         // distanceCutoff can grow to an excessive size leading sub-clustering to collapse
         // the centroids set too much. This test prevents increase in distanceCutoff if
         // the current value is doing well at collapsing the clusters.
-        if (centroids.size() > numClusters) {
+        if (numProcessedDatapoints / (float)oldNumProcessedDataPoints < 2 || centroids.size() > numClusters) {
           distanceCutoff *= beta;
         }
+        oldNumProcessedDataPoints = numProcessedDatapoints;
       }
-      ++numProcessedDatapoints;
+      if (!collapseClusters && numProcessedDatapoints % 1000 == 0) {
+        this.time = System.currentTimeMillis();
+      }
     }
 
     if (collapseClusters) {

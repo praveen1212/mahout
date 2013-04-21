@@ -1,13 +1,11 @@
 package org.apache.mahout.clustering.streaming.cluster;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import org.apache.mahout.common.distance.DistanceMeasure;
 import org.apache.mahout.common.distance.EuclideanDistanceMeasure;
-import org.apache.mahout.math.Centroid;
-import org.apache.mahout.math.DenseMatrix;
-import org.apache.mahout.math.Matrix;
-import org.apache.mahout.math.Vector;
+import org.apache.mahout.math.*;
 import org.apache.mahout.math.neighborhood.BruteSearch;
 import org.apache.mahout.math.neighborhood.ProjectionSearch;
 import org.apache.mahout.math.neighborhood.Searcher;
@@ -79,18 +77,15 @@ public class ClusteringUtils {
    */
   public static double estimateDistanceCutoff(Iterable<? extends Vector> data,
                                               DistanceMeasure distanceMeasure, int sampleLimit) {
+    Iterable<? extends Vector> limitedData = Iterables.limit(data, sampleLimit);
     ProjectionSearch searcher = new ProjectionSearch(distanceMeasure, 3, 1);
-    searcher.addAll(data);
+    searcher.addAll(limitedData);
     double minDistance = Double.POSITIVE_INFINITY;
-    for (Vector u : data) {
-      if (sampleLimit == 0) {
-        break;
-      }
+    for (Vector u : limitedData) {
       double closest = searcher.search(u, 2).get(1).getWeight();
       if (closest < minDistance) {
         minDistance = closest;
       }
-      --sampleLimit;
     }
     return minDistance;
   }
@@ -221,5 +216,18 @@ public class ClusteringUtils {
     double rowColumnChoiceSumDivTotal = rowChoiceSum * columnChoiceSum / choose2(total);
     return (totalChoiceSum - rowColumnChoiceSumDivTotal)
         / ((rowChoiceSum + columnChoiceSum) / 2 - rowColumnChoiceSumDivTotal);
+  }
+
+  public static double totalWeight(Iterable<? extends Vector> data) {
+    double sum = 0;
+    for (Vector row : data) {
+      Preconditions.checkNotNull(row);
+      if (row instanceof WeightedVector) {
+        sum += ((WeightedVector)row).getWeight();
+      } else {
+        sum++;
+      }
+    }
+    return sum;
   }
 }

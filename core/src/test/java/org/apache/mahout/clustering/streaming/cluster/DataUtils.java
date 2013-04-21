@@ -19,7 +19,7 @@ package org.apache.mahout.clustering.streaming.cluster;
 
 import com.google.common.collect.Lists;
 import org.apache.mahout.common.Pair;
-import org.apache.mahout.common.distance.EuclideanDistanceMeasure;
+import org.apache.mahout.common.RandomUtils;
 import org.apache.mahout.math.Centroid;
 import org.apache.mahout.math.DenseVector;
 import org.apache.mahout.math.Vector;
@@ -48,6 +48,7 @@ public class DataUtils {
    */
   public static Pair<List<Centroid>, List<Centroid>> sampleMultiNormalHypercube(
       int numDimensions, int numDatapoints, double distributionRadius) {
+    RandomUtils.useTestSeed();
     int pow2N = 1 << numDimensions;
     // Construct data samplers centered on the corners of a unit hypercube.
     // Additionally, keep the means of the distributions that will be generated so we can compare
@@ -81,12 +82,5 @@ public class DataUtils {
   public static Pair<List<Centroid>, List<Centroid>> sampleMultiNormalHypercube(int numDimensions,
                                                                                 int numDatapoints) {
     return sampleMultiNormalHypercube(numDimensions, numDatapoints, 0.01);
-  }
-
-  /**
-   * Calls estimateDistanceCutoff(data, EuclideanDistanceMeasure, 100).
-   */
-  public static double estimateDistanceCutoff(Iterable<? extends Vector> data) {
-    return ClusteringUtils.estimateDistanceCutoff(data, new EuclideanDistanceMeasure());
   }
 }

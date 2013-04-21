@@ -172,7 +172,6 @@ public class ProjectionSearch extends UpdatableSearcher implements Iterable<Vect
       }
       return true;
     } else {
-      System.out.printf("%s to %s : %f ", vector, x.get(0).getValue(), x.get(0).getWeight());
       return false;
     }
   }

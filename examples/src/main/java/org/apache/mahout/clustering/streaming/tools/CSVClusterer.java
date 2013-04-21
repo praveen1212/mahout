@@ -105,14 +105,17 @@ public class CSVClusterer {
 
     try {
       Configuration conf = new Configuration();
+      conf.set("fs.default.name", "file:///");
       CSVVectorIterable csvIterable = new CSVVectorIterable(true, new Path(inputFile), conf);
 
-      System.out.printf("%s\n", csvIterable.getHeader());
+      // System.out.printf("%s\n", csvIterable.getHeader());
       Iterable<Centroid> datapoints = ExperimentUtils.castVectorsToCentroids(csvIterable);
+
+      long start = System.currentTimeMillis();
 
       StreamingKMeansDriver.configureOptionsForWorkers(conf,
           numClusters,
-          (numClusters * 10), 1e-5f,
+          (numClusters * 20), 1e-5f,
           20, 0.9f, 10, distanceMeasure.getClass().getName(), ProjectionSearch.class.getName(), 2, 3, true);
 
       // Run StreamingKMeans.
@@ -128,7 +131,9 @@ public class CSVClusterer {
       centroids = ExperimentUtils.castVectorsToCentroids(
           StreamingKMeansReducer.getBestCentroids(split.getFirst(), split.getSecond(), conf));
 
-      System.out.printf("Done. Writing clusters to %s.\n", outputFile);
+      long end = System.currentTimeMillis();
+
+      System.out.printf("Done. Took %f. Writing clusters to %s.\n", (end - start) / 1000.0, outputFile);
       IOUtils.writeCentroidsToSequenceFile(centroids, new Path(outputFile), conf);
 
     } catch (IOException e) {

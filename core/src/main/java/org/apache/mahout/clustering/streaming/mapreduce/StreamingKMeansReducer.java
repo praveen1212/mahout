@@ -58,8 +58,14 @@ public class StreamingKMeansReducer extends Reducer<IntWritable, CentroidWritabl
   public void reduce(IntWritable key, Iterable<CentroidWritable> centroids,
                      Context context) throws IOException, InterruptedException {
     Pair<List<Centroid>, List<Centroid>> splitCentroids = splitTrainTestRaw(centroids, conf);
+    Iterable<? extends Vector> bestCentroids;
+    if (splitCentroids.getSecond().isEmpty()) {
+      bestCentroids = splitCentroids.getFirst();
+    } else {
+      bestCentroids = getBestCentroids(splitCentroids.getFirst(), splitCentroids.getSecond(), conf);
+    }
     int index = 0;
-    for (Vector centroid : getBestCentroids(splitCentroids.getFirst(), splitCentroids.getSecond(), conf)) {
+    for (Vector centroid : bestCentroids) {
       context.write(new IntWritable(index), new CentroidWritable((Centroid)centroid));
       ++index;
     }
@@ -96,6 +102,14 @@ public class StreamingKMeansReducer extends Reducer<IntWritable, CentroidWritabl
       } else {
         testIntermediateCentroids.add(currCentroid);
       }
+    }
+    int numClusters = conf.getInt("numClusters", 0);
+    int i;
+    for (i = 0; trainIntermediateCentroids.size() < numClusters; ++i) {
+      trainIntermediateCentroids.add(testIntermediateCentroids.get(i));
+    }
+    for (--i; i >= 0; --i) {
+      testIntermediateCentroids.remove(testIntermediateCentroids.get(i));
     }
     log.info("Split data set into {} training vectors and {} test vectors",
         trainIntermediateCentroids.size(), testIntermediateCentroids.size());
