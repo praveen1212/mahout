@@ -17,9 +17,7 @@
 
 package org.apache.mahout.clustering.iterator;
 
-import java.io.IOException;
-import java.util.List;
-
+import com.google.common.collect.Lists;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -41,7 +39,8 @@ import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.VectorWritable;
 import org.junit.Test;
 
-import com.google.common.collect.Lists;
+import java.io.IOException;
+import java.util.List;
 
 public final class TestClusterClassifier extends MahoutTestCase {
   
@@ -287,6 +286,6 @@ public final class TestClusterClassifier extends MahoutTestCase {
     Vector pdf = classifier.classify(new DenseVector(2));
     assertEquals("[0,0]", "[0.333, 0.333, 0.333]", AbstractCluster.formatVector(pdf, null));
     pdf = classifier.classify(new DenseVector(2).assign(2));
-    assertEquals("[2,2]", "[0.545, 0.273, 0.182]", AbstractCluster.formatVector(pdf, null));
+    assertEquals("[2,2]", "[0.429, 0.429, 0.143]", AbstractCluster.formatVector(pdf, null));
   }
 }

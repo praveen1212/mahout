@@ -22,7 +22,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
-import org.apache.commons.lang.math.RandomUtils;
+import org.apache.mahout.common.RandomUtils;
 import org.apache.mahout.common.distance.DistanceMeasure;
 import org.apache.mahout.math.Centroid;
 import org.apache.mahout.math.Vector;
@@ -34,6 +34,7 @@ import org.apache.mahout.math.random.WeightedThing;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Random;
 
 /**
  * Implements a ball k-means algorithm for weighted vectors with probabilistic seeding similar to k-means++.
@@ -73,6 +74,8 @@ public class BallKMeans implements Iterable<Centroid> {
   // of the centroids, but is useful if the weights matter.
   private final boolean correctWeights;
 
+  private static final Random random = RandomUtils.getRandom(1234);
+
   public BallKMeans(UpdatableSearcher searcher, int numClusters, int maxNumIterations) {
     this(searcher, numClusters, maxNumIterations, 0.9, true);
   }
@@ -106,6 +109,7 @@ public class BallKMeans implements Iterable<Centroid> {
    */
   public UpdatableSearcher cluster(List<? extends WeightedVector> datapoints, boolean randomInit) {
     centroids.clear();
+    RandomUtils.useTestSeed();
     if (randomInit) {
       // randomly select the initial centroids
       initializeSeedsRandomly(datapoints);
@@ -194,8 +198,8 @@ public class BallKMeans implements Iterable<Centroid> {
       seedSelector.add(i, selectionProbability);
     }
 
-    // Centroid c_1 = new Centroid(datapoints.get(seedSelector.sample()).clone());
-    Centroid c_1 = new Centroid(datapoints.get(RandomUtils.nextInt(datapoints.size())).clone());
+    Centroid c_1 = new Centroid(datapoints.get(seedSelector.sample()).clone());
+    // Centroid c_1 = new Centroid(datapoints.get(random.nextInt(datapoints.size())).clone());
     c_1.setIndex(0);
     // Construct a set of weighted things which can be used for random selection.  Initial weights are
     // set to the squared distance from c_1

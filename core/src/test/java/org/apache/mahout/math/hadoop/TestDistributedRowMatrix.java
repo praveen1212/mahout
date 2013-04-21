@@ -17,10 +17,9 @@
 
 package org.apache.mahout.math.hadoop;
 
-import java.io.IOException;
-import java.util.Iterator;
-import java.util.Map;
-
+import com.google.common.base.Function;
+import com.google.common.collect.Iterators;
+import com.google.common.collect.Maps;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -29,20 +28,14 @@ import org.apache.mahout.clustering.ClusteringTestUtils;
 import org.apache.mahout.common.HadoopUtil;
 import org.apache.mahout.common.MahoutTestCase;
 import org.apache.mahout.common.iterator.sequencefile.PathFilters;
-import org.apache.mahout.math.DenseVector;
-import org.apache.mahout.math.Matrix;
-import org.apache.mahout.math.MatrixSlice;
-import org.apache.mahout.math.RandomAccessSparseVector;
-import org.apache.mahout.math.Vector;
-import org.apache.mahout.math.VectorIterable;
-import org.apache.mahout.math.VectorWritable;
+import org.apache.mahout.math.*;
 import org.apache.mahout.math.decomposer.SolverTest;
 import org.apache.mahout.math.function.Functions;
 import org.junit.Test;
 
-import com.google.common.base.Function;
-import com.google.common.collect.Iterators;
-import com.google.common.collect.Maps;
+import java.io.IOException;
+import java.util.Iterator;
+import java.util.Map;
 
 public final class TestDistributedRowMatrix extends MahoutTestCase {
   public static final String TEST_PROPERTY_KEY = "test.property.key";
@@ -127,6 +120,7 @@ public final class TestDistributedRowMatrix extends MahoutTestCase {
 
     Vector expected = m.times(v);
     Vector actual = dm.times(v);
+    System.out.printf("%s\n%s\n", expected, actual);
     assertEquals(0.0, expected.getDistanceSquared(actual), EPSILON);
   }
 

@@ -35,8 +35,6 @@ import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.VectorWritable;
 import org.apache.mahout.math.neighborhood.BruteSearch;
 import org.apache.mahout.math.neighborhood.FastProjectionSearch;
-import org.apache.mahout.math.neighborhood.LocalitySensitiveHashSearch;
-import org.apache.mahout.math.neighborhood.ProjectionSearch;
 import org.apache.mahout.math.random.WeightedThing;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -59,7 +57,8 @@ public class StreamingKMeansTestMR {
   private static final int NUM_PROJECTIONS = 3;
   private static final int SEARCH_SIZE = 5;
   private static final int MAX_NUM_ITERATIONS = 10;
-  private static final double DISTANCE_CUTOFF = 1e-10;
+  // This is optimally 1e-4. However, it's set to less to make more interesting clusters (especially for MAp
+  private static final double DISTANCE_CUTOFF = 1e-7;
 
   private static Pair<List<Centroid>, List<Centroid>> syntheticData =
       DataUtils.sampleMultiNormalHypercube(NUM_DIMENSIONS, NUM_DATA_POINTS, 1e-5);
@@ -83,9 +82,9 @@ public class StreamingKMeansTestMR {
   @Parameterized.Parameters
   public static List<Object[]> generateData() {
     return Arrays.asList(new Object[][]{
-        {ProjectionSearch.class.getName(), SquaredEuclideanDistanceMeasure.class.getName()},
+        // {ProjectionSearch.class.getName(), SquaredEuclideanDistanceMeasure.class.getName()},
         {FastProjectionSearch.class.getName(), SquaredEuclideanDistanceMeasure.class.getName()},
-        {LocalitySensitiveHashSearch.class.getName(), SquaredEuclideanDistanceMeasure.class.getName()}
+        // {LocalitySensitiveHashSearch.class.getName(), SquaredEuclideanDistanceMeasure.class.getName()}
     });
   }
 
@@ -128,8 +127,8 @@ public class StreamingKMeansTestMR {
 
     // Clusters the data using local batch StreamingKMeans.
     StreamingKMeans batchClusterer = new StreamingKMeans(StreamingKMeansUtilsMR
-        .searcherFromConfiguration(configuration, log),
-        (1 << NUM_DIMENSIONS) * (int)Math.log(NUM_DATA_POINTS), DISTANCE_CUTOFF);
+        .searcherFromConfiguration(configuration, log), configuration.getInt("estimatedNumMapClusters", -1),
+        DISTANCE_CUTOFF);
     batchClusterer.cluster(syntheticData.getFirst());
     List<Centroid> batchCentroids = Lists.newArrayList();
     for (Vector v : batchClusterer) {
@@ -160,9 +159,9 @@ public class StreamingKMeansTestMR {
     // These ratios should be close to 1.0 and have been observed to be go as low as 0.6 and as low as 1.5.
     // A buffer of [0.2, 1.8] seems appropriate.
     assertEquals("Mapper StreamingKMeans / Batch local StreamingKMeans total cost ratio too far from 1",
-        mapperCost / localCost, 1.0, 0.8);
+        1.0, mapperCost / localCost, 0.8);
     assertEquals("One by one local StreamingKMeans / Batch local StreamingKMeans total cost ratio too high",
-        perPointCost / localCost, 1.0, 0.8);
+        1.0, perPointCost / localCost, 0.8);
   }
 
   @Test
@@ -221,7 +220,7 @@ public class StreamingKMeansTestMR {
       totalReducerWeight += result.getSecond().getCentroid().getWeight();
       ++numClusters;
     }
-    System.out.printf("%d clasters are unbalanced\n", numUnbalancedClusters);
+    System.out.printf("%d clusters are unbalanced\n", numUnbalancedClusters);
     assertEquals("Invalid total weight", totalWeight, totalReducerWeight);
     assertEquals("Invalid number of clusters", 1 << NUM_DIMENSIONS, numClusters);
   }
