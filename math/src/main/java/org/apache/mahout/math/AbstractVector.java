@@ -47,12 +47,11 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
    */
   @Override
   public double aggregate(DoubleDoubleFunction aggregator, DoubleFunction map) {
-    if (size < 1) {
-      throw new IllegalArgumentException("Cannot aggregate empty vector");
+    if (size == 0) {
+      return 0;
     }
 
     boolean commutativeAndAssociative = aggregator.isCommutative() && aggregator.isAssociative();
-
     if (commutativeAndAssociative) {
       boolean hasZeros = size() - getNumNonZeroElements() > 0;
       if (hasZeros && Math.abs(map.apply(0.0) - 0.0) < Constants.EPSILON) {
@@ -252,7 +251,9 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
   @Override
   public double aggregate(Vector other, DoubleDoubleFunction aggregator, DoubleDoubleFunction combiner) {
     Preconditions.checkArgument(size == other.size(), "Vector sizes differ");
-    Preconditions.checkArgument(size > 0, "Cannot aggregate empty vectors");
+    if (size == 0) {
+      return 0;
+    }
 
     if ((Math.abs(combiner.apply(0.0, 0.0) - 0.0) < Constants.EPSILON)
         && (isSequentialAccess() && other.isSequentialAccess())) {
@@ -338,9 +339,6 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
   }
 
   protected double dotSelf() {
-    if (size == 0) {
-      return 0;
-    }
     return aggregate(Functions.PLUS, Functions.pow(2));
   }
 
