@@ -94,10 +94,10 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     return result;
   }
 
-  protected double aggregateLikeDotProductIterateOne(double result,
-                                                     Iterator<Element> thisIterator, Vector other,
-                                                     DoubleDoubleFunction aggregator, DoubleDoubleFunction combiner,
-                                                     boolean swap) {
+  protected double aggregateSkipZerosIterateOne(double result,
+                                                Iterator<Element> thisIterator, Vector other,
+                                                DoubleDoubleFunction aggregator, DoubleDoubleFunction combiner,
+                                                boolean swap) {
     Element thisElement;
     Element thatElement;
     while (thisIterator.hasNext()) {
@@ -112,9 +112,9 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     return result;
   }
 
-  protected double aggregateLikeDotProductIterateBoth(double result,
-                                                      Iterator<Element> thisIterator, Iterator<Element> thatIterator,
-                                                      DoubleDoubleFunction aggregator, DoubleDoubleFunction combiner) {
+  protected double aggregateSkipZerosIterateBoth(double result,
+                                                 Iterator<Element> thisIterator, Iterator<Element> thatIterator,
+                                                 DoubleDoubleFunction aggregator, DoubleDoubleFunction combiner) {
     Element thisElement = null;
     Element thatElement = null;
     boolean advanceThis = true;
@@ -143,9 +143,63 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     return result;
   }
 
-  public double aggregateLikeDotProduct(Vector other, DoubleDoubleFunction aggregator, DoubleDoubleFunction combiner) {
+  private double aggregateIterateBoth(double result, Iterator<Element> thisIterator, Iterator<Element> thatIterator, DoubleDoubleFunction aggregator, DoubleDoubleFunction combiner) {
+    Element thisElement = null;
+    Element thatElement = null;
+    boolean advanceThis = true;
+    boolean advanceThat = true;
+
+    while (advanceThis || advanceThat) {
+      if (advanceThis) {
+        if (thisIterator.hasNext()) {
+          thisElement = thisIterator.next();
+        } else {
+          thisElement = null;
+        }
+      }
+      if (advanceThat) {
+        if (thatIterator.hasNext()) {
+          thatElement = thatIterator.next();
+        } else {
+          thatElement = null;
+        }
+      }
+      if (thisElement != null && thatElement != null) { // both vectors have nonzero elements
+        if (thisElement.index() == thatElement.index()) {
+          result = aggregator.apply(result, combiner.apply(thisElement.get(), thatElement.get()));
+          advanceThis = true;
+          advanceThat = true;
+        } else {
+          if (thisElement.index() < thatElement.index()) { // f(x, 0)
+            result = aggregator.apply(result, combiner.apply(thisElement.get(), 0));
+            advanceThis = true;
+            advanceThat = false;
+          } else {
+            result = aggregator.apply(result, combiner.apply(0, thatElement.get()));
+            advanceThis = false;
+            advanceThat = true;
+          }
+        }
+      } else if (thisElement != null) { // just the first one still has nonzeros
+        result = aggregator.apply(result, combiner.apply(thisElement.get(), 0));
+        advanceThis = true;
+        advanceThat = false;
+      } else if (thatElement != null) { // just the second one has nonzeros
+        result = aggregator.apply(result, combiner.apply(0, thatElement.get()));
+        advanceThis = false;
+        advanceThat = true;
+      } else { // we're done, both are empty
+        break;
+      }
+    }
+    return result;
+  }
+
+  protected double aggregateSkipZeros(Vector other, DoubleDoubleFunction aggregator, DoubleDoubleFunction combiner) {
     Preconditions.checkArgument(size == other.size(), "Vector sizes differ");
     Preconditions.checkArgument(size > 0, "Cannot aggregate empty vectors");
+    Preconditions.checkArgument(aggregator.isLikeRightPlus() && aggregator.isAssociative() && aggregator.isCommutative(),
+        "");
 
     Iterator<Element> thisIterator = iterateNonZero();
     Iterator<Element> thatIterator = other.iterateNonZero();
@@ -163,21 +217,25 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
       thatIterator = other.iterateNonZero();
     }
 
-    int numNondefaultThis = this.getNumNondefaultElements();
-    int numNondefaultThat = other.getNumNondefaultElements();
-    double bothCost = numNondefaultThis + numNondefaultThat;
-    double oneCostThis = other.isRandomAccess() ?
-        numNondefaultThis : (numNondefaultThis * Functions.LOG2.apply(numNondefaultThat));
-    double oneCostThat = isRandomAccess() ?
-        numNondefaultThat : (numNondefaultThat * Functions.LOG2.apply(numNondefaultThis));
+    if (combiner.isLikeMult()) {
+      int numNondefaultThis = this.getNumNondefaultElements();
+      int numNondefaultThat = other.getNumNondefaultElements();
+      double bothCost = numNondefaultThis + numNondefaultThat;
+      double oneCostThis = other.isRandomAccess() ?
+          numNondefaultThis : (numNondefaultThis * Functions.LOG2.apply(numNondefaultThat));
+      double oneCostThat = isRandomAccess() ?
+          numNondefaultThat : (numNondefaultThat * Functions.LOG2.apply(numNondefaultThis));
 
-    if (oneCostThis <= oneCostThat && oneCostThis <= bothCost) {
-      return aggregateLikeDotProductIterateOne(result, thisIterator, other, aggregator, combiner, false);
+      if (oneCostThis <= oneCostThat && oneCostThis <= bothCost) {
+        return aggregateSkipZerosIterateOne(result, thisIterator, other, aggregator, combiner, false);
+      }
+      if (oneCostThat < oneCostThis && oneCostThat <= bothCost) {
+        return aggregateSkipZerosIterateOne(result, thatIterator, this, aggregator, combiner, true);
+      }
+      return aggregateSkipZerosIterateBoth(result, thisIterator, thatIterator, aggregator, combiner);
+    } else {
+      return aggregateIterateBoth(result, thisIterator, thatIterator, aggregator, combiner);
     }
-    if (oneCostThat < oneCostThis && oneCostThat <= bothCost) {
-      return aggregateLikeDotProductIterateOne(result, thatIterator, this, aggregator, combiner, true);
-    }
-    return aggregateLikeDotProductIterateBoth(result, thisIterator, thatIterator, aggregator, combiner);
   }
 
   @Override
@@ -189,7 +247,7 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
         && ((isSequentialAccess() && other.isSequentialAccess())
             || (aggregator.isAssociative() && aggregator.isCommutative()))) {
       if (aggregator.isLikeRightPlus()) {
-        return aggregateLikeDotProduct(other, aggregator, combiner);
+          return aggregateSkipZeros(other, aggregator, combiner);
       }  else {
         Iterator<Element> thisIterator = this.iterator();
         Iterator<Element> thatIterator = other.iterator();
@@ -708,42 +766,53 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
         boolean advanceThat = true;
         OrderedIntDoubleMapping thisUpdates = new OrderedIntDoubleMapping();
 
-        while (thisIterator.hasNext() && thatIterator.hasNext()) {
+        while (advanceThis || advanceThat) {
           if (advanceThis) {
-            thisElement = thisIterator.next();
-          }
-          if (advanceThat) {
-            thatElement = thatIterator.next();
-          }
-          if (thisElement.index() == thatElement.index()) {
-            thisElement.set(function.apply(thisElement.get(), thatElement.get()));
-            advanceThis = true;
-            advanceThat = true;
-          } else {
-            if (thisElement.index() < thatElement.index()) { // f(x, 0)
-              thisElement.set(function.apply(thisElement.get(), 0));
-              advanceThis = true;
-              advanceThat = false;
+            if (thisIterator.hasNext()) {
+              thisElement = thisIterator.next();
             } else {
-              double result = function.apply(0, thatElement.get());
-              if (result != 0) { // f(0, y) != 0
-                thisUpdates.set(thatElement.index(), result);
-              }
-              advanceThis = false;
-              advanceThat = true;
+              thisElement = null;
             }
           }
-        }
-
-        while (thisIterator.hasNext()) {
-          thisElement = thisIterator.next();
-          thisElement.set(function.apply(thisElement.get(), 0));
-        }
-        while (thatIterator.hasNext()) {
-          thatElement = thatIterator.next();
-          double result = function.apply(0, thatElement.get());
-          if (result != 0) {
-            thisUpdates.set(thatElement.index(), result);
+          if (advanceThat) {
+            if (thatIterator.hasNext()) {
+              thatElement = thatIterator.next();
+            } else {
+              thatElement = null;
+            }
+          }
+          if (thisElement != null && thatElement != null) { // both vectors have nonzero elements
+            if (thisElement.index() == thatElement.index()) {
+              thisElement.set(function.apply(thisElement.get(), thatElement.get()));
+              advanceThis = true;
+              advanceThat = true;
+            } else {
+              if (thisElement.index() < thatElement.index()) { // f(x, 0)
+                thisElement.set(function.apply(thisElement.get(), 0));
+                advanceThis = true;
+                advanceThat = false;
+              } else {
+                double result = function.apply(0, thatElement.get());
+                if (result != 0) { // f(0, y) != 0
+                  thisUpdates.set(thatElement.index(), result);
+                }
+                advanceThis = false;
+                advanceThat = true;
+              }
+            }
+          } else if (thisElement != null) { // just the first one still has nonzeros
+            thisElement.set(function.apply(thisElement.get(), 0));
+            advanceThis = true;
+            advanceThat = false;
+          } else if (thatElement != null) { // just the second one has nonzeros
+            double result = function.apply(0, thatElement.get());
+            if (result != 0) {
+              thisUpdates.set(thatElement.index(), result);
+            }
+            advanceThis = false;
+            advanceThat = true;
+          } else { // we're done, both are empty
+            break;
           }
         }
         mergeUpdates(thisUpdates);
