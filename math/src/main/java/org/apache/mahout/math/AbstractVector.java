@@ -23,6 +23,7 @@ import org.apache.mahout.math.function.DoubleDoubleFunction;
 import org.apache.mahout.math.function.DoubleFunction;
 import org.apache.mahout.math.function.Functions;
 import org.apache.mahout.math.jet.math.Constants;
+import org.apache.mahout.math.set.OpenIntHashSet;
 
 import java.util.Iterator;
 /** Implementations of generic capabilities like sum of elements and dot products */
@@ -53,7 +54,7 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
 
     boolean commutativeAndAssociative = aggregator.isCommutative() && aggregator.isAssociative();
     if (commutativeAndAssociative) {
-      boolean hasZeros = size() - getNumNonZeroElements() > 0;
+      boolean hasZeros = size() - getNumNondefaultElements() > 0;
       if (hasZeros && Math.abs(map.apply(0.0) - 0.0) < Constants.EPSILON) {
         // There exists at least one zero, and fm(0) = 0. The results starts as 0.0.
         // This can be the first result in the aggregator (because it's associative and commutative).
@@ -98,14 +99,13 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
                                                 DoubleDoubleFunction aggregator, DoubleDoubleFunction combiner,
                                                 boolean swap) {
     Element thisElement;
-    Element thatElement;
     while (thisIterator.hasNext()) {
       thisElement = thisIterator.next();
-      thatElement = other.getElement(thisElement.index());
-      if (thatElement.get() != 0) {
+      double thisValue = thisElement.get();
+      double thatValue = other.getQuick(thisElement.index());
+      if (thatValue != 0.0) {
         result = aggregator.apply(result,
-            swap ? combiner.apply(thatElement.get(), thisElement.get()) :
-                combiner.apply(thisElement.get(), thatElement.get()));
+            swap ? combiner.apply(thatValue, thisValue) : combiner.apply(thisValue, thatValue));
       }
     }
     return result;
@@ -194,17 +194,37 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     return result;
   }
 
+  private double aggregateIterateBothRandomAccess(double result, Vector other,
+                                                  DoubleDoubleFunction aggregator, DoubleDoubleFunction combiner) {
+    OpenIntHashSet visited = new OpenIntHashSet();
+    Iterator<Element> thisIterator = iterateNonZero();
+    Element thisElement;
+    while (thisIterator.hasNext()) {
+      thisElement = thisIterator.next();
+      result = aggregator.apply(result, combiner.apply(thisElement.get(), other.getQuick(thisElement.index())));
+      visited.add(thisElement.index());
+    }
+    Iterator<Element> thatIterator = other.iterateNonZero();
+    Element thatElement;
+    while (thatIterator.hasNext()) {
+      thatElement = thatIterator.next();
+      if (!visited.contains(thatElement.index())) {
+        double thisValue = getQuick(thatElement.index());
+        result = aggregator.apply(result, combiner.apply(thisValue, thatElement.get()));
+      }
+    }
+    return result;
+  }
+
   private double aggregateSkipZeros(Vector other, DoubleDoubleFunction aggregator, DoubleDoubleFunction combiner) {
     Preconditions.checkArgument(size == other.size(), "Vector sizes differ");
     Preconditions.checkArgument(size > 0, "Cannot aggregate empty vectors");
-    Preconditions.checkArgument(aggregator.isLikeRightPlus() && aggregator.isAssociative() && aggregator.isCommutative(),
-        "");
 
     Iterator<Element> thisIterator = iterateNonZero();
     Iterator<Element> thatIterator = other.iterateNonZero();
     Element thisElement;
     Element thatElement;
-    double result;
+    double result = 0;
     if (thisIterator.hasNext() && thatIterator.hasNext()) {
       thisElement = thisIterator.next();
       thatElement = thatIterator.next();
@@ -227,25 +247,47 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
       return 0;
     }
 
-    if (combiner.isLikeMult()) {
-      int numNondefaultThis = this.getNumNondefaultElements();
-      int numNondefaultThat = other.getNumNondefaultElements();
-      double bothCost = numNondefaultThis + numNondefaultThat;
-      double oneCostThis = other.isRandomAccess() ?
-          numNondefaultThis : (numNondefaultThis * Functions.LOG2.apply(numNondefaultThat));
-      double oneCostThat = isRandomAccess() ?
-          numNondefaultThat : (numNondefaultThat * Functions.LOG2.apply(numNondefaultThis));
+    int numNondefaultThis = this.getNumNondefaultElements();
+    int numNondefaultThat = other.getNumNondefaultElements();
+    double bothCost = numNondefaultThis + numNondefaultThat;
+    double oneCostThis = other.isRandomAccess() ?
+        numNondefaultThis : (numNondefaultThis * Functions.LOG2.apply(numNondefaultThat));
+    double oneCostThat = isRandomAccess() ?
+        numNondefaultThat : (numNondefaultThat * Functions.LOG2.apply(numNondefaultThis));
 
-      if (oneCostThis <= oneCostThat && oneCostThis <= bothCost) {
-        return aggregateSkipZerosIterateOne(result, thisIterator, other, aggregator, combiner, false);
-      }
-      if (oneCostThat < oneCostThis && oneCostThat <= bothCost) {
-        return aggregateSkipZerosIterateOne(result, thatIterator, this, aggregator, combiner, true);
-      }
-      return aggregateSkipZerosIterateBoth(result, thisIterator, thatIterator, aggregator, combiner);
-    } else {
-      return aggregateIterateBoth(result, thisIterator, thatIterator, aggregator, combiner);
+    // f(x, 0) = 0; iterate through that (y)
+    if (combiner.isLikeRightMult() && (!isSequentialAccess() || !combiner.isLikeLeftMult()
+        || (oneCostThat < oneCostThis) && oneCostThat <= bothCost)) {
+      return aggregateSkipZerosIterateOne(result, thatIterator, this, aggregator, combiner, true);
     }
+
+    // f(0, y) = 0; iterate through this (x)
+    if (combiner.isLikeLeftMult() && (!other.isSequentialAccess() || !combiner.isLikeRightMult()
+        || (oneCostThis <= oneCostThat && oneCostThis <= bothCost))) {
+      return aggregateSkipZerosIterateOne(result, thisIterator, other, aggregator, combiner, false);
+    }
+
+    if (isSequentialAccess() && other.isSequentialAccess()) {
+      if (combiner.isLikeMult()) {
+        return aggregateSkipZerosIterateBoth(result, thisIterator, thatIterator, aggregator, combiner);
+      } else {
+        return aggregateIterateBoth(result, thisIterator, thatIterator, aggregator, combiner);
+      }
+    } else {
+      if (aggregator.isAssociative() && aggregator.isCommutative()) {
+        return aggregateIterateBothRandomAccess(result, other, aggregator, combiner);
+      } else {
+        return aggregateForLoop(other, aggregator, combiner);
+      }
+    }
+  }
+
+  private double aggregateForLoop(Vector other, DoubleDoubleFunction aggregator, DoubleDoubleFunction combiner) {
+    double result = combiner.apply(getQuick(0), other.getQuick(0));
+    for (int i = 1; i < size(); ++i) {
+      result = aggregator.apply(result, combiner.apply(getQuick(i), other.getQuick(i)));
+    }
+    return result;
   }
 
   @Override
@@ -255,11 +297,12 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
       return 0;
     }
 
-    if ((Math.abs(combiner.apply(0.0, 0.0) - 0.0) < Constants.EPSILON)
-        && (isSequentialAccess() && other.isSequentialAccess())) {
-      if (aggregator.isLikeRightPlus()) {
-          return aggregateSkipZeros(other, aggregator, combiner);
-      }  else {
+    if ((Math.abs(combiner.apply(0.0, 0.0) - 0.0) < Constants.EPSILON) && aggregator.isLikeRightPlus()
+        && ((isSequentialAccess() && other.isSequentialAccess())
+        || (aggregator.isAssociative() && aggregator.isCommutative()))) {
+      return aggregateSkipZeros(other, aggregator, combiner);
+    } else {
+      if (isSequentialAccess() && other.isSequentialAccess()) {
         Iterator<Element> thisIterator = this.iterator();
         Iterator<Element> thatIterator = other.iterator();
         Element thisElement = thisIterator.next();
@@ -271,13 +314,10 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
           result = aggregator.apply(result, combiner.apply(thisElement.get(), thatElement.get()));
         }
         return result;
+      } else {
+        return aggregateForLoop(other, aggregator, combiner);
       }
-    } else {
-      double result = combiner.apply(getQuick(0), other.getQuick(0));
-      for (int i = 1; i < size(); ++i) {
-        result = aggregator.apply(result, combiner.apply(getQuick(i), other.getQuick(i)));
-      }
-      return result;
+
     }
   }
 
@@ -335,7 +375,83 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     if (this == x) {
       return getLengthSquared();
     }
-    return aggregate(x, Functions.PLUS, Functions.MULT);
+    // Crude rule of thumb: when a sequential-access vector, with O(log n) lookups, has about
+    // 2^n elements, its lookups take longer than a dense / random access vector (with O(1) lookups) by
+    // about a factor of (0.71n - 12.3). This holds pretty well from n=19 up to at least n=23 according to my tests;
+    // below that lookups are so fast that this difference is near zero.
+
+    int thisNumNonDefault = getNumNondefaultElements();
+    int thatNumNonDefault = x.getNumNondefaultElements();
+    // Default: dot from smaller vector to larger vector
+    boolean reverseDot = thatNumNonDefault < thisNumNonDefault;
+
+    // But, see if we should override that -- is exactly one of them sequential access and so slower to lookup in?
+    if (isSequentialAccess() != x.isSequentialAccess()) {
+      double log2ThisSize = Math.log(thisNumNonDefault) / LOG2;
+      double log2ThatSize = Math.log(thatNumNonDefault) / LOG2;
+      // Only override when the O(log n) factor seems big enough to care about:
+      if (log2ThisSize >= 19.0 && log2ThatSize >= 19.0) {
+        double dotCost = thisNumNonDefault;
+        if (x.isSequentialAccess()) {
+          dotCost *= 0.71 * log2ThatSize - 12.3;
+        }
+        double reverseDotCost = thatNumNonDefault;
+        if (isSequentialAccess()) {
+          reverseDotCost *= 0.71 * log2ThisSize - 12.3;
+        }
+        reverseDot = reverseDotCost < dotCost;
+      }
+    } else if (this.isSequentialAccess()  && !this.isDense() && x.isSequentialAccess() && !x.isDense()) {
+      Element thisElement = null;
+      Element thatElement = null;
+      boolean advanceThis = true;
+      boolean advanceThat = true;
+
+      Iterator<Element> thisNonZero = this.iterateNonZero();
+      Iterator<Element> thatNonZero = x.iterateNonZero();
+
+      double result = 0.0;
+      while (true) {
+        if (advanceThis) {
+          if (!thisNonZero.hasNext()) {
+            break;
+          }
+          thisElement = thisNonZero.next();
+        }
+        if (advanceThat) {
+          if (!thatNonZero.hasNext()) {
+            break;
+          }
+          thatElement = thatNonZero.next();
+        }
+        if (thisElement.index() == thatElement.index()) {
+          result += thisElement.get() * thatElement.get();
+          advanceThis = true;
+          advanceThat = true;
+        } else if (thisElement.index() < thatElement.index()) {
+          advanceThis = true;
+          advanceThat = false;
+        } else {
+          advanceThis = false;
+          advanceThat = true;
+        }
+      }
+      return result;
+    }
+
+
+    if (reverseDot) {
+      return x.dot(this);
+    }
+
+    double result = 0.0;
+    Iterator<Element> iter = iterateNonZero();
+    while (iter.hasNext()) {
+      Element element = iter.next();
+      result += element.get() * x.getQuick(element.index());
+    }
+    return result;
+    // return aggregate(x, Functions.PLUS, Functions.MULT);
   }
 
   protected double dotSelf() {
@@ -426,8 +542,205 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
 
   @Override
   public double getDistanceSquared(Vector v) {
-    // return minus(v).aggregate(Functions.PLUS, Functions.pow(2));
-    return aggregate(v, Functions.PLUS, Functions.MINUS_SQUARED);
+    if (size != v.size()) {
+      throw new CardinalityException(size, v.size());
+    }
+    /*
+    double thisLength = getLengthSquared();
+    double thatLength = that.getLengthSquared();
+    double dot = dot(that);
+    double distanceEstimate = thisLength + thatLength - 2 * dot;
+    if (distanceEstimate > 1e-3 * (thisLength + thatLength)) {
+      // The vectors are far enough from each other that the formula is accurate.
+      return Math.max(distanceEstimate, 0);
+    } else {
+      return aggregate(that, Functions.PLUS, Functions.MINUS_SQUARED);
+    }
+    */
+    // if this and v has a cached lengthSquared, dot product is quickest way to compute this.
+    double d1;
+    double d2;
+    double dot;
+    if (lengthSquared >= 0) {
+      // our length squared is cached.  use it
+      // the max is (slight) antidote to round-off errors
+      d1 = lengthSquared;
+      d2 = v.getLengthSquared();
+      dot = this.dot(v);
+    } else {
+      // our length is not cached... compute it and the dot product in one pass for speed
+      d1 = 0;
+      d2 = v.getLengthSquared();
+      dot = 0;
+      final Iterator<Element> i = iterateNonZero();
+      while (i.hasNext()) {
+        Element e = i.next();
+        double value = e.get();
+        d1 += value * value;
+        dot += value * v.getQuick(e.index());
+      }
+      lengthSquared = d1;
+      // again, round-off errors may be present
+    }
+
+    double r = d1 + d2 - 2 * dot;
+    if (r > 1.0e-3 * (d1 + d2)) {
+      return Math.max(0, r);
+    } else {
+      if (this.isSequentialAccess()) {
+        if (v.isSequentialAccess()) {
+          return mergeDiff(this, v);
+        } else {
+          return randomScanDiff(this, v);
+        }
+      } else {
+        return randomScanDiff(v, this);
+      }
+    }
+  }
+
+  /**
+   * Computes the squared difference of two vectors where iterateNonZero
+   * is efficient for each vector, but where the order of iteration is not
+   * known.  This forces us to access most elements of v2 via get(), which
+   * would be very inefficient for some kinds of vectors.
+   *
+   * Note that this static method is exposed at a package level for testing purposes only.
+   * @param v1  The vector that we access only via iterateNonZero
+   * @param v2  The vector that we access via iterateNonZero and via Element.get()
+   * @return The squared difference between v1 and v2.
+   */
+  static double randomScanDiff(Vector v1, Vector v2) {
+    // keeps a list of elements we visited by iterating over v1.  This should be
+    // almost all of the elements of v2 because we only call this method if the
+    // difference is small.
+    OpenIntHashSet visited = new OpenIntHashSet();
+
+    double r = 0;
+
+    // walk through non-zeros of v1
+    Iterator<Element> i = v1.iterateNonZero();
+    while (i.hasNext()) {
+      Element e1 = i.next();
+      visited.add(e1.index());
+      double x = e1.get() - v2.get(e1.index());
+      r += x * x;
+    }
+
+    // now walk through neglected elements of v2
+    i = v2.iterateNonZero();
+    while (i.hasNext()) {
+      Element e2 = i.next();
+      if (!visited.contains(e2.index())) {
+        // if not visited already then v1's value here would be zero.
+        double x = e2.get();
+        r += x * x;
+      }
+    }
+
+    return r;
+  }
+
+  /**
+   * Computes the squared difference of two vectors where iterateNonZero returns
+   * elements in index order for both vectors.  This allows a merge to be used to
+   * compute the difference.  A merge allows a single sequential pass over each
+   * vector and should be faster than any alternative.
+   *
+   * Note that this static method is exposed at a package level for testing purposes only.
+   * @param v1  The first vector.
+   * @param v2  The second vector.
+   * @return The squared difference between the two vectors.
+   */
+  static double mergeDiff(Vector v1, Vector v2) {
+    Iterator<Element> i1 = v1.iterateNonZero();
+    Iterator<Element> i2 = v2.iterateNonZero();
+
+    // v1 is empty?
+    if (!i1.hasNext()) {
+      return v2.getLengthSquared();
+    }
+
+    // v2 is empty?
+    if (!i2.hasNext()) {
+      return v1.getLengthSquared();
+    }
+
+    Element e1 = i1.next();
+    Element e2 = i2.next();
+
+    double r = 0;
+    while (e1 != null && e2 != null) {
+      // eat elements of v1 that precede all in v2
+      while (e1 != null && e1.index() < e2.index()) {
+        double x = e1.get();
+        r += x * x;
+
+        if (i1.hasNext()) {
+          e1 = i1.next();
+        } else {
+          e1 = null;
+        }
+      }
+
+      // at this point we have three possibilities, e1 == null or e1 matches e2 or
+      // e2 precedes e1.  Here we handle the e2 < e1 case
+      while (e2 != null && (e1 == null || e2.index() < e1.index())) {
+        double x = e2.get();
+        r += x * x;
+
+        if (i2.hasNext()) {
+          e2 = i2.next();
+        } else {
+          e2 = null;
+        }
+      }
+
+      // and now we handle the e1 == e2 case.  For convenience, we
+      // grab as many of these as possible.  Given that we are called here
+      // only when v1 and v2 are nearly equal, this loop should dominate
+      while (e1 != null && e2 != null && e1.index() == e2.index()) {
+        double x = e1.get() - e2.get();
+        r += x * x;
+
+        if (i1.hasNext()) {
+          e1 = i1.next();
+        } else {
+          e1 = null;
+        }
+
+        if (i2.hasNext()) {
+          e2 = i2.next();
+        } else {
+          e2 = null;
+        }
+      }
+    }
+
+    // one of i1 or i2 is exhausted here, but the other may not be
+    while (e1 != null) {
+      double x = e1.get();
+      r += x * x;
+
+      if (i1.hasNext()) {
+        e1 = i1.next();
+      } else {
+        e1 = null;
+      }
+    }
+
+    while (e2 != null) {
+      double x = e2.get();
+      r += x * x;
+
+      if (i2.hasNext()) {
+        e2 = i2.next();
+      } else {
+        e2 = null;
+      }
+    }
+    // both v1 and v2 have been completely processed
+    return r;
   }
 
   @Override
@@ -962,12 +1275,14 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     if (size != that.size()) {
       return false;
     }
+
     for (int index = 0; index < size; index++) {
       if (getQuick(index) != that.getQuick(index)) {
         return false;
       }
     }
     return true;
+    // return aggregate(that, Functions.PLUS_ABS, Functions.MINUS) < Constants.EPSILON;
   }
 
   @Override
