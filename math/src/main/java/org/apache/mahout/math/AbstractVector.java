@@ -94,30 +94,37 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     return result;
   }
 
-  protected double aggregateSkipZerosIterateOne(double result,
-                                                Iterator<Element> thisIterator, Vector other,
+  protected double aggregateSkipZerosIterateOne(Iterator<Element> thisIterator, Vector other,
                                                 DoubleDoubleFunction aggregator, DoubleDoubleFunction combiner,
                                                 boolean swap) {
     Element thisElement;
+    double result = 0;
+    boolean validResult = false;
     while (thisIterator.hasNext()) {
       thisElement = thisIterator.next();
       double thisValue = thisElement.get();
       double thatValue = other.getQuick(thisElement.index());
       if (thatValue != 0.0) {
-        result = aggregator.apply(result,
-            swap ? combiner.apply(thatValue, thisValue) : combiner.apply(thisValue, thatValue));
+        double combinerResult = swap ? combiner.apply(thatValue, thisValue) : combiner.apply(thisValue, thatValue);
+        if (validResult) {
+          result = aggregator.apply(result, combinerResult);
+        } else {
+          result = combinerResult;
+          validResult = true;
+        }
       }
     }
     return result;
   }
 
-  protected double aggregateSkipZerosIterateBoth(double result,
-                                                 Iterator<Element> thisIterator, Iterator<Element> thatIterator,
+  protected double aggregateSkipZerosIterateBoth(Iterator<Element> thisIterator, Iterator<Element> thatIterator,
                                                  DoubleDoubleFunction aggregator, DoubleDoubleFunction combiner) {
     Element thisElement = null;
     Element thatElement = null;
     boolean advanceThis = true;
     boolean advanceThat = true;
+    double result = 0;
+    boolean validResult = false;
     while (thisIterator.hasNext() && thatIterator.hasNext()) {
       if (advanceThis) {
         thisElement = thisIterator.next();
@@ -126,7 +133,12 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
         thatElement = thatIterator.next();
       }
       if (thisElement.index() == thatElement.index()) {
-        result = aggregator.apply(result, combiner.apply(thisElement.get(), thatElement.get()));
+        if (validResult) {
+          result = aggregator.apply(result, combiner.apply(thisElement.get(), thatElement.get()));
+        } else {
+          result = combiner.apply(thisElement.get(), thatElement.get());
+          validResult = true;
+        }
         advanceThis = true;
         advanceThat = true;
       } else {
@@ -142,11 +154,13 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     return result;
   }
 
-  private double aggregateIterateBoth(double result, Iterator<Element> thisIterator, Iterator<Element> thatIterator, DoubleDoubleFunction aggregator, DoubleDoubleFunction combiner) {
+  private double aggregateIterateBoth(Iterator<Element> thisIterator, Iterator<Element> thatIterator, DoubleDoubleFunction aggregator, DoubleDoubleFunction combiner) {
     Element thisElement = null;
     Element thatElement = null;
     boolean advanceThis = true;
     boolean advanceThat = true;
+    boolean validResult = false;
+    double result = 0;
 
     while (advanceThis || advanceThat) {
       if (advanceThis) {
@@ -165,16 +179,31 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
       }
       if (thisElement != null && thatElement != null) { // both vectors have nonzero elements
         if (thisElement.index() == thatElement.index()) {
-          result = aggregator.apply(result, combiner.apply(thisElement.get(), thatElement.get()));
+          if (validResult) {
+            result = aggregator.apply(result, combiner.apply(thisElement.get(), thatElement.get()));
+          } else {
+            result = combiner.apply(thisElement.get(), thatElement.get());
+            validResult = true;
+          }
           advanceThis = true;
           advanceThat = true;
         } else {
           if (thisElement.index() < thatElement.index()) { // f(x, 0)
-            result = aggregator.apply(result, combiner.apply(thisElement.get(), 0));
+            if (validResult) {
+              result = aggregator.apply(result, combiner.apply(thisElement.get(), 0));
+            } else {
+              result = combiner.apply(thisElement.get(), 0);
+              validResult = true;
+            }
             advanceThis = true;
             advanceThat = false;
           } else {
-            result = aggregator.apply(result, combiner.apply(0, thatElement.get()));
+            if (validResult) {
+              result = aggregator.apply(result, combiner.apply(0, thatElement.get()));
+            } else {
+              result = combiner.apply(0, thatElement.get());
+              validResult = true;
+            }
             advanceThis = false;
             advanceThat = true;
           }
@@ -194,14 +223,21 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     return result;
   }
 
-  private double aggregateIterateBothRandomAccess(double result, Vector other,
+  private double aggregateIterateBothRandomAccess(Vector other,
                                                   DoubleDoubleFunction aggregator, DoubleDoubleFunction combiner) {
     OpenIntHashSet visited = new OpenIntHashSet();
     Iterator<Element> thisIterator = iterateNonZero();
     Element thisElement;
+    boolean validResult = false;
+    double result = 0;
     while (thisIterator.hasNext()) {
       thisElement = thisIterator.next();
-      result = aggregator.apply(result, combiner.apply(thisElement.get(), other.getQuick(thisElement.index())));
+      if (validResult) {
+        result = aggregator.apply(result, combiner.apply(thisElement.get(), other.getQuick(thisElement.index())));
+      } else {
+        result = combiner.apply(thisElement.get(), other.getQuick(thisElement.index()));
+        validResult = true;
+      }
       visited.add(thisElement.index());
     }
     Iterator<Element> thatIterator = other.iterateNonZero();
@@ -210,7 +246,12 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
       thatElement = thatIterator.next();
       if (!visited.contains(thatElement.index())) {
         double thisValue = getQuick(thatElement.index());
-        result = aggregator.apply(result, combiner.apply(thisValue, thatElement.get()));
+        if (validResult) {
+          result = aggregator.apply(result, combiner.apply(thisValue, thatElement.get()));
+        } else {
+          result = combiner.apply(thisValue, thatElement.get());
+          validResult = true;
+        }
       }
     }
     return result;
@@ -222,28 +263,7 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
 
     Iterator<Element> thisIterator = iterateNonZero();
     Iterator<Element> thatIterator = other.iterateNonZero();
-    Element thisElement;
-    Element thatElement;
-    double result = 0;
-    if (thisIterator.hasNext() && thatIterator.hasNext()) {
-      thisElement = thisIterator.next();
-      thatElement = thatIterator.next();
-      if (thisElement.index() == thatElement.index()) {
-        result = combiner.apply(thisElement.get(), thatElement.get());
-      } else if (thisElement.index() < thatElement.index()) {
-        result = combiner.apply(thisElement.get(), 0);
-        thatIterator = other.iterateNonZero();
-      } else {
-        result = combiner.apply(0, thatElement.get());
-        thisIterator = iterateNonZero();
-      }
-    } else if (thisIterator.hasNext() && !thatIterator.hasNext()) {
-      thisElement = thisIterator.next();
-      result = combiner.apply(thisElement.get(), 0);
-    } else if (!thisIterator.hasNext() && thatIterator.hasNext()) {
-      thatElement = thatIterator.next();
-      result = combiner.apply(0, thatElement.get());
-    } else {
+    if (!thisIterator.hasNext() && !thatIterator.hasNext()) {
       return 0;
     }
 
@@ -258,24 +278,24 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     // f(x, 0) = 0; iterate through that (y)
     if (combiner.isLikeRightMult() && (!isSequentialAccess() || !combiner.isLikeLeftMult()
         || (oneCostThat < oneCostThis) && oneCostThat <= bothCost)) {
-      return aggregateSkipZerosIterateOne(result, thatIterator, this, aggregator, combiner, true);
+      return aggregateSkipZerosIterateOne(thatIterator, this, aggregator, combiner, true);
     }
 
     // f(0, y) = 0; iterate through this (x)
     if (combiner.isLikeLeftMult() && (!other.isSequentialAccess() || !combiner.isLikeRightMult()
         || (oneCostThis <= oneCostThat && oneCostThis <= bothCost))) {
-      return aggregateSkipZerosIterateOne(result, thisIterator, other, aggregator, combiner, false);
+      return aggregateSkipZerosIterateOne(thisIterator, other, aggregator, combiner, false);
     }
 
     if (isSequentialAccess() && other.isSequentialAccess()) {
       if (combiner.isLikeMult()) {
-        return aggregateSkipZerosIterateBoth(result, thisIterator, thatIterator, aggregator, combiner);
+        return aggregateSkipZerosIterateBoth(thisIterator, thatIterator, aggregator, combiner);
       } else {
-        return aggregateIterateBoth(result, thisIterator, thatIterator, aggregator, combiner);
+        return aggregateIterateBoth(thisIterator, thatIterator, aggregator, combiner);
       }
     } else {
       if (aggregator.isAssociative() && aggregator.isCommutative()) {
-        return aggregateIterateBothRandomAccess(result, other, aggregator, combiner);
+        return aggregateIterateBothRandomAccess(other, aggregator, combiner);
       } else {
         return aggregateForLoop(other, aggregator, combiner);
       }
@@ -375,6 +395,7 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     if (this == x) {
       return getLengthSquared();
     }
+    /*
     // Crude rule of thumb: when a sequential-access vector, with O(log n) lookups, has about
     // 2^n elements, its lookups take longer than a dense / random access vector (with O(1) lookups) by
     // about a factor of (0.71n - 12.3). This holds pretty well from n=19 up to at least n=23 according to my tests;
@@ -451,7 +472,8 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
       result += element.get() * x.getQuick(element.index());
     }
     return result;
-    // return aggregate(x, Functions.PLUS, Functions.MULT);
+    */
+    return aggregate(x, Functions.PLUS, Functions.MULT);
   }
 
   protected double dotSelf() {
@@ -541,11 +563,10 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
   }
 
   @Override
-  public double getDistanceSquared(Vector v) {
-    if (size != v.size()) {
-      throw new CardinalityException(size, v.size());
+  public double getDistanceSquared(Vector that) {
+    if (size != that.size()) {
+      throw new CardinalityException(size, that.size());
     }
-    /*
     double thisLength = getLengthSquared();
     double thatLength = that.getLengthSquared();
     double dot = dot(that);
@@ -556,7 +577,7 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     } else {
       return aggregate(that, Functions.PLUS, Functions.MINUS_SQUARED);
     }
-    */
+    /*
     // if this and v has a cached lengthSquared, dot product is quickest way to compute this.
     double d1;
     double d2;
@@ -597,6 +618,7 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
         return randomScanDiff(v, this);
       }
     }
+    */
   }
 
   /**
@@ -1276,13 +1298,15 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
       return false;
     }
 
+    /*
     for (int index = 0; index < size; index++) {
       if (getQuick(index) != that.getQuick(index)) {
         return false;
       }
     }
     return true;
-    // return aggregate(that, Functions.PLUS_ABS, Functions.MINUS) < Constants.EPSILON;
+    */
+    return aggregate(that, Functions.PLUS_ABS, Functions.MINUS) < Constants.EPSILON;
   }
 
   @Override
