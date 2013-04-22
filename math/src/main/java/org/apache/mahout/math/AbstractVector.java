@@ -276,13 +276,13 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
         numNondefaultThat : (numNondefaultThat * Functions.LOG2.apply(numNondefaultThis));
 
     // f(x, 0) = 0; iterate through that (y)
-    if (combiner.isLikeRightMult() && (!combiner.isLikeLeftMult()
-        || (oneCostThat < oneCostThis) && oneCostThat <= bothCost)) {
+    if (combiner.isLikeRightMult() && (!isSequentialAccess() || !combiner.isLikeLeftMult()
+        || (oneCostThat <= oneCostThis && oneCostThat <= bothCost))) {
       return aggregateSkipZerosIterateOne(thatIterator, this, aggregator, combiner, true);
     }
 
     // f(0, y) = 0; iterate through this (x)
-    if (combiner.isLikeLeftMult() && (!combiner.isLikeRightMult()
+    if (combiner.isLikeLeftMult() && (!other.isSequentialAccess() || !combiner.isLikeRightMult()
         || (oneCostThis <= oneCostThat && oneCostThis <= bothCost))) {
       return aggregateSkipZerosIterateOne(thisIterator, other, aggregator, combiner, false);
     }
