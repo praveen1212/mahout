@@ -741,6 +741,21 @@ public abstract class AbstractMatrix implements Matrix {
     public int getNumNondefaultElements() {
       return size();
     }
+
+    @Override
+    public double getRandomAccessLookupTime() {
+      return (rowToColumn ? matrix.viewColumn(0) : matrix.viewRow(0)).getRandomAccessLookupTime();
+    }
+
+    @Override
+    public double getIterateNonzeroAdvanceTime() {
+      return (rowToColumn ? matrix.viewColumn(0) : matrix.viewRow(0)).getIterateNonzeroAdvanceTime();
+    }
+
+    @Override
+    public boolean isAddConstantTime() {
+      return (rowToColumn ? matrix.viewColumn(0) : matrix.viewRow(0)).isAddConstantTime();
+    }
   }
 
   @Override
