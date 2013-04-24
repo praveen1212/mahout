@@ -207,6 +207,21 @@ public class VectorView extends AbstractVector {
     return result;
   }
 
+  @Override
+  public double getRandomAccessLookupTime() {
+    return vector.getRandomAccessLookupTime();
+  }
+
+  @Override
+  public double getIterateNonzeroAdvanceTime() {
+    return vector.getIterateNonzeroAdvanceTime();
+  }
+
+  @Override
+  public boolean isAddConstantTime() {
+    return vector.isAddConstantTime();
+  }
+
   /**
    * Used internally by assign() to update multiple indices and values at once.
    * Only really useful for sparse vectors (especially SequentialAccessSparseVector).

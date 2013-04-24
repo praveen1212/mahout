@@ -160,4 +160,19 @@ public class ConstantVector extends AbstractVector {
   public int getNumNondefaultElements() {
     return size();
   }
+
+  @Override
+  public double getRandomAccessLookupTime() {
+    return 1;
+  }
+
+  @Override
+  public double getIterateNonzeroAdvanceTime() {
+    return 1;
+  }
+
+  @Override
+  public boolean isAddConstantTime() {
+    throw new UnsupportedOperationException("Cannot mutate a ConstantVector");
+  }
 }

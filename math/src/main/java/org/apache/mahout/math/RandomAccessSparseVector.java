@@ -19,6 +19,7 @@ package org.apache.mahout.math;
 
 import org.apache.mahout.math.map.OpenIntDoubleHashMap;
 import org.apache.mahout.math.map.OpenIntDoubleHashMap.MapElement;
+import org.apache.mahout.math.set.AbstractSet;
 
 import java.util.Iterator;
 import java.util.NoSuchElementException;
@@ -170,6 +171,21 @@ public class RandomAccessSparseVector extends AbstractVector {
   @Override
   public int getNumNondefaultElements() {
     return values.size();
+  }
+
+  @Override
+  public double getRandomAccessLookupTime() {
+    return 1;
+  }
+
+  @Override
+  public double getIterateNonzeroAdvanceTime() {
+    return (AbstractSet.DEFAULT_MAX_LOAD_FACTOR + AbstractSet.DEFAULT_MIN_LOAD_FACTOR) / 2;
+  }
+
+  @Override
+  public boolean isAddConstantTime() {
+    return true;
   }
 
   /**

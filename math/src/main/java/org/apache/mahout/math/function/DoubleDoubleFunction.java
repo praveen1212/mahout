@@ -26,6 +26,8 @@ It is provided "as is" without expressed or implied warranty.
 
 package org.apache.mahout.math.function;
 
+import org.apache.mahout.math.jet.math.Constants;
+
 /**
  * Interface that represents a function object: a function that takes two arguments and returns a single value.
  **/
@@ -80,5 +82,19 @@ public abstract class DoubleDoubleFunction {
    */
   public boolean isAssociative() {
     return false;
+  }
+
+  /**
+   * @return true iff f(x, y) = f(y, x) for any x, y AND f(x, f(y, z)) = f(f(x, y), z) for any x, y, z
+   */
+  public boolean isAssociativeAndCommutative() {
+    return isAssociative() && isCommutative();
+  }
+
+  /**
+   * @return true iff f(0, 0) != 0
+   */
+  public boolean isDensifying() {
+    return Math.abs(apply(0.0, 0.0)) > Constants.EPSILON;
   }
 }

@@ -52,8 +52,7 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
       return 0;
     }
 
-    boolean commutativeAndAssociative = aggregator.isCommutative() && aggregator.isAssociative();
-    if (commutativeAndAssociative) {
+    if (aggregator.isAssociativeAndCommutative()) {
       boolean hasZeros = size() - getNumNondefaultElements() > 0;
       if (hasZeros && Math.abs(map.apply(0.0) - 0.0) < Constants.EPSILON) {
         // There exists at least one zero, and fm(0) = 0. The results starts as 0.0.
@@ -67,7 +66,7 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     }
 
     double result;
-    if (isSequentialAccess() || commutativeAndAssociative) {
+    if (isSequentialAccess() || aggregator.isAssociativeAndCommutative()) {
       Iterator<Element> iterator;
       // If fm(0) = 0 and fa(x, 0) = x, we can skip all zero values.
       if (Math.abs(map.apply(0.0) - 0.0) < Constants.EPSILON && aggregator.isLikeRightPlus()) {
@@ -945,6 +944,7 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
         it.next().set(value);
       }
     } else {
+      // TODO: wrong for non-sequential accesses
       OrderedIntDoubleMapping updates = new OrderedIntDoubleMapping();
       // Update all the non-zero values and queue the updates for the zero vaues.
       // The vector will become dense.
@@ -968,6 +968,7 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     if (size != values.length) {
       throw new CardinalityException(size, values.length);
     }
+    // TODO: wrong for non-sequential accesses
     OrderedIntDoubleMapping updates = new OrderedIntDoubleMapping();
     Iterator<Element> it = iterator();
     while (it.hasNext()) {
@@ -1011,14 +1012,14 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     return this;
   }
 
-  protected Vector assignSkipZerosIterateOne(Iterator<Element> thisIterator, Vector other,
-                                             DoubleDoubleFunction function, boolean swap) {
+  private Vector assignSkipZerosIterateOne(Iterator<Element> thisIterator, Vector that,
+                                           DoubleDoubleFunction function, boolean swap) {
     Element thisElement;
     Element thatElement;
     OrderedIntDoubleMapping updates = new OrderedIntDoubleMapping();
     while (thisIterator.hasNext()) {
       thisElement = thisIterator.next();
-      thatElement = other.getElement(thisElement.index());
+      thatElement = that.getElement(thisElement.index());
       if (swap) {
         if (thatElement.get() != 0.0) {
           thatElement.set(function.apply(thatElement.get(), thisElement.get()));
@@ -1032,11 +1033,10 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     if (swap) {
       mergeUpdates(updates);
     }
-    invalidateCachedLength();
     return this;
   }
 
-  protected Vector assignSkipZerosIterateBoth(Iterator<Element> thisIterator, Iterator<Element> thatIterator,
+  private Vector assignSkipZerosIterateBoth(Iterator<Element> thisIterator, Iterator<Element> thatIterator,
                                               DoubleDoubleFunction function) {
     Element thisElement = null;
     Element thatElement = null;
@@ -1063,7 +1063,6 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
         }
       }
     }
-    invalidateCachedLength();
     return this;
   }
 
@@ -1125,15 +1124,13 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
       }
     }
     mergeUpdates(thisUpdates);
-    invalidateCachedLength();
     return this;
   }
 
-  private Vector assignForLoop(Vector other, DoubleDoubleFunction function) {
+  private Vector assignForLoop(Vector that, DoubleDoubleFunction function) {
     for (int i = 0; i < size; ++i) {
-      setQuick(i, function.apply(getQuick(i), other.getQuick(i)));
+      setQuick(i, function.apply(getQuick(i), that.getQuick(i)));
     }
-    invalidateCachedLength();
     return this;
   }
 
@@ -1145,7 +1142,6 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
       thisElement = thisIterator.next();
       thisElement.set(function.apply(thisElement.get(), thatIterator.next().get()));
     }
-    invalidateCachedLength();
     return this;
   }
 
@@ -1224,6 +1220,7 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
       throw new CardinalityException(size, other.size());
     }
 
+    /*
     boolean isDensifying = Math.abs(function.apply(0.0, 0.0) - 0.0) > Constants.EPSILON;
     // The resulting vector will be dense so we'll just iterate through all the elements.
     if (isDensifying) {
@@ -1237,6 +1234,8 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     }
     invalidateCachedLength();
     return this;
+    */
+    return VectorBinaryAssign.assignBest(this, other, function);
   }
 
   /**

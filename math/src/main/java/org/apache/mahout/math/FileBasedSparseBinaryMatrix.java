@@ -487,6 +487,21 @@ public final class FileBasedSparseBinaryMatrix extends AbstractMatrix {
     public int getNumNondefaultElements() {
       return buffer.limit();
     }
+
+    @Override
+    public double getRandomAccessLookupTime() {
+      return 1;
+    }
+
+    @Override
+    public double getIterateNonzeroAdvanceTime() {
+      return 1;
+    }
+
+    @Override
+    public boolean isAddConstantTime() {
+      throw new UnsupportedOperationException("Can't add binary value");
+    }
   }
 
   public static class BinaryReadOnlyElement implements Vector.Element {

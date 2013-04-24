@@ -194,6 +194,21 @@ public class DenseVector extends AbstractVector {
     return new VectorView(this, offset, length);
   }
 
+  @Override
+  public double getRandomAccessLookupTime() {
+    return 1;
+  }
+
+  @Override
+  public double getIterateNonzeroAdvanceTime() {
+    return 1;
+  }
+
+  @Override
+  public boolean isAddConstantTime() {
+    return true;
+  }
+
   /**
    * Returns an iterator that traverses this Vector from 0 to cardinality-1, in that order.
    */

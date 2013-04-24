@@ -21,10 +21,12 @@ import com.google.common.collect.Lists;
 import org.apache.mahout.math.function.DoubleDoubleFunction;
 import org.apache.mahout.math.function.Functions;
 import org.apache.mahout.math.stats.OnlineSummarizer;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.List;
 
+@Ignore
 public final class QRDecompositionTest extends MahoutTestCase {
   @Test
   public void randomMatrix() {

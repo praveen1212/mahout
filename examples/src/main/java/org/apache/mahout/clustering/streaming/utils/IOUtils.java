@@ -15,10 +15,7 @@ import org.apache.mahout.clustering.streaming.mapreduce.CentroidWritable;
 import org.apache.mahout.common.Pair;
 import org.apache.mahout.common.iterator.sequencefile.PathType;
 import org.apache.mahout.common.iterator.sequencefile.SequenceFileDirIterable;
-import org.apache.mahout.math.Centroid;
-import org.apache.mahout.math.Matrix;
-import org.apache.mahout.math.Vector;
-import org.apache.mahout.math.VectorWritable;
+import org.apache.mahout.math.*;
 
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -270,9 +267,11 @@ public class IOUtils {
       }
       result.getFirst().add(entry.getFirst().toString());
       if (projectionDimension > 0) {
-        result.getSecond().add(new Centroid(numVectors++, projectionMatrix.times(entry.getSecond().get()), 1));
+        result.getSecond().add(new Centroid(numVectors++,
+            new RandomAccessSparseVector(projectionMatrix.times(entry.getSecond().get())), 1));
       } else {
-        result.getSecond().add(new Centroid(numVectors++, entry.getSecond().get(), 1));
+        result.getSecond().add(new Centroid(numVectors++,
+            new RandomAccessSparseVector(entry.getSecond().get()), 1));
       }
       --limit;
       if (limit == 0) {

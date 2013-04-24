@@ -601,6 +601,21 @@ public class GivensThinSolver {
     }
 
     @Override
+    public double getRandomAccessLookupTime() {
+      return 1;
+    }
+
+    @Override
+    public double getIterateNonzeroAdvanceTime() {
+      return 1;
+    }
+
+    @Override
+    public boolean isAddConstantTime() {
+      return true;
+    }
+
+    @Override
     public Matrix matrixLike(int rows, int columns) {
       throw new UnsupportedOperationException();
     }

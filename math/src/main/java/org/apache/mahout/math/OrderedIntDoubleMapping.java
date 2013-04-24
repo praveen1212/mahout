@@ -132,9 +132,14 @@ public final class OrderedIntDoubleMapping implements Serializable, Cloneable {
         newIndices[k] = indices[i];
         newValues[k] = values[i];
         ++i;
+      } else if (indices[i] > updateIndices[j]) {
+        newIndices[k] = updateIndices[j];
+        newValues[k] = updateValues[j];
+        ++j;
       } else {
         newIndices[k] = updateIndices[j];
         newValues[k] = updateValues[j];
+        ++i;
         ++j;
       }
     }

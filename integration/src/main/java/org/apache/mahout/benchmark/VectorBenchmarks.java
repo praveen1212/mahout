@@ -49,8 +49,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 public class VectorBenchmarks {
-  private static final int MAX_TIME_MS = 500;
-  private static final int LEAD_TIME_MS = 100;
+  private static final int MAX_TIME_MS = 1000;
+  private static final int LEAD_TIME_MS = 1000;
   public static final String CLUSTERS = "Clusters";
   public static final String CREATE_INCREMENTALLY = "Create (incrementally)";
   public static final String CREATE_COPY = "Create (copy)";
@@ -379,7 +379,7 @@ public class VectorBenchmarks {
     new PlusBenchmark(mark).benchmark();
     new MinusBenchmark(mark).benchmark();
     new TimesBenchmark(mark).benchmark();
-    // new SerializationBenchmark(mark).benchmark();
+    new SerializationBenchmark(mark).benchmark();
 
     DistanceBenchmark distanceBenchmark = new DistanceBenchmark(mark);
     distanceBenchmark.benchmark(new CosineDistanceMeasure());

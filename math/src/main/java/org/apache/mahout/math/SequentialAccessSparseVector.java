@@ -18,6 +18,7 @@
 package org.apache.mahout.math;
 
 import com.google.common.primitives.Doubles;
+import org.apache.mahout.math.function.Functions;
 
 import java.util.Arrays;
 import java.util.Iterator;
@@ -209,6 +210,21 @@ public class SequentialAccessSparseVector extends AbstractVector {
   @Override
   public int getNumNondefaultElements() {
     return values.getNumMappings();
+  }
+
+  @Override
+  public double getRandomAccessLookupTime() {
+    return Math.max(1, Math.round(Functions.LOG2.apply(values.getNumMappings())));
+  }
+
+  @Override
+  public double getIterateNonzeroAdvanceTime() {
+    return 1;
+  }
+
+  @Override
+  public boolean isAddConstantTime() {
+    return false;
   }
 
   @Override

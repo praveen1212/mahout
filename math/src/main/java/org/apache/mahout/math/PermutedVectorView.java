@@ -233,4 +233,19 @@ public class PermutedVectorView extends AbstractVector {
   public int getNumNondefaultElements() {
     return vector.getNumNondefaultElements();
   }
+
+  @Override
+  public double getRandomAccessLookupTime() {
+    return vector.getRandomAccessLookupTime();
+  }
+
+  @Override
+  public double getIterateNonzeroAdvanceTime() {
+    return vector.getIterateNonzeroAdvanceTime();
+  }
+
+  @Override
+  public boolean isAddConstantTime() {
+    return vector.isAddConstantTime();
+  }
 }

@@ -180,6 +180,24 @@ public class MatrixVectorView extends AbstractVector {
   }
 
   @Override
+  public double getRandomAccessLookupTime() {
+    // TODO: what is a genuine value here?
+    return 1;
+  }
+
+  @Override
+  public double getIterateNonzeroAdvanceTime() {
+    // TODO: what is a genuine value here?
+    return 1;
+  }
+
+  @Override
+  public boolean isAddConstantTime() {
+    // TODO: what is a genuine value here?
+    return true;
+  }
+
+  @Override
   protected Matrix matrixLike(int rows, int columns) {
     return matrix.like(rows, columns);
   }

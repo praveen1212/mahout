@@ -3,15 +3,20 @@ package org.apache.mahout.clustering.streaming.tools;
 import com.google.common.collect.Lists;
 import org.apache.mahout.clustering.streaming.cluster.RandomProjector;
 import org.apache.mahout.common.Pair;
-import org.apache.mahout.math.*;
+import org.apache.mahout.math.DenseMatrix;
+import org.apache.mahout.math.DenseVector;
+import org.apache.mahout.math.Matrix;
+import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.random.Normal;
 import org.apache.mahout.math.stats.OnlineSummarizer;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.List;
 
 import static org.junit.Assert.assertTrue;
 
+@Ignore
 public class ProjectionBenchmark {
   private static final int VECTOR_SIZE = 1024;
   private static final int NUM_VECTORS = 2048;

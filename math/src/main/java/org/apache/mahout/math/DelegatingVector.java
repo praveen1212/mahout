@@ -17,10 +17,10 @@
 
 package org.apache.mahout.math;
 
-import java.util.Iterator;
-
 import org.apache.mahout.math.function.DoubleDoubleFunction;
 import org.apache.mahout.math.function.DoubleFunction;
+
+import java.util.Iterator;
 
 /**
  * A delegating vector provides an easy way to decorate vectors with weights or id's and such while
@@ -146,6 +146,21 @@ public class DelegatingVector implements Vector, LengthCachingVector {
   @Override
   public double getDistanceSquared(Vector v) {
     return delegate.getDistanceSquared(v);
+  }
+
+  @Override
+  public double getRandomAccessLookupTime() {
+    return delegate.getRandomAccessLookupTime();
+  }
+
+  @Override
+  public double getIterateNonzeroAdvanceTime() {
+    return delegate.getIterateNonzeroAdvanceTime();
+  }
+
+  @Override
+  public boolean isAddConstantTime() {
+    return delegate.isAddConstantTime();
   }
 
   @Override

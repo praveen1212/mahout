@@ -6,10 +6,12 @@ import org.apache.mahout.common.Pair;
 import org.apache.mahout.math.*;
 import org.apache.mahout.math.random.Normal;
 import org.apache.mahout.math.stats.OnlineSummarizer;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.List;
 
+@Ignore
 public class OldProjectionBenchmark {
   private static final int VECTOR_SIZE = 1024;
   private static final int NUM_VECTORS = 2048;
