@@ -62,6 +62,7 @@ public class LargeVectorsTest {
   @Test
   public void testDenseDense() {
     testOperations(getDv(NUM_NONDEFAULT), getDv(NUM_NONDEFAULT));
+    testOperations(getDv(CARDINALITY), getDv(CARDINALITY));
   }
 
   public void testOperations(Vector x, Vector y) {
@@ -76,9 +77,9 @@ public class LargeVectorsTest {
     System.out.printf("x: class %s isSequential %s numNondefault %d isAddConstant %s iterateNonzero %f randomAcess %f\n"
     + "y: class %s isSequential %s numNondefault %d isAddConstant %s iterateNonzero %f randomAcess %f\n",
         x.getClass().toString(), x.isSequentialAccess(), x.getNumNondefaultElements(),
-        x.isAddConstantTime(), x.getIterateNonzeroAdvanceTime(), x.getRandomAccessLookupTime(),
+        x.isAddConstantTime(), x.getIteratorAdvanceCost(), x.getLookupCost(),
         y.getClass().toString(), y.isSequentialAccess(), y.getNumNondefaultElements(),
-        y.isAddConstantTime(), y.getIterateNonzeroAdvanceTime(), y.getRandomAccessLookupTime());
+        y.isAddConstantTime(), y.getIteratorAdvanceCost(), y.getLookupCost());
     System.out.printf("PLUS\n");
     x.plus(y);
     System.out.printf("MINUS\n");

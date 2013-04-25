@@ -60,7 +60,7 @@ public abstract class VectorBinaryAggregate {
 
     @Override
     public double estimateCost(Vector x, Vector y, DoubleDoubleFunction fa, DoubleDoubleFunction fc) {
-      return x.getNumNondefaultElements() * x.getIterateNonzeroAdvanceTime() * y.getRandomAccessLookupTime();
+      return x.getNumNondefaultElements() * x.getIteratorAdvanceCost() * y.getLookupCost();
     }
 
     @Override
@@ -98,8 +98,8 @@ public abstract class VectorBinaryAggregate {
 
     @Override
     public double estimateCost(Vector x, Vector y, DoubleDoubleFunction fa, DoubleDoubleFunction fc) {
-      return x.getNumNondefaultElements() * x.getIterateNonzeroAdvanceTime()
-          + y.getNumNondefaultElements() * y.getIterateNonzeroAdvanceTime();
+      return x.getNumNondefaultElements() * x.getIteratorAdvanceCost()
+          + y.getNumNondefaultElements() * y.getIteratorAdvanceCost();
     }
 
     @Override
@@ -152,8 +152,8 @@ public abstract class VectorBinaryAggregate {
 
     @Override
     public double estimateCost(Vector x, Vector y, DoubleDoubleFunction fa, DoubleDoubleFunction fc) {
-      return x.getNumNondefaultElements() * x.getIterateNonzeroAdvanceTime()
-          + y.getNumNondefaultElements() * y.getIterateNonzeroAdvanceTime();
+      return x.getNumNondefaultElements() * x.getIteratorAdvanceCost()
+          + y.getNumNondefaultElements() * y.getIteratorAdvanceCost();
     }
 
     @Override
@@ -230,8 +230,8 @@ public abstract class VectorBinaryAggregate {
 
     @Override
     public double estimateCost(Vector x, Vector y, DoubleDoubleFunction fa, DoubleDoubleFunction fc) {
-      return x.getNumNondefaultElements() * x.getIterateNonzeroAdvanceTime() * y.getRandomAccessLookupTime()
-          + y.getNumNondefaultElements() * y.getIterateNonzeroAdvanceTime() * x.getRandomAccessLookupTime();
+      return x.getNumNondefaultElements() * x.getIteratorAdvanceCost() * y.getLookupCost()
+          + y.getNumNondefaultElements() * y.getIteratorAdvanceCost() * x.getLookupCost();
     }
 
     @Override
@@ -317,7 +317,7 @@ public abstract class VectorBinaryAggregate {
 
     @Override
     public double estimateCost(Vector x, Vector y, DoubleDoubleFunction fa, DoubleDoubleFunction fc) {
-      return x.size() * y.getRandomAccessLookupTime();
+      return x.size() * y.getLookupCost();
     }
 
     @Override
@@ -354,7 +354,7 @@ public abstract class VectorBinaryAggregate {
 
     @Override
     public double estimateCost(Vector x, Vector y, DoubleDoubleFunction fa, DoubleDoubleFunction fc) {
-      return x.size() * x.getRandomAccessLookupTime() * y.getRandomAccessLookupTime();
+      return x.size() * x.getLookupCost() * y.getLookupCost();
     }
 
     @Override

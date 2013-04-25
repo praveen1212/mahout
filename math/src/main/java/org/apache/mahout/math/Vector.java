@@ -413,9 +413,15 @@ public interface Vector extends Cloneable, Iterable<Vector.Element> {
   /** Get the square of the distance between this vector and the other vector. */
   double getDistanceSquared(Vector v);
 
-  double getRandomAccessLookupTime();
+  double getLookupCost();
 
-  double getIterateNonzeroAdvanceTime();
+  double getIteratorAdvanceCost();
+
+  /*
+  double getInplaceCost();
+
+  double getMergeCost();
+  */
 
   boolean isAddConstantTime();
 }

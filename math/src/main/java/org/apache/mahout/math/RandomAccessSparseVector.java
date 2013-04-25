@@ -174,18 +174,22 @@ public class RandomAccessSparseVector extends AbstractVector {
   }
 
   @Override
-  public double getRandomAccessLookupTime() {
+  public double getLookupCost() {
     return 1;
   }
 
   @Override
-  public double getIterateNonzeroAdvanceTime() {
+  public double getIteratorAdvanceCost() {
     return (AbstractSet.DEFAULT_MAX_LOAD_FACTOR + AbstractSet.DEFAULT_MIN_LOAD_FACTOR) / 2;
   }
 
+  /**
+   * This is "sort of" constant, but really it might resize the array.
+   * @return
+   */
   @Override
   public boolean isAddConstantTime() {
-    return true;
+    return false;
   }
 
   /**

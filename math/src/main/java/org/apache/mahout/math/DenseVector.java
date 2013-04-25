@@ -195,12 +195,12 @@ public class DenseVector extends AbstractVector {
   }
 
   @Override
-  public double getRandomAccessLookupTime() {
+  public double getLookupCost() {
     return 1;
   }
 
   @Override
-  public double getIterateNonzeroAdvanceTime() {
+  public double getIteratorAdvanceCost() {
     return 1;
   }
 
@@ -331,5 +331,16 @@ public class DenseVector extends AbstractVector {
       invalidateCachedLength();
       values[index] = value;
     }
+  }
+
+  /**
+   * Copy the current vector in the most optimum fashion. Used by immutable methods like plus(), minus().
+   * Use this instead of vector.like().assign(vector). Sub-class can choose to override this method.
+   *
+   * @return a copy of the current vector.
+   */
+  @Override
+  protected Vector createOptimizedCopy() {
+    return clone();
   }
 }

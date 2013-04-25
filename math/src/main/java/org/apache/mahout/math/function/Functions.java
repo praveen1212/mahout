@@ -760,12 +760,12 @@ public final class Functions {
     }
 
     /**
-     * f(x, 0) = 0 for any x
+     * f(x, 0) = 0 for any x; we're only assigning to left hand sides that are strictly 0
      * @return true iff f(x, 0) = x for any x
      */
     @Override
     public boolean isLikeRightPlus() {
-      return false;
+      return true;
     }
 
     /**

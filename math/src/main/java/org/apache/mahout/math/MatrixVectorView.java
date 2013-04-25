@@ -180,13 +180,13 @@ public class MatrixVectorView extends AbstractVector {
   }
 
   @Override
-  public double getRandomAccessLookupTime() {
+  public double getLookupCost() {
     // TODO: what is a genuine value here?
     return 1;
   }
 
   @Override
-  public double getIterateNonzeroAdvanceTime() {
+  public double getIteratorAdvanceCost() {
     // TODO: what is a genuine value here?
     return 1;
   }

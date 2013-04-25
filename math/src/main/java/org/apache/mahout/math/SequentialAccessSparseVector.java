@@ -213,12 +213,12 @@ public class SequentialAccessSparseVector extends AbstractVector {
   }
 
   @Override
-  public double getRandomAccessLookupTime() {
+  public double getLookupCost() {
     return Math.max(1, Math.round(Functions.LOG2.apply(values.getNumMappings())));
   }
 
   @Override
-  public double getIterateNonzeroAdvanceTime() {
+  public double getIteratorAdvanceCost() {
     return 1;
   }
 
@@ -384,4 +384,5 @@ public class SequentialAccessSparseVector extends AbstractVector {
       return index == other.index && value == other.value;
     }
   }
+
 }

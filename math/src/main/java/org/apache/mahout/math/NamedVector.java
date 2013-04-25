@@ -315,13 +315,13 @@ public class NamedVector implements Vector {
   }
 
   @Override
-  public double getRandomAccessLookupTime() {
-    return delegate.getRandomAccessLookupTime();
+  public double getLookupCost() {
+    return delegate.getLookupCost();
   }
 
   @Override
-  public double getIterateNonzeroAdvanceTime() {
-    return delegate.getIterateNonzeroAdvanceTime();
+  public double getIteratorAdvanceCost() {
+    return delegate.getIteratorAdvanceCost();
   }
 
   @Override

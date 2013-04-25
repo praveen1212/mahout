@@ -489,12 +489,12 @@ public final class FileBasedSparseBinaryMatrix extends AbstractMatrix {
     }
 
     @Override
-    public double getRandomAccessLookupTime() {
+    public double getLookupCost() {
       return 1;
     }
 
     @Override
-    public double getIterateNonzeroAdvanceTime() {
+    public double getIteratorAdvanceCost() {
       return 1;
     }
 

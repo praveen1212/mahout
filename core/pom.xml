@@ -206,13 +206,13 @@
       <scope>test</scope>
     </dependency>
 
-    <dependency>
-      <groupId>org.apache.mrunit</groupId>
-      <artifactId>mrunit</artifactId>
-      <version>1.0.0-SNAPSHOT</version>
-      <scope>system</scope>
-      <systemPath>${project.basedir}/lib/mrunit-1.0.0-SNAPSHOT.jar</systemPath>
-    </dependency>
+      <dependency>
+          <groupId>org.apache.mrunit</groupId>
+          <artifactId>mrunit</artifactId>
+          <version>1.0.0</version>
+          <classifier>hadoop1</classifier>
+          <scope>test</scope>
+      </dependency>
       <dependency>
           <groupId>org.hamcrest</groupId>
           <artifactId>hamcrest-all</artifactId>

@@ -743,13 +743,13 @@ public abstract class AbstractMatrix implements Matrix {
     }
 
     @Override
-    public double getRandomAccessLookupTime() {
-      return (rowToColumn ? matrix.viewColumn(0) : matrix.viewRow(0)).getRandomAccessLookupTime();
+    public double getLookupCost() {
+      return (rowToColumn ? matrix.viewColumn(0) : matrix.viewRow(0)).getLookupCost();
     }
 
     @Override
-    public double getIterateNonzeroAdvanceTime() {
-      return (rowToColumn ? matrix.viewColumn(0) : matrix.viewRow(0)).getIterateNonzeroAdvanceTime();
+    public double getIteratorAdvanceCost() {
+      return (rowToColumn ? matrix.viewColumn(0) : matrix.viewRow(0)).getIteratorAdvanceCost();
     }
 
     @Override

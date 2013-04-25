@@ -208,13 +208,13 @@ public class VectorView extends AbstractVector {
   }
 
   @Override
-  public double getRandomAccessLookupTime() {
-    return vector.getRandomAccessLookupTime();
+  public double getLookupCost() {
+    return vector.getLookupCost();
   }
 
   @Override
-  public double getIterateNonzeroAdvanceTime() {
-    return vector.getIterateNonzeroAdvanceTime();
+  public double getIteratorAdvanceCost() {
+    return vector.getIteratorAdvanceCost();
   }
 
   @Override
