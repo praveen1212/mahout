@@ -32,8 +32,8 @@ public abstract class VectorBinaryAssign {
       new AssignAllIterateThatLookupThisMergeUpdates(),  // 11
       new AssignAllIterateThatLookupThisInplaceUpdates(),  // 12
 
-      new AssignAllRandomMergeUpdates(),  // 13
-      new AssignAllRandomInplaceUpdates(),  // 14
+      new AssignAllLoopMergeUpdates(),  // 13
+      new AssignAllLoopInplaceUpdates(),  // 14
   };
 
   public abstract boolean isValid(Vector x, Vector y, DoubleDoubleFunction f);
@@ -141,7 +141,7 @@ public abstract class VectorBinaryAssign {
 
     @Override
     public boolean isValid(Vector x, Vector y, DoubleDoubleFunction f) {
-      return f.isLikeLeftMult() && f.isLikeRightPlus() && !(x.isDense() && y.isDense());
+      return f.isLikeLeftMult() && f.isLikeRightPlus();
     }
 
     @Override
@@ -423,7 +423,8 @@ public abstract class VectorBinaryAssign {
 
     @Override
     public boolean isValid(Vector x, Vector y, DoubleDoubleFunction f) {
-      return x.isSequentialAccess() && y.isSequentialAccess() && x.isAddConstantTime() && !x.isDense() && y.isDense();
+      return x.isSequentialAccess() && y.isSequentialAccess() && x.isAddConstantTime()
+          && !x.isDense() && !y.isDense();
     }
 
     @Override
@@ -548,7 +549,7 @@ public abstract class VectorBinaryAssign {
     }
   }
 
-  public static class AssignAllRandomMergeUpdates extends VectorBinaryAssign {
+  public static class AssignAllLoopMergeUpdates extends VectorBinaryAssign {
 
     @Override
     public boolean isValid(Vector x, Vector y, DoubleDoubleFunction f) {
@@ -571,7 +572,7 @@ public abstract class VectorBinaryAssign {
     }
   }
 
-  public static class AssignAllRandomInplaceUpdates extends VectorBinaryAssign {
+  public static class AssignAllLoopInplaceUpdates extends VectorBinaryAssign {
 
     @Override
     public boolean isValid(Vector x, Vector y, DoubleDoubleFunction f) {
