@@ -214,7 +214,7 @@ public class SequentialAccessSparseVector extends AbstractVector {
 
   @Override
   public double getLookupCost() {
-    return Math.max(1, Math.round(Functions.LOG2.apply(values.getNumMappings())));
+    return Math.max(1, Math.round(Functions.LOG2.apply(getNumNondefaultElements())));
   }
 
   @Override

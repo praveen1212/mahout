@@ -1,40 +1,39 @@
 package org.apache.mahout.math;
 
-import com.google.common.base.Preconditions;
 import org.apache.mahout.math.function.DoubleDoubleFunction;
 import org.apache.mahout.math.set.OpenIntHashSet;
 
 import java.util.Iterator;
 
 public abstract class VectorBinaryAssign {
-  private static final VectorBinaryAssign operations[] = new VectorBinaryAssign[] {
+  public static final VectorBinaryAssign[] operations = new VectorBinaryAssign[] {
       // case 1
-      new AssignNonzerosIterateThisLookupThat(),
+      new AssignNonzerosIterateThisLookupThat(),  // 0
 
-      new AssignNonzerosIterateThatLookupThisMergeUpdate(),
-      new AssignNonzerosIterateThatLookupThisInplaceUpdate(),
+      new AssignNonzerosIterateThatLookupThisMergeUpdate(),  // 1
+      new AssignNonzerosIterateThatLookupThisInplaceUpdate(),  // 1
 
       // case 2
-      new AssignIterateIntersection(),
+      new AssignIterateIntersection(),  // 2
 
       // case 3
-      new AssignIterateUnionSequentialMergeUpdates(),
-      new AssignIterateUnionSequentialInplaceUpdates(),
+      new AssignIterateUnionSequentialMergeUpdates(),  // 3
+      new AssignIterateUnionSequentialInplaceUpdates(),  // 4
 
-      new AssignIterateUnionRandomMergeUpdates(),
-      new AssignIterateUnionRandomInplaceUpdates(),
+      new AssignIterateUnionRandomMergeUpdates(),  // 5
+      new AssignIterateUnionRandomInplaceUpdates(),  // 6
 
       // case 4
-      new AssignAllIterateSequentialMergeUpdates(),
-      new AssignAllIterateSequentialInplaceUpdates(),
+      new AssignAllIterateSequentialMergeUpdates(),  // 7
+      new AssignAllIterateSequentialInplaceUpdates(),  // 8
 
-      new AssignAllIterateThisLookupThatMergeUpdates(),
-      new AssignAllIterateThisLookupThatInplaceUpdates(),
-      new AssignAllIterateThatLookupThisMergeUpdates(),
-      new AssignAllIterateThatLookupThisInplaceUpdates(),
+      new AssignAllIterateThisLookupThatMergeUpdates(),  // 9
+      new AssignAllIterateThisLookupThatInplaceUpdates(),  // 10
+      new AssignAllIterateThatLookupThisMergeUpdates(),  // 11
+      new AssignAllIterateThatLookupThisInplaceUpdates(),  // 12
 
-      new AssignAllRandomMergeUpdates(),
-      new AssignAllRandomInplaceUpdates(),
+      new AssignAllRandomMergeUpdates(),  // 13
+      new AssignAllRandomInplaceUpdates(),  // 14
   };
 
   public abstract boolean isValid(Vector x, Vector y, DoubleDoubleFunction f);
@@ -43,20 +42,25 @@ public abstract class VectorBinaryAssign {
 
   public abstract Vector assign(Vector x, Vector y, DoubleDoubleFunction f);
 
-  public static Vector assignBest(Vector x, Vector y, DoubleDoubleFunction f) {
+  public static VectorBinaryAssign getBestOperation(Vector x, Vector y, DoubleDoubleFunction f) {
     int bestOperationIndex = -1;
     double bestCost = Double.POSITIVE_INFINITY;
     for (int i = 0; i < operations.length; ++i) {
       if (operations[i].isValid(x, y, f)) {
         double cost = operations[i].estimateCost(x, y, f);
+        // System.out.printf("%s cost %f\n", operations[i].getClass().toString(), cost);
         if (cost < bestCost) {
           bestCost = cost;
           bestOperationIndex = i;
         }
       }
     }
-    Preconditions.checkArgument(bestOperationIndex >= 0, "No valid operation for vector assign");
-    return operations[bestOperationIndex].assign(x, y, f);
+    // System.out.println();
+    return operations[bestOperationIndex];
+  }
+
+  public static Vector assignBest(Vector x, Vector y, DoubleDoubleFunction f) {
+    return getBestOperation(x, y, f).assign(x, y, f);
   }
 
   public static class AssignNonzerosIterateThisLookupThat extends VectorBinaryAssign {
@@ -75,11 +79,9 @@ public abstract class VectorBinaryAssign {
     public Vector assign(Vector x, Vector y, DoubleDoubleFunction f) {
       Iterator<Vector.Element> xi = x.iterateNonZero();
       Vector.Element xe;
-      Vector.Element ye;
       while (xi.hasNext()) {
         xe = xi.next();
-        ye = y.getElement(xe.index());
-        xe.set(f.apply(xe.get(), ye.get()));
+        xe.set(f.apply(xe.get(), y.getQuick(xe.index())));
       }
       return x;
     }
@@ -94,18 +96,16 @@ public abstract class VectorBinaryAssign {
 
     @Override
     public double estimateCost(Vector x, Vector y, DoubleDoubleFunction f) {
-      return y.getNumNondefaultElements() * y.getNumNonZeroElements() * y.getLookupCost();
+      return y.getNumNondefaultElements() * y.getIteratorAdvanceCost() * x.getLookupCost() * x.getLookupCost();
     }
 
     @Override
     public Vector assign(Vector x, Vector y, DoubleDoubleFunction f) {
       Iterator<Vector.Element> yi = y.iterateNonZero();
-      Vector.Element xe;
       Vector.Element ye;
       while (yi.hasNext()) {
         ye = yi.next();
-        xe = x.getElement(ye.index());
-        xe.set(f.apply(xe.get(), ye.get()));
+        x.setQuick(ye.index(), f.apply(x.getQuick(ye.index()), ye.get()));
       }
       return x;
     }
@@ -115,26 +115,22 @@ public abstract class VectorBinaryAssign {
 
     @Override
     public boolean isValid(Vector x, Vector y, DoubleDoubleFunction f) {
-      return f.isLikeRightPlus() && y.isSequentialAccess();
+      return f.isLikeRightPlus() && y.isSequentialAccess() && !x.isAddConstantTime();
     }
 
     @Override
     public double estimateCost(Vector x, Vector y, DoubleDoubleFunction f) {
-      return y.getNumNondefaultElements() * y.getNumNonZeroElements() * y.getLookupCost();
+      return y.getNumNondefaultElements() * y.getIteratorAdvanceCost() * y.getLookupCost();
     }
 
     @Override
     public Vector assign(Vector x, Vector y, DoubleDoubleFunction f) {
       Iterator<Vector.Element> yi = y.iterateNonZero();
-      Vector.Element xe;
       Vector.Element ye;
-      double result;
       OrderedIntDoubleMapping updates = new OrderedIntDoubleMapping();
       while (yi.hasNext()) {
         ye = yi.next();
-        xe = x.getElement(ye.index());
-        result =  f.apply(xe.get(), ye.get());
-        updates.set(ye.index(), result);
+        updates.set(ye.index(), f.apply(x.getQuick(ye.index()), ye.get()));
       }
       x.mergeUpdates(updates);
       return x;
@@ -145,7 +141,7 @@ public abstract class VectorBinaryAssign {
 
     @Override
     public boolean isValid(Vector x, Vector y, DoubleDoubleFunction f) {
-      return f.isLikeLeftMult() && f.isLikeRightPlus();
+      return f.isLikeLeftMult() && f.isLikeRightPlus() && !(x.isDense() && y.isDense());
     }
 
     @Override
@@ -191,7 +187,7 @@ public abstract class VectorBinaryAssign {
 
     @Override
     public boolean isValid(Vector x, Vector y, DoubleDoubleFunction f) {
-      return !f.isDensifying() && x.isSequentialAccess() && y.isSequentialAccess();
+      return !f.isDensifying() && x.isSequentialAccess() && y.isSequentialAccess() && !x.isAddConstantTime();
     }
 
     @Override
@@ -208,7 +204,7 @@ public abstract class VectorBinaryAssign {
       Vector.Element ye = null;
       boolean advanceThis = true;
       boolean advanceThat = true;
-      OrderedIntDoubleMapping thisUpdates = new OrderedIntDoubleMapping();
+      OrderedIntDoubleMapping updates = new OrderedIntDoubleMapping();
       while (true) {
         if (advanceThis) {
           if (xi.hasNext()) {
@@ -226,33 +222,33 @@ public abstract class VectorBinaryAssign {
         }
         if (xe != null && ye != null) { // both vectors have nonzero elements
           if (xe.index() == ye.index()) {
-            thisUpdates.set(xe.index(), f.apply(xe.get(), ye.get()));
+            updates.set(xe.index(), f.apply(xe.get(), ye.get()));
             advanceThis = true;
             advanceThat = true;
           } else {
             if (xe.index() < ye.index()) { // f(x, 0)
-              thisUpdates.set(xe.index(), f.apply(xe.get(), 0));
+              updates.set(xe.index(), f.apply(xe.get(), 0));
               advanceThis = true;
               advanceThat = false;
             } else {
-              thisUpdates.set(ye.index(), f.apply(0, ye.get()));
+              updates.set(ye.index(), f.apply(0, ye.get()));
               advanceThis = false;
               advanceThat = true;
             }
           }
         } else if (xe != null) { // just the first one still has nonzeros
-          thisUpdates.set(xe.index(), f.apply(xe.get(), 0));
+          updates.set(xe.index(), f.apply(xe.get(), 0));
           advanceThis = true;
           advanceThat = false;
         } else if (ye != null) { // just the second one has nonzeros
-          thisUpdates.set(ye.index(), f.apply(0, ye.get()));
+          updates.set(ye.index(), f.apply(0, ye.get()));
           advanceThis = false;
           advanceThat = true;
         } else { // we're done, both are empty
           break;
         }
       }
-      x.mergeUpdates(thisUpdates);
+      x.mergeUpdates(updates);
       return x;
     }
   }
@@ -261,7 +257,7 @@ public abstract class VectorBinaryAssign {
 
     @Override
     public boolean isValid(Vector x, Vector y, DoubleDoubleFunction f) {
-      return !f.isDensifying() && x.isSequentialAccess() && y.isSequentialAccess();
+      return !f.isDensifying() && x.isSequentialAccess() && y.isSequentialAccess() && x.isAddConstantTime();
     }
 
     @Override
@@ -329,7 +325,7 @@ public abstract class VectorBinaryAssign {
 
     @Override
     public boolean isValid(Vector x, Vector y, DoubleDoubleFunction f) {
-      return !f.isDensifying() && (x.isAddConstantTime() || y.isSequentialAccess());
+      return !f.isDensifying() && !x.isAddConstantTime() && y.isSequentialAccess();
     }
 
     @Override
@@ -341,16 +337,16 @@ public abstract class VectorBinaryAssign {
     @Override
     public Vector assign(Vector x, Vector y, DoubleDoubleFunction f) {
       OpenIntHashSet visited = new OpenIntHashSet();
-      OrderedIntDoubleMapping updates = new OrderedIntDoubleMapping();
       Iterator<Vector.Element> xi = x.iterateNonZero();
       Vector.Element xe;
       while (xi.hasNext()) {
         xe = xi.next();
-        updates.set(xe.index(), f.apply(xe.get(), y.getQuick(xe.index())));
+        xe.set(f.apply(xe.get(), y.getQuick(xe.index())));
         visited.add(xe.index());
       }
       Iterator<Vector.Element> yi = y.iterateNonZero();
       Vector.Element ye;
+      OrderedIntDoubleMapping updates = new OrderedIntDoubleMapping();
       while (yi.hasNext()) {
         ye = yi.next();
         if (!visited.contains(ye.index())) {
@@ -366,7 +362,7 @@ public abstract class VectorBinaryAssign {
 
     @Override
     public boolean isValid(Vector x, Vector y, DoubleDoubleFunction f) {
-      return !f.isDensifying() && (x.isAddConstantTime() || y.isSequentialAccess());
+      return !f.isDensifying() && x.isAddConstantTime();
     }
 
     @Override
@@ -400,12 +396,12 @@ public abstract class VectorBinaryAssign {
 
     @Override
     public boolean isValid(Vector x, Vector y, DoubleDoubleFunction f) {
-      return x.isSequentialAccess() && y.isSequentialAccess();
+      return x.isSequentialAccess() && y.isSequentialAccess() && !x.isAddConstantTime() && !x.isDense() && !y.isDense();
     }
 
     @Override
     public double estimateCost(Vector x, Vector y, DoubleDoubleFunction f) {
-      return x.size();
+      return Math.max(x.size() * x.getIteratorAdvanceCost(), y.size() * y.getIteratorAdvanceCost());
     }
 
     @Override
@@ -416,8 +412,7 @@ public abstract class VectorBinaryAssign {
       OrderedIntDoubleMapping updates = new OrderedIntDoubleMapping();
       while (xi.hasNext() && yi.hasNext()) {
         xe = xi.next();
-        double result = f.apply(xe.get(), yi.next().get());
-        updates.set(xe.index(), result);
+        updates.set(xe.index(), f.apply(xe.get(), yi.next().get()));
       }
       x.mergeUpdates(updates);
       return x;
@@ -428,12 +423,12 @@ public abstract class VectorBinaryAssign {
 
     @Override
     public boolean isValid(Vector x, Vector y, DoubleDoubleFunction f) {
-      return x.isSequentialAccess() && y.isSequentialAccess();
+      return x.isSequentialAccess() && y.isSequentialAccess() && x.isAddConstantTime() && !x.isDense() && y.isDense();
     }
 
     @Override
     public double estimateCost(Vector x, Vector y, DoubleDoubleFunction f) {
-      return x.size();
+      return Math.max(x.size() * x.getIteratorAdvanceCost(), y.size() * y.getIteratorAdvanceCost());
     }
 
     @Override
@@ -453,12 +448,12 @@ public abstract class VectorBinaryAssign {
 
     @Override
     public boolean isValid(Vector x, Vector y, DoubleDoubleFunction f) {
-      return true;
+      return !x.isAddConstantTime() && !x.isDense();
     }
 
     @Override
     public double estimateCost(Vector x, Vector y, DoubleDoubleFunction f) {
-      return x.size() * y.getLookupCost();
+      return x.size() * x.getIteratorAdvanceCost() * y.getLookupCost();
     }
 
     @Override
@@ -468,7 +463,11 @@ public abstract class VectorBinaryAssign {
       OrderedIntDoubleMapping updates = new OrderedIntDoubleMapping();
       while (xi.hasNext()) {
         xe = xi.next();
-        updates.set(xe.index(), f.apply(xe.get(), y.getQuick(xe.index())));
+        if (xe.get() != 0.0) {
+          xe.set(f.apply(xe.get(), y.getQuick(xe.index())));
+        } else {
+          updates.set(xe.index(), f.apply(xe.get(), y.getQuick(xe.index())));
+        }
       }
       x.mergeUpdates(updates);
       return x;
@@ -479,12 +478,12 @@ public abstract class VectorBinaryAssign {
 
     @Override
     public boolean isValid(Vector x, Vector y, DoubleDoubleFunction f) {
-      return true;
+      return x.isAddConstantTime() && !x.isDense();
     }
 
     @Override
     public double estimateCost(Vector x, Vector y, DoubleDoubleFunction f) {
-      return x.size() * y.getLookupCost();
+      return x.size() * x.getIteratorAdvanceCost() * y.getLookupCost();
     }
 
     @Override
@@ -503,12 +502,12 @@ public abstract class VectorBinaryAssign {
 
     @Override
     public boolean isValid(Vector x, Vector y, DoubleDoubleFunction f) {
-      return true;
+      return !x.isAddConstantTime() && !y.isDense();
     }
 
     @Override
     public double estimateCost(Vector x, Vector y, DoubleDoubleFunction f) {
-      return y.size() * x.getLookupCost();
+      return y.size() * y.getIteratorAdvanceCost() * x.getLookupCost();
     }
 
     @Override
@@ -529,12 +528,12 @@ public abstract class VectorBinaryAssign {
 
     @Override
     public boolean isValid(Vector x, Vector y, DoubleDoubleFunction f) {
-      return true;
+      return x.isAddConstantTime() && !y.isDense();
     }
 
     @Override
     public double estimateCost(Vector x, Vector y, DoubleDoubleFunction f) {
-      return y.size() * x.getLookupCost();
+      return y.size() * y.getIteratorAdvanceCost() * x.getLookupCost();
     }
 
     @Override
@@ -553,7 +552,7 @@ public abstract class VectorBinaryAssign {
 
     @Override
     public boolean isValid(Vector x, Vector y, DoubleDoubleFunction f) {
-      return true;
+      return !x.isAddConstantTime();
     }
 
     @Override
@@ -576,7 +575,7 @@ public abstract class VectorBinaryAssign {
 
     @Override
     public boolean isValid(Vector x, Vector y, DoubleDoubleFunction f) {
-      return true;
+      return x.isAddConstantTime();
     }
 
     @Override

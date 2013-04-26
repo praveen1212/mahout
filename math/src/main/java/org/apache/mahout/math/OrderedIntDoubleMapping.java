@@ -103,11 +103,22 @@ public final class OrderedIntDoubleMapping implements Serializable, Cloneable {
   }
 
   public void set(int index, double value) {
-    int offset = find(index);
-    if (offset >= 0) {
-      insertOrUpdateValueIfPresent(offset, value);
+    if (numMappings == 0 || index > indices[numMappings - 1]) {
+      if (value != DEFAULT_VALUE) {
+        if (numMappings >= indices.length) {
+          growTo(Math.max((int) (1.2 * numMappings), numMappings + 1));
+        }
+        indices[numMappings] = index;
+        values[numMappings] = value;
+        ++numMappings;
+      }
     } else {
-      insertValueIfNotDefault(index, offset, value);
+      int offset = find(index);
+      if (offset >= 0) {
+        insertOrUpdateValueIfPresent(offset, value);
+      } else {
+        insertValueIfNotDefault(index, offset, value);
+      }
     }
   }
 

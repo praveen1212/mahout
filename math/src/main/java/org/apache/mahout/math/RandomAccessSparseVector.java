@@ -189,7 +189,7 @@ public class RandomAccessSparseVector extends AbstractVector {
    */
   @Override
   public boolean isAddConstantTime() {
-    return false;
+    return true;
   }
 
   /**

@@ -33,7 +33,6 @@ import org.apache.mahout.common.CommandLineUtil;
 import org.apache.mahout.common.RandomUtils;
 import org.apache.mahout.common.TimingStatistics;
 import org.apache.mahout.common.commandline.DefaultOptionCreator;
-import org.apache.mahout.common.distance.*;
 import org.apache.mahout.math.DenseVector;
 import org.apache.mahout.math.RandomAccessSparseVector;
 import org.apache.mahout.math.SequentialAccessSparseVector;
@@ -49,7 +48,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 public class VectorBenchmarks {
-  private static final int MAX_TIME_MS = 1000;
+  private static final int MAX_TIME_MS = 10000;
   private static final int LEAD_TIME_MS = 1000;
   public static final String CLUSTERS = "Clusters";
   public static final String CREATE_INCREMENTALLY = "Create (incrementally)";
@@ -357,7 +356,7 @@ public class VectorBenchmarks {
       VectorBenchmarks mark = new VectorBenchmarks(cardinality, numNonZero, numVectors, numClusters, numOps);
       runBenchmark(mark);
 
-      log.info("\n{}", mark);
+      // log.info("\n{}", mark);
       log.info("\n{}", mark.asCsvString());
     } catch (OptionException e) {
       CommandLineUtil.printHelp(group);
@@ -368,19 +367,22 @@ public class VectorBenchmarks {
     // Required to set up data.
     mark.createData();
 
+    /*
     mark.createBenchmark();
     if (mark.cardinality < 200000) {
       // Too slow.
       mark.incrementalCreateBenchmark();
     }
+    */
 
-    new CloneBenchmark(mark).benchmark();
-    new DotBenchmark(mark).benchmark();
+    // new CloneBenchmark(mark).benchmark();
+    // new DotBenchmark(mark).benchmark();
     new PlusBenchmark(mark).benchmark();
-    new MinusBenchmark(mark).benchmark();
-    new TimesBenchmark(mark).benchmark();
-    new SerializationBenchmark(mark).benchmark();
+    // new MinusBenchmark(mark).benchmark();
+    // new TimesBenchmark(mark).benchmark();
+    // new SerializationBenchmark(mark).benchmark();
 
+    /*
     DistanceBenchmark distanceBenchmark = new DistanceBenchmark(mark);
     distanceBenchmark.benchmark(new CosineDistanceMeasure());
     distanceBenchmark.benchmark(new SquaredEuclideanDistanceMeasure());
@@ -398,6 +400,7 @@ public class VectorBenchmarks {
     centroidBenchmark.benchmark(new TanimotoDistanceMeasure());
     centroidBenchmark.benchmark(new ChebyshevDistanceMeasure());
     centroidBenchmark.benchmark(new MinkowskiDistanceMeasure());
+    */
   }
 
   private String asCsvString() {
