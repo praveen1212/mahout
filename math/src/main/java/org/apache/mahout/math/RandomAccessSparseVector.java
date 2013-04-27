@@ -180,7 +180,7 @@ public class RandomAccessSparseVector extends AbstractVector {
 
   @Override
   public double getIteratorAdvanceCost() {
-    return (AbstractSet.DEFAULT_MAX_LOAD_FACTOR + AbstractSet.DEFAULT_MIN_LOAD_FACTOR) / 2;
+    return 1 + (AbstractSet.DEFAULT_MAX_LOAD_FACTOR + AbstractSet.DEFAULT_MIN_LOAD_FACTOR) / 2;
   }
 
   /**

@@ -184,10 +184,10 @@ public final class VectorBinaryAssignTest {
   @Test
   public void rasvDenseInteractions() {
     replayAll();
-    assertEquals(VectorBinaryAssign.AssignAllIterateThisLookupThatInplaceUpdates.class,
+    assertEquals(VectorBinaryAssign.AssignNonzerosIterateThatLookupThisInplaceUpdate.class,
         VectorBinaryAssign.getBestOperation(rasv, dense, Functions.PLUS).getClass());
 
-    assertEquals(VectorBinaryAssign.AssignAllIterateThisLookupThatInplaceUpdates.class,
+    assertEquals(VectorBinaryAssign.AssignNonzerosIterateThatLookupThisInplaceUpdate.class,
         VectorBinaryAssign.getBestOperation(rasv, dense, Functions.MINUS).getClass());
 
     assertEquals(VectorBinaryAssign.AssignNonzerosIterateThisLookupThat.class,
@@ -196,7 +196,7 @@ public final class VectorBinaryAssignTest {
     assertEquals(VectorBinaryAssign.AssignNonzerosIterateThisLookupThat.class,
         VectorBinaryAssign.getBestOperation(rasv, dense, Functions.DIV).getClass());
 
-    assertEquals(VectorBinaryAssign.AssignAllIterateThisLookupThatInplaceUpdates.class,
+    assertEquals(VectorBinaryAssign.AssignNonzerosIterateThatLookupThisInplaceUpdate.class,
         VectorBinaryAssign.getBestOperation(rasv, dense, Functions.SECOND).getClass());
   }
 
