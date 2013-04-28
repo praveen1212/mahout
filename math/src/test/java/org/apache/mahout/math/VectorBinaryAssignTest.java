@@ -127,10 +127,10 @@ public final class VectorBinaryAssignTest {
   public void sasvDenseInteractions() {
     replayAll();
 
-    assertEquals(VectorBinaryAssign.AssignIterateUnionSequentialMergeUpdates.class,
+    assertEquals(VectorBinaryAssign.AssignNonzerosIterateThatLookupThisMergeUpdate.class,
         VectorBinaryAssign.getBestOperation(sasv, dense, Functions.PLUS).getClass());
 
-    assertEquals(VectorBinaryAssign.AssignIterateUnionSequentialMergeUpdates.class,
+    assertEquals(VectorBinaryAssign.AssignNonzerosIterateThatLookupThisMergeUpdate.class,
         VectorBinaryAssign.getBestOperation(sasv, dense, Functions.MINUS).getClass());
 
     assertEquals(VectorBinaryAssign.AssignNonzerosIterateThisLookupThat.class,
@@ -139,7 +139,7 @@ public final class VectorBinaryAssignTest {
     assertEquals(VectorBinaryAssign.AssignNonzerosIterateThisLookupThat.class,
         VectorBinaryAssign.getBestOperation(sasv, dense, Functions.DIV).getClass());
 
-    assertEquals(VectorBinaryAssign.AssignIterateUnionSequentialMergeUpdates.class,
+    assertEquals(VectorBinaryAssign.AssignNonzerosIterateThatLookupThisMergeUpdate.class,
         VectorBinaryAssign.getBestOperation(sasv, dense, Functions.SECOND).getClass());
   }
 
