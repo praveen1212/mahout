@@ -141,7 +141,7 @@ public abstract class VectorBinaryAssign {
 
     @Override
     public boolean isValid(Vector x, Vector y, DoubleDoubleFunction f) {
-      return f.isLikeLeftMult() && f.isLikeRightPlus();
+      return f.isLikeLeftMult() && f.isLikeRightPlus() && x.isSequentialAccess() && y.isSequentialAccess();
     }
 
     @Override

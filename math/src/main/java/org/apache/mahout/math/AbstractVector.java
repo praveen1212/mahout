@@ -316,6 +316,7 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
       return 0;
     }
 
+    /*
     if ((Math.abs(combiner.apply(0.0, 0.0) - 0.0) < Constants.EPSILON) && aggregator.isLikeRightPlus()
         && ((isSequentialAccess() && other.isSequentialAccess())
         || (aggregator.isAssociative() && aggregator.isCommutative()))) {
@@ -338,6 +339,8 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
       }
 
     }
+    */
+    return VectorBinaryAggregate.aggregateBest(this, other, aggregator, combiner);
   }
 
   /**

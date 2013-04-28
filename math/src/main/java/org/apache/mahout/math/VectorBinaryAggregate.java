@@ -1,26 +1,32 @@
 package org.apache.mahout.math;
 
-import com.google.common.base.Preconditions;
 import org.apache.mahout.math.function.DoubleDoubleFunction;
 import org.apache.mahout.math.set.OpenIntHashSet;
 
 import java.util.Iterator;
 
 public abstract class VectorBinaryAggregate {
-  private static final VectorBinaryAggregate operations[] = new VectorBinaryAggregate[] {
+  public static final VectorBinaryAggregate[] operations = new VectorBinaryAggregate[] {
       // case 1
-      new AggregateIterateOneLookupOther(true),
-      new AggregateIterateOneLookupOther(false),
+      new AggregateNonzerosIterateThisLookupThat(),  // 0
+
+      new AggregateNonzerosIterateThatLookupThis(),  // 1
+
       // case 2
-      new AggregateIterateIntersection(),
+      new AggregateIterateIntersection(),  // 2
+
       // case 3
-      new AggregateIterateUnionSequential(),
-      new AggregateIterateUnionRandom(),
+      new AggregateIterateUnionSequential(),  // 3
+
+      new AggregateIterateUnionRandom(),  // 5
+
       // case 4
-      new AggregateIterateAllSequential(),
-      new AggregateIterateAllLookup(true),
-      new AggregateIterateAllLookup(false),
-      new AggregateAllRandom(),
+      new AggregateAllIterateSequential(),  // 7
+
+      new AggregateAllIterateThisLookupThat(),  // 9
+      new AggregateAllIterateThatLookupThis(),  // 11
+
+      new AggregateAllLoop(),  // 14
   };
 
   public abstract boolean isValid(Vector x, Vector y, DoubleDoubleFunction fa, DoubleDoubleFunction fc);
@@ -29,28 +35,28 @@ public abstract class VectorBinaryAggregate {
 
   public abstract double aggregate(Vector x, Vector y, DoubleDoubleFunction fa, DoubleDoubleFunction fc);
 
-  public static double aggregateBest(Vector x, Vector y, DoubleDoubleFunction fa, DoubleDoubleFunction fc) {
-    VectorBinaryAggregate bestOperation = null;
+  public static VectorBinaryAggregate getBestOperation(Vector x, Vector y, DoubleDoubleFunction fa, DoubleDoubleFunction fc) {
+    int bestOperationIndex = -1;
     double bestCost = Double.POSITIVE_INFINITY;
     for (int i = 0; i < operations.length; ++i) {
       if (operations[i].isValid(x, y, fa, fc)) {
         double cost = operations[i].estimateCost(x, y, fa, fc);
+        // System.out.printf("%s cost %f\n", operations[i].getClass().toString(), cost);
         if (cost < bestCost) {
           bestCost = cost;
-          bestOperation = operations[i];
+          bestOperationIndex = i;
         }
       }
     }
-    Preconditions.checkNotNull(bestOperation, "No valid operation for vector assign");
-    return bestOperation.aggregate(x, y, fa, fc);
+    // System.out.println();
+    return operations[bestOperationIndex];
   }
 
-  public static class AggregateIterateOneLookupOther extends VectorBinaryAggregate {
-    private final boolean swap;
+  public static double aggregateBest(Vector x, Vector y, DoubleDoubleFunction fa, DoubleDoubleFunction fc) {
+    return getBestOperation(x, y, fa, fc).aggregate(x, y, fa, fc);
+  }
 
-    public AggregateIterateOneLookupOther(boolean swap) {
-      this.swap = swap;
-    }
+  public static class AggregateNonzerosIterateThisLookupThat extends VectorBinaryAggregate {
 
     @Override
     public boolean isValid(Vector x, Vector y, DoubleDoubleFunction fa, DoubleDoubleFunction fc) {
@@ -67,17 +73,46 @@ public abstract class VectorBinaryAggregate {
     public double aggregate(Vector x, Vector y, DoubleDoubleFunction fa, DoubleDoubleFunction fc) {
       Iterator<Vector.Element> xi = x.iterateNonZero();
       Vector.Element xe;
-      double result = 0;
       boolean validResult = false;
+      double result = 0;
+      double thisResult;
       while (xi.hasNext()) {
         xe = xi.next();
-        double yv = y.getQuick(xe.index());
-        double thisResult;
-        if (!swap) {
-          thisResult = fc.apply(xe.get(), yv);
+        thisResult = fc.apply(xe.get(), y.getQuick(xe.index()));
+        if (validResult) {
+          result = fa.apply(result, thisResult);
         } else {
-          thisResult = fc.apply(yv, xe.get());
+          result = thisResult;
+          validResult = true;
         }
+      }
+      return result;
+    }
+  }
+
+  public static class AggregateNonzerosIterateThatLookupThis extends VectorBinaryAggregate {
+
+    @Override
+    public boolean isValid(Vector x, Vector y, DoubleDoubleFunction fa, DoubleDoubleFunction fc) {
+      return fa.isLikeRightPlus() && (fa.isAssociativeAndCommutative() || y.isSequentialAccess())
+          && fc.isLikeRightMult();
+    }
+
+    @Override
+    public double estimateCost(Vector x, Vector y, DoubleDoubleFunction fa, DoubleDoubleFunction fc) {
+      return y.getNumNondefaultElements() * y.getIteratorAdvanceCost() * x.getLookupCost() * x.getLookupCost();
+    }
+
+    @Override
+    public double aggregate(Vector x, Vector y, DoubleDoubleFunction fa, DoubleDoubleFunction fc) {
+      Iterator<Vector.Element> yi = y.iterateNonZero();
+      Vector.Element ye;
+      boolean validResult = false;
+      double result = 0;
+      double thisResult;
+      while (yi.hasNext()) {
+        ye = yi.next();
+        thisResult = fc.apply(x.getQuick(ye.index()), ye.get());
         if (validResult) {
           result = fa.apply(result, thisResult);
         } else {
@@ -98,8 +133,8 @@ public abstract class VectorBinaryAggregate {
 
     @Override
     public double estimateCost(Vector x, Vector y, DoubleDoubleFunction fa, DoubleDoubleFunction fc) {
-      return x.getNumNondefaultElements() * x.getIteratorAdvanceCost()
-          + y.getNumNondefaultElements() * y.getIteratorAdvanceCost();
+      return Math.min(x.getNumNondefaultElements() * x.getIteratorAdvanceCost(),
+          y.getNumNondefaultElements() * y.getIteratorAdvanceCost());
     }
 
     @Override
@@ -110,8 +145,9 @@ public abstract class VectorBinaryAggregate {
       Vector.Element ye = null;
       boolean advanceThis = true;
       boolean advanceThat = true;
-      double result = 0;
       boolean validResult = false;
+      double result = 0;
+      double thisResult;
       while (xi.hasNext() && yi.hasNext()) {
         if (advanceThis) {
           xe = xi.next();
@@ -120,7 +156,7 @@ public abstract class VectorBinaryAggregate {
           ye = yi.next();
         }
         if (xe.index() == ye.index()) {
-          double thisResult = fc.apply(xe.get(), ye.get());
+          thisResult = fc.apply(xe.get(), ye.get());
           if (validResult) {
             result = fa.apply(result, thisResult);
           } else {
@@ -147,13 +183,14 @@ public abstract class VectorBinaryAggregate {
 
     @Override
     public boolean isValid(Vector x, Vector y, DoubleDoubleFunction fa, DoubleDoubleFunction fc) {
-      return fa.isLikeRightPlus() && !fc.isDensifying() && x.isSequentialAccess() && y.isSequentialAccess();
+      return fa.isLikeRightPlus() && !fc.isDensifying()
+          && x.isSequentialAccess() && y.isSequentialAccess() && !x.isAddConstantTime();
     }
 
     @Override
     public double estimateCost(Vector x, Vector y, DoubleDoubleFunction fa, DoubleDoubleFunction fc) {
-      return x.getNumNondefaultElements() * x.getIteratorAdvanceCost()
-          + y.getNumNondefaultElements() * y.getIteratorAdvanceCost();
+      return Math.max(x.getNumNondefaultElements() * x.getIteratorAdvanceCost(),
+          y.getNumNondefaultElements() * y.getIteratorAdvanceCost());
     }
 
     @Override
@@ -164,10 +201,10 @@ public abstract class VectorBinaryAggregate {
       Vector.Element ye = null;
       boolean advanceThis = true;
       boolean advanceThat = true;
-      double result = 0;
       boolean validResult = false;
-
-      while (advanceThis || advanceThat) {
+      double result = 0;
+      double thisResult;
+      while (true) {
         if (advanceThis) {
           if (xi.hasNext()) {
             xe = xi.next();
@@ -182,7 +219,6 @@ public abstract class VectorBinaryAggregate {
             ye = null;
           }
         }
-        double thisResult;
         if (xe != null && ye != null) { // both vectors have nonzero elements
           if (xe.index() == ye.index()) {
             thisResult = fc.apply(xe.get(), ye.get());
@@ -214,7 +250,7 @@ public abstract class VectorBinaryAggregate {
           result = fa.apply(result, thisResult);
         } else {
           result = thisResult;
-          validResult = true;
+          validResult =  true;
         }
       }
       return result;
@@ -225,13 +261,14 @@ public abstract class VectorBinaryAggregate {
 
     @Override
     public boolean isValid(Vector x, Vector y, DoubleDoubleFunction fa, DoubleDoubleFunction fc) {
-      return fa.isLikeRightPlus() && fa.isAssociativeAndCommutative() && !fc.isDensifying();
+      return fa.isLikeRightPlus() && !fc.isDensifying()
+          && !x.isAddConstantTime() && y.isSequentialAccess();
     }
 
     @Override
     public double estimateCost(Vector x, Vector y, DoubleDoubleFunction fa, DoubleDoubleFunction fc) {
-      return x.getNumNondefaultElements() * x.getIteratorAdvanceCost() * y.getLookupCost()
-          + y.getNumNondefaultElements() * y.getIteratorAdvanceCost() * x.getLookupCost();
+      return Math.max(x.getNumNondefaultElements() * x.getIteratorAdvanceCost() * y.getLookupCost(),
+          y.getNumNondefaultElements() * y.getIteratorAdvanceCost() * x.getLookupCost());
     }
 
     @Override
@@ -239,14 +276,15 @@ public abstract class VectorBinaryAggregate {
       OpenIntHashSet visited = new OpenIntHashSet();
       Iterator<Vector.Element> xi = x.iterateNonZero();
       Vector.Element xe;
-      double result = 0;
       boolean validResult = false;
+      double result = 0;
+      double thisResult;
       while (xi.hasNext()) {
         xe = xi.next();
-        double thisResult = fc.apply(xe.get(), y.getQuick(xe.index()));
+        thisResult = fc.apply(xe.get(), y.getQuick(xe.index()));
         if (validResult) {
           result = fa.apply(result, thisResult);
-        } else  {
+        } else {
           result = thisResult;
           validResult = true;
         }
@@ -257,10 +295,10 @@ public abstract class VectorBinaryAggregate {
       while (yi.hasNext()) {
         ye = yi.next();
         if (!visited.contains(ye.index())) {
-          double thisResult = fc.apply(x.getQuick(ye.index()), ye.get());
+          thisResult = fc.apply(x.getQuick(ye.index()), ye.get());
           if (validResult) {
             result = fa.apply(result, thisResult);
-          } else  {
+          } else {
             result = thisResult;
             validResult = true;
           }
@@ -270,16 +308,16 @@ public abstract class VectorBinaryAggregate {
     }
   }
 
-  public static class AggregateIterateAllSequential extends VectorBinaryAggregate {
+  public static class AggregateAllIterateSequential extends VectorBinaryAggregate {
 
     @Override
     public boolean isValid(Vector x, Vector y, DoubleDoubleFunction fa, DoubleDoubleFunction fc) {
-      return x.isSequentialAccess() && y.isSequentialAccess();
+      return x.isSequentialAccess() && y.isSequentialAccess() && !x.isAddConstantTime() && !x.isDense() && !y.isDense();
     }
 
     @Override
     public double estimateCost(Vector x, Vector y, DoubleDoubleFunction fa, DoubleDoubleFunction fc) {
-      return x.size() + y.size();
+      return Math.max(x.size() * x.getIteratorAdvanceCost(), y.size() * y.getIteratorAdvanceCost());
     }
 
     @Override
@@ -287,11 +325,12 @@ public abstract class VectorBinaryAggregate {
       Iterator<Vector.Element> xi = x.iterator();
       Iterator<Vector.Element> yi = y.iterator();
       Vector.Element xe;
-      double result = 0;
       boolean validResult = false;
+      double result = 0;
+      double thisResult;
       while (xi.hasNext() && yi.hasNext()) {
         xe = xi.next();
-        double thisResult = fc.apply(xe.get(), yi.next().get());
+        thisResult = fc.apply(xe.get(), yi.next().get());
         if (validResult) {
           result = fa.apply(result, thisResult);
         } else {
@@ -303,37 +342,29 @@ public abstract class VectorBinaryAggregate {
     }
   }
 
-  public static class AggregateIterateAllLookup extends VectorBinaryAggregate {
-    private final boolean swap;
-
-    public AggregateIterateAllLookup(boolean swap) {
-      this.swap = swap;
-    }
+  public static class AggregateAllIterateThisLookupThat extends VectorBinaryAggregate {
 
     @Override
     public boolean isValid(Vector x, Vector y, DoubleDoubleFunction fa, DoubleDoubleFunction fc) {
-      return fa.isAssociativeAndCommutative() || x.isSequentialAccess();
+      return (fa.isAssociativeAndCommutative() || x.isSequentialAccess())
+          && !x.isAddConstantTime() && !x.isDense();
     }
 
     @Override
     public double estimateCost(Vector x, Vector y, DoubleDoubleFunction fa, DoubleDoubleFunction fc) {
-      return x.size() * y.getLookupCost();
+      return x.size() * x.getIteratorAdvanceCost() * y.getLookupCost();
     }
 
     @Override
     public double aggregate(Vector x, Vector y, DoubleDoubleFunction fa, DoubleDoubleFunction fc) {
       Iterator<Vector.Element> xi = x.iterator();
       Vector.Element xe;
-      double result = 0;
       boolean validResult = false;
+      double result = 0;
+      double thisResult;
       while (xi.hasNext()) {
         xe = xi.next();
-        double thisResult;
-        if (!swap) {
-          thisResult = fc.apply(xe.get(), y.getQuick(xe.index()));
-        } else {
-          thisResult = fc.apply(y.getQuick(xe.index()), xe.get());
-        }
+        thisResult = fc.apply(xe.get(), y.getQuick(xe.index()));
         if (validResult) {
           result = fa.apply(result, thisResult);
         } else {
@@ -345,11 +376,45 @@ public abstract class VectorBinaryAggregate {
     }
   }
 
-  public static class AggregateAllRandom extends VectorBinaryAggregate {
+  public static class AggregateAllIterateThatLookupThis extends VectorBinaryAggregate {
 
     @Override
     public boolean isValid(Vector x, Vector y, DoubleDoubleFunction fa, DoubleDoubleFunction fc) {
-      return true;
+      return (fa.isAssociativeAndCommutative() || y.isSequentialAccess())
+          && !x.isAddConstantTime() && !y.isDense();
+    }
+
+    @Override
+    public double estimateCost(Vector x, Vector y, DoubleDoubleFunction fa, DoubleDoubleFunction fc) {
+      return y.size() * y.getIteratorAdvanceCost() * x.getLookupCost();
+    }
+
+    @Override
+    public double aggregate(Vector x, Vector y, DoubleDoubleFunction fa, DoubleDoubleFunction fc) {
+      Iterator<Vector.Element> yi = y.iterator();
+      Vector.Element ye;
+      boolean validResult = false;
+      double result = 0;
+      double thisResult;
+      while (yi.hasNext()) {
+        ye = yi.next();
+        thisResult = fc.apply(x.getQuick(ye.index()), ye.get());
+        if (validResult) {
+          result = fa.apply(result, thisResult);
+        } else {
+          result = thisResult;
+          validResult = true;
+        }
+      }
+      return result;
+    }
+  }
+
+  public static class AggregateAllLoop extends VectorBinaryAggregate {
+
+    @Override
+    public boolean isValid(Vector x, Vector y, DoubleDoubleFunction fa, DoubleDoubleFunction fc) {
+      return x.isAddConstantTime();
     }
 
     @Override

@@ -33,6 +33,7 @@ import org.apache.mahout.common.CommandLineUtil;
 import org.apache.mahout.common.RandomUtils;
 import org.apache.mahout.common.TimingStatistics;
 import org.apache.mahout.common.commandline.DefaultOptionCreator;
+import org.apache.mahout.common.distance.*;
 import org.apache.mahout.math.DenseVector;
 import org.apache.mahout.math.RandomAccessSparseVector;
 import org.apache.mahout.math.SequentialAccessSparseVector;
@@ -374,13 +375,12 @@ public class VectorBenchmarks {
     }
 
     new CloneBenchmark(mark).benchmark();
-    // new DotBenchmark(mark).benchmark();
+    new DotBenchmark(mark).benchmark();
     new PlusBenchmark(mark).benchmark();
     new MinusBenchmark(mark).benchmark();
     new TimesBenchmark(mark).benchmark();
     new SerializationBenchmark(mark).benchmark();
 
-    /*
     DistanceBenchmark distanceBenchmark = new DistanceBenchmark(mark);
     distanceBenchmark.benchmark(new CosineDistanceMeasure());
     distanceBenchmark.benchmark(new SquaredEuclideanDistanceMeasure());
@@ -398,7 +398,6 @@ public class VectorBenchmarks {
     centroidBenchmark.benchmark(new TanimotoDistanceMeasure());
     centroidBenchmark.benchmark(new ChebyshevDistanceMeasure());
     centroidBenchmark.benchmark(new MinkowskiDistanceMeasure());
-    */
   }
 
   private String asCsvString() {
