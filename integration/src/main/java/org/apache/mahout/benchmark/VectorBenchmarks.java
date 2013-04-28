@@ -367,20 +367,18 @@ public class VectorBenchmarks {
     // Required to set up data.
     mark.createData();
 
-    /*
     mark.createBenchmark();
     if (mark.cardinality < 200000) {
       // Too slow.
       mark.incrementalCreateBenchmark();
     }
-    */
 
-    // new CloneBenchmark(mark).benchmark();
+    new CloneBenchmark(mark).benchmark();
     // new DotBenchmark(mark).benchmark();
     new PlusBenchmark(mark).benchmark();
-    // new MinusBenchmark(mark).benchmark();
-    // new TimesBenchmark(mark).benchmark();
-    // new SerializationBenchmark(mark).benchmark();
+    new MinusBenchmark(mark).benchmark();
+    new TimesBenchmark(mark).benchmark();
+    new SerializationBenchmark(mark).benchmark();
 
     /*
     DistanceBenchmark distanceBenchmark = new DistanceBenchmark(mark);

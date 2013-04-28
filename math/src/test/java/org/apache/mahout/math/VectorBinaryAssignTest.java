@@ -127,10 +127,10 @@ public final class VectorBinaryAssignTest {
   public void sasvDenseInteractions() {
     replayAll();
 
-    assertEquals(VectorBinaryAssign.AssignAllIterateThisLookupThatMergeUpdates.class,
+    assertEquals(VectorBinaryAssign.AssignIterateUnionSequentialMergeUpdates.class,
         VectorBinaryAssign.getBestOperation(sasv, dense, Functions.PLUS).getClass());
 
-    assertEquals(VectorBinaryAssign.AssignAllIterateThisLookupThatMergeUpdates.class,
+    assertEquals(VectorBinaryAssign.AssignIterateUnionSequentialMergeUpdates.class,
         VectorBinaryAssign.getBestOperation(sasv, dense, Functions.MINUS).getClass());
 
     assertEquals(VectorBinaryAssign.AssignNonzerosIterateThisLookupThat.class,
@@ -139,7 +139,7 @@ public final class VectorBinaryAssignTest {
     assertEquals(VectorBinaryAssign.AssignNonzerosIterateThisLookupThat.class,
         VectorBinaryAssign.getBestOperation(sasv, dense, Functions.DIV).getClass());
 
-    assertEquals(VectorBinaryAssign.AssignAllIterateThisLookupThatMergeUpdates.class,
+    assertEquals(VectorBinaryAssign.AssignIterateUnionSequentialMergeUpdates.class,
         VectorBinaryAssign.getBestOperation(sasv, dense, Functions.SECOND).getClass());
   }
 
@@ -152,10 +152,10 @@ public final class VectorBinaryAssignTest {
     assertEquals(VectorBinaryAssign.AssignNonzerosIterateThatLookupThisInplaceUpdate.class,
         VectorBinaryAssign.getBestOperation(dense, sasv, Functions.MINUS).getClass());
 
-    assertEquals(VectorBinaryAssign.AssignAllIterateThatLookupThisInplaceUpdates.class,
+    assertEquals(VectorBinaryAssign.AssignIterateUnionSequentialInplaceUpdates.class,
         VectorBinaryAssign.getBestOperation(dense, sasv, Functions.MULT).getClass());
 
-    assertEquals(VectorBinaryAssign.AssignAllIterateThatLookupThisInplaceUpdates.class,
+    assertEquals(VectorBinaryAssign.AssignIterateUnionSequentialInplaceUpdates.class,
         VectorBinaryAssign.getBestOperation(dense, sasv, Functions.DIV).getClass());
 
     assertEquals(VectorBinaryAssign.AssignNonzerosIterateThatLookupThisInplaceUpdate.class,
