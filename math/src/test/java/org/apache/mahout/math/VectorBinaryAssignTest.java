@@ -67,19 +67,19 @@ public final class VectorBinaryAssignTest {
   @Test
   public void denseInteractions() {
     replayAll();
-    assertEquals(VectorBinaryAssign.AssignAllLoopInplaceUpdates.class,
+    assertEquals(VectorBinaryAssign.AssignNonzerosIterateThatLookupThisInplaceUpdate.class,
         VectorBinaryAssign.getBestOperation(dense, dense, Functions.PLUS).getClass());
 
-    assertEquals(VectorBinaryAssign.AssignAllLoopInplaceUpdates.class,
+    assertEquals(VectorBinaryAssign.AssignNonzerosIterateThatLookupThisInplaceUpdate.class,
         VectorBinaryAssign.getBestOperation(dense, dense, Functions.MINUS).getClass());
 
-    assertEquals(VectorBinaryAssign.AssignAllLoopInplaceUpdates.class,
+    assertEquals(VectorBinaryAssign.AssignNonzerosIterateThisLookupThat.class,
         VectorBinaryAssign.getBestOperation(dense, dense, Functions.MULT).getClass());
 
-    assertEquals(VectorBinaryAssign.AssignAllLoopInplaceUpdates.class,
+    assertEquals(VectorBinaryAssign.AssignNonzerosIterateThisLookupThat.class,
         VectorBinaryAssign.getBestOperation(dense, dense, Functions.DIV).getClass());
 
-    assertEquals(VectorBinaryAssign.AssignAllLoopInplaceUpdates.class,
+    assertEquals(VectorBinaryAssign.AssignNonzerosIterateThatLookupThisInplaceUpdate.class,
         VectorBinaryAssign.getBestOperation(dense, dense, Functions.SECOND).getClass());
   }
 
@@ -171,10 +171,10 @@ public final class VectorBinaryAssignTest {
     assertEquals(VectorBinaryAssign.AssignNonzerosIterateThatLookupThisInplaceUpdate.class,
         VectorBinaryAssign.getBestOperation(dense, rasv, Functions.MINUS).getClass());
 
-    assertEquals(VectorBinaryAssign.AssignAllIterateThatLookupThisInplaceUpdates.class,
+    assertEquals(VectorBinaryAssign.AssignNonzerosIterateThisLookupThat.class,
         VectorBinaryAssign.getBestOperation(dense, rasv, Functions.MULT).getClass());
 
-    assertEquals(VectorBinaryAssign.AssignAllIterateThatLookupThisInplaceUpdates.class,
+    assertEquals(VectorBinaryAssign.AssignNonzerosIterateThisLookupThat.class,
         VectorBinaryAssign.getBestOperation(dense, rasv, Functions.DIV).getClass());
 
     assertEquals(VectorBinaryAssign.AssignNonzerosIterateThatLookupThisInplaceUpdate.class,
