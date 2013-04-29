@@ -699,6 +699,58 @@ public final class Functions {
     }
   };
 
+  public static final DoubleDoubleFunction MINUS_ABS = new DoubleDoubleFunction() {
+    @Override
+    public double apply(double x, double y) {
+      return Math.abs(x - y);
+    }
+
+    /**
+     * |x - 0| = |x|
+     * @return true iff f(x, 0) = x for any x
+     */
+    @Override
+    public boolean isLikeRightPlus() {
+      return false;
+    }
+
+    /**
+     * |0 - y| = |y|
+     * @return true iff f(0, y) = 0 for any y
+     */
+    @Override
+    public boolean isLikeLeftMult() {
+      return false;
+    }
+
+    /**
+     * |x - 0| = |x|
+     * @return true iff f(x, 0) = 0 for any x
+     */
+    @Override
+    public boolean isLikeRightMult() {
+      return false;
+    }
+
+    /**
+     * |x - y| = |y - x|
+     * @return true iff f(x, y) = f(y, x) for any x, y
+     */
+    @Override
+    public boolean isCommutative() {
+      return true;
+    }
+
+    /**
+     * |x - |y - z|| != ||x - y| - z| (|5 - |4 - 3|| = 1; ||5 - 4| - 3| = |1 - 3| = 2)
+     * @return true iff f(x, f(y, z)) = f(f(x, y), z) for any x, y, z
+     */
+    @Override
+    public boolean isAssociative() {
+      return false;
+    }
+  };
+
   /** Function that returns <tt>Math.pow(a,b)</tt>. */
   public static final DoubleDoubleFunction POW = new DoubleDoubleFunction() {
 
@@ -731,7 +783,7 @@ public final class Functions {
      */
     @Override
     public boolean isLikeRightMult() {
-      return super.isLikeRightMult();    //To change body of overridden methods use File | Settings | File Templates.
+      return false;
     }
 
     /**
@@ -803,6 +855,57 @@ public final class Functions {
     @Override
     public boolean isAssociative() {
       return true;
+    }
+  };
+  public static final DoubleDoubleFunction MULT_SQUARE_LEFT = new DoubleDoubleFunction() {
+    @Override
+    public double apply(double x, double y) {
+      return x * x * y;
+    }
+
+    /**
+     * x * x * 0 = 0
+     * @return true iff f(x, 0) = x for any x
+     */
+    @Override
+    public boolean isLikeRightPlus() {
+      return false;
+    }
+
+    /**
+     * 0 * 0 * y = 0
+     * @return true iff f(0, y) = 0 for any y
+     */
+    @Override
+    public boolean isLikeLeftMult() {
+      return true;
+    }
+
+    /**
+     * x * x * 0 = 0
+     * @return true iff f(x, 0) = 0 for any x
+     */
+    @Override
+    public boolean isLikeRightMult() {
+      return true;
+    }
+
+    /**
+     * x * x * y != y * y * x
+     * @return true iff f(x, y) = f(y, x) for any x, y
+     */
+    @Override
+    public boolean isCommutative() {
+      return false;
+    }
+
+    /**
+     * x * x * y * y * z != x * x * y * x * x * y * z
+     * @return true iff f(x, f(y, z)) = f(f(x, y), z) for any x, y, z
+     */
+    @Override
+    public boolean isAssociative() {
+      return false;
     }
   };
 
@@ -1288,6 +1391,60 @@ public final class Functions {
       @Override
       public double apply(double a, double b) {
         return function.apply(b, a);
+      }
+    };
+  }
+
+  public static DoubleDoubleFunction minusAbsPow(final double exponent) {
+    return new DoubleDoubleFunction() {
+      @Override
+      public double apply(double x, double y) {
+        return Math.pow(Math.abs(x - y), exponent);
+      }
+
+      /**
+       * |x - 0|^p = |x|^p != x unless x > 0 and p = 1
+       * @return true iff f(x, 0) = x for any x
+       */
+      @Override
+      public boolean isLikeRightPlus() {
+        return false;
+      }
+
+      /**
+       * |0 - y|^p = |y|^p
+       * @return true iff f(0, y) = 0 for any y
+       */
+      @Override
+      public boolean isLikeLeftMult() {
+        return false;
+      }
+
+      /**
+       * |x - 0|^p = |x|^p
+       * @return true iff f(x, 0) = 0 for any x
+       */
+      @Override
+      public boolean isLikeRightMult() {
+        return false;
+      }
+
+      /**
+       * |x - y|^p = |y - x|^p
+       * @return true iff f(x, y) = f(y, x) for any x, y
+       */
+      @Override
+      public boolean isCommutative() {
+        return true;
+      }
+
+      /**
+       * |x - |y - z|^p|^p != ||x - y|^p - z|^p
+       * @return true iff f(x, f(y, z)) = f(f(x, y), z) for any x, y, z
+       */
+      @Override
+      public boolean isAssociative() {
+        return false;
       }
     };
   }

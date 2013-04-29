@@ -49,7 +49,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 public class VectorBenchmarks {
-  private static final int MAX_TIME_MS = 10000;
+  private static final int MAX_TIME_MS = 1000;
   private static final int LEAD_TIME_MS = 1000;
   public static final String CLUSTERS = "Clusters";
   public static final String CREATE_INCREMENTALLY = "Create (incrementally)";
@@ -390,6 +390,7 @@ public class VectorBenchmarks {
     distanceBenchmark.benchmark(new ChebyshevDistanceMeasure());
     distanceBenchmark.benchmark(new MinkowskiDistanceMeasure());
 
+    /*
     ClosestCentroidBenchmark centroidBenchmark = new ClosestCentroidBenchmark(mark);
     centroidBenchmark.benchmark(new CosineDistanceMeasure());
     centroidBenchmark.benchmark(new SquaredEuclideanDistanceMeasure());
@@ -398,6 +399,7 @@ public class VectorBenchmarks {
     centroidBenchmark.benchmark(new TanimotoDistanceMeasure());
     centroidBenchmark.benchmark(new ChebyshevDistanceMeasure());
     centroidBenchmark.benchmark(new MinkowskiDistanceMeasure());
+    */
   }
 
   private String asCsvString() {
