@@ -865,12 +865,70 @@ public final class Functions {
     }
 
     /**
-     * f(x, 0) = 0 for any x; we're only assigning to left hand sides that are strictly 0
+     * f(x, 0) = x for any x
      * @return true iff f(x, 0) = x for any x
      */
     @Override
     public boolean isLikeRightPlus() {
       return false;
+    }
+
+    /**
+     * f(0, y) = y for any y
+     * @return true iff f(0, y) = 0 for any y
+     */
+    @Override
+    public boolean isLikeLeftMult() {
+      return false;
+    }
+
+    /**
+     * f(x, 0) = 0 for any x
+     * @return true iff f(x, 0) = 0 for any x
+     */
+    @Override
+    public boolean isLikeRightMult() {
+      return true;
+    }
+
+    /**
+     * f(x, y) = x != y = f(y, x) for any x, y unless x = y
+     * @return true iff f(x, y) = f(y, x) for any x, y
+     */
+    @Override
+    public boolean isCommutative() {
+      return false;
+    }
+
+    /**
+     * f(x, f(y, z)) = f(x, z) = z
+     * f(f(x, y), z) = z
+     * @return true iff f(x, f(y, z)) = f(f(x, y), z) for any x, y, z
+     */
+    @Override
+    public boolean isAssociative() {
+      return true;
+    }
+  };
+
+  /**
+   * This function is specifically designed to be used when assigning a vector to one that is all zeros (created
+   * by like()). It enables iteration only through the nonzeros of the right hand side by declaring isLikeRightPlus
+   * to be true. This is NOT generally true for SECOND (hence the other function above).
+   */
+  public static final DoubleDoubleFunction SECOND_LEFT_ZERO = new DoubleDoubleFunction() {
+    @Override
+    public double apply(double x, double y) {
+      return y;
+    }
+
+    /**
+     * f(x, 0) = 0 for any x; we're only assigning to left hand sides that are strictly 0
+     * @return true iff f(x, 0) = x for any x
+     */
+    @Override
+    public boolean isLikeRightPlus() {
+      return true;
     }
 
     /**

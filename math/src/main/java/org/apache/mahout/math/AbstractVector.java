@@ -898,7 +898,7 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
   private Vector createOptimizedCopy(Vector v) {
     Vector result;
     if (isDense()) {
-      result = v.like().assign(v);
+      result = v.like().assign(v, Functions.SECOND_LEFT_ZERO);
     } else {
       result = v.clone();
     }

@@ -38,10 +38,10 @@ public class TanimotoDistanceMeasure extends WeightedDistanceMeasure {
    */
   @Override
   public double distance(Vector a, Vector b) {
-    double ab = a.dot(b);
+    double ab;
     double denominator;
     if (getWeights() != null) {
-      ab = a.times(b).aggregate(getWeights(), Functions.PLUS, Functions.MULT_SQUARE_LEFT);
+      ab = a.times(b).aggregate(getWeights(), Functions.PLUS, Functions.MULT);
       denominator = a.aggregate(getWeights(), Functions.PLUS, Functions.MULT_SQUARE_LEFT)
           + b.aggregate(getWeights(), Functions.PLUS, Functions.MULT_SQUARE_LEFT)
           - ab;

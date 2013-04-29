@@ -80,7 +80,7 @@ public final class VectorBinaryAssignTest {
         VectorBinaryAssign.getBestOperation(dense, dense, Functions.DIV).getClass());
 
     assertEquals(VectorBinaryAssign.AssignNonzerosIterateThatLookupThisInplaceUpdate.class,
-        VectorBinaryAssign.getBestOperation(dense, dense, Functions.SECOND).getClass());
+        VectorBinaryAssign.getBestOperation(dense, dense, Functions.SECOND_LEFT_ZERO).getClass());
   }
 
   @Test
@@ -100,7 +100,7 @@ public final class VectorBinaryAssignTest {
         VectorBinaryAssign.getBestOperation(sasv, sasv, Functions.DIV).getClass());
 
     assertEquals(VectorBinaryAssign.AssignIterateUnionSequentialMergeUpdates.class,
-        VectorBinaryAssign.getBestOperation(sasv, sasv, Functions.SECOND).getClass());
+        VectorBinaryAssign.getBestOperation(sasv, sasv, Functions.SECOND_LEFT_ZERO).getClass());
   }
 
   @Test
@@ -120,7 +120,7 @@ public final class VectorBinaryAssignTest {
         VectorBinaryAssign.getBestOperation(rasv, rasv, Functions.DIV).getClass());
 
     assertEquals(VectorBinaryAssign.AssignNonzerosIterateThatLookupThisInplaceUpdate.class,
-        VectorBinaryAssign.getBestOperation(rasv, rasv, Functions.SECOND).getClass());
+        VectorBinaryAssign.getBestOperation(rasv, rasv, Functions.SECOND_LEFT_ZERO).getClass());
   }
 
   @Test
@@ -140,7 +140,7 @@ public final class VectorBinaryAssignTest {
         VectorBinaryAssign.getBestOperation(sasv, dense, Functions.DIV).getClass());
 
     assertEquals(VectorBinaryAssign.AssignNonzerosIterateThatLookupThisMergeUpdate.class,
-        VectorBinaryAssign.getBestOperation(sasv, dense, Functions.SECOND).getClass());
+        VectorBinaryAssign.getBestOperation(sasv, dense, Functions.SECOND_LEFT_ZERO).getClass());
   }
 
   @Test
@@ -159,7 +159,7 @@ public final class VectorBinaryAssignTest {
         VectorBinaryAssign.getBestOperation(dense, sasv, Functions.DIV).getClass());
 
     assertEquals(VectorBinaryAssign.AssignNonzerosIterateThatLookupThisInplaceUpdate.class,
-        VectorBinaryAssign.getBestOperation(dense, sasv, Functions.SECOND).getClass());
+        VectorBinaryAssign.getBestOperation(dense, sasv, Functions.SECOND_LEFT_ZERO).getClass());
   }
 
   @Test
@@ -178,7 +178,7 @@ public final class VectorBinaryAssignTest {
         VectorBinaryAssign.getBestOperation(dense, rasv, Functions.DIV).getClass());
 
     assertEquals(VectorBinaryAssign.AssignNonzerosIterateThatLookupThisInplaceUpdate.class,
-        VectorBinaryAssign.getBestOperation(dense, rasv, Functions.SECOND).getClass());
+        VectorBinaryAssign.getBestOperation(dense, rasv, Functions.SECOND_LEFT_ZERO).getClass());
   }
 
   @Test
@@ -197,7 +197,7 @@ public final class VectorBinaryAssignTest {
         VectorBinaryAssign.getBestOperation(rasv, dense, Functions.DIV).getClass());
 
     assertEquals(VectorBinaryAssign.AssignNonzerosIterateThatLookupThisInplaceUpdate.class,
-        VectorBinaryAssign.getBestOperation(rasv, dense, Functions.SECOND).getClass());
+        VectorBinaryAssign.getBestOperation(rasv, dense, Functions.SECOND_LEFT_ZERO).getClass());
   }
 
   @Test
@@ -216,7 +216,7 @@ public final class VectorBinaryAssignTest {
         VectorBinaryAssign.getBestOperation(sasv, rasv, Functions.DIV).getClass());
 
     assertEquals(VectorBinaryAssign.AssignNonzerosIterateThatLookupThisInplaceUpdate.class,
-        VectorBinaryAssign.getBestOperation(sasv, rasv, Functions.SECOND).getClass());
+        VectorBinaryAssign.getBestOperation(sasv, rasv, Functions.SECOND_LEFT_ZERO).getClass());
   }
 
   @Test
@@ -235,7 +235,7 @@ public final class VectorBinaryAssignTest {
         VectorBinaryAssign.getBestOperation(rasv, sasv, Functions.DIV).getClass());
 
     assertEquals(VectorBinaryAssign.AssignNonzerosIterateThatLookupThisInplaceUpdate.class,
-        VectorBinaryAssign.getBestOperation(rasv, sasv, Functions.SECOND).getClass());
+        VectorBinaryAssign.getBestOperation(rasv, sasv, Functions.SECOND_LEFT_ZERO).getClass());
   }
 
 
