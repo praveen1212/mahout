@@ -184,7 +184,7 @@ public abstract class VectorBinaryAggregate {
     @Override
     public boolean isValid(Vector x, Vector y, DoubleDoubleFunction fa, DoubleDoubleFunction fc) {
       return fa.isLikeRightPlus() && !fc.isDensifying()
-          && x.isSequentialAccess() && y.isSequentialAccess() && !x.isAddConstantTime();
+          && x.isSequentialAccess() && y.isSequentialAccess();
     }
 
     @Override
@@ -262,7 +262,7 @@ public abstract class VectorBinaryAggregate {
     @Override
     public boolean isValid(Vector x, Vector y, DoubleDoubleFunction fa, DoubleDoubleFunction fc) {
       return fa.isLikeRightPlus() && !fc.isDensifying()
-          && !x.isAddConstantTime() && y.isSequentialAccess();
+          && (fa.isAssociativeAndCommutative() || (x.isSequentialAccess() && y.isSequentialAccess()));
     }
 
     @Override
@@ -312,7 +312,7 @@ public abstract class VectorBinaryAggregate {
 
     @Override
     public boolean isValid(Vector x, Vector y, DoubleDoubleFunction fa, DoubleDoubleFunction fc) {
-      return x.isSequentialAccess() && y.isSequentialAccess() && !x.isAddConstantTime() && !x.isDense() && !y.isDense();
+      return x.isSequentialAccess() && y.isSequentialAccess() && !x.isDense() && !y.isDense();
     }
 
     @Override
@@ -347,7 +347,7 @@ public abstract class VectorBinaryAggregate {
     @Override
     public boolean isValid(Vector x, Vector y, DoubleDoubleFunction fa, DoubleDoubleFunction fc) {
       return (fa.isAssociativeAndCommutative() || x.isSequentialAccess())
-          && !x.isAddConstantTime() && !x.isDense();
+          && !x.isDense();
     }
 
     @Override
@@ -381,7 +381,7 @@ public abstract class VectorBinaryAggregate {
     @Override
     public boolean isValid(Vector x, Vector y, DoubleDoubleFunction fa, DoubleDoubleFunction fc) {
       return (fa.isAssociativeAndCommutative() || y.isSequentialAccess())
-          && !x.isAddConstantTime() && !y.isDense();
+          && !y.isDense();
     }
 
     @Override
@@ -414,7 +414,7 @@ public abstract class VectorBinaryAggregate {
 
     @Override
     public boolean isValid(Vector x, Vector y, DoubleDoubleFunction fa, DoubleDoubleFunction fc) {
-      return x.isAddConstantTime();
+      return true;
     }
 
     @Override

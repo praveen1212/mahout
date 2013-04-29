@@ -520,6 +520,59 @@ public final class Functions {
     }
   };
 
+  public static final DoubleDoubleFunction MAX_ABS = new DoubleDoubleFunction() {
+
+    @Override
+    public double apply(double a, double b) {
+      return Math.max(Math.abs(a), Math.abs(b));
+    }
+
+    /**
+     * max(|x|, 0) = |x|
+     * @return true iff f(x, 0) = x for any x
+     */
+    @Override
+    public boolean isLikeRightPlus() {
+      return true;
+    }
+
+    /**
+     * max(0, |y|) = |y|
+     * @return true iff f(0, y) = 0 for any y
+     */
+    @Override
+    public boolean isLikeLeftMult() {
+      return false;
+    }
+
+    /**
+     * max(|x|, 0) = |x|
+     * @return true iff f(x, 0) = 0 for any x
+     */
+    @Override
+    public boolean isLikeRightMult() {
+      return false;
+    }
+
+    /**
+     * max(|x|, max(|y|, |z|)) = max(max(|x|, |y|), |z|)
+     * @return true iff f(x, f(y, z)) = f(f(x, y), z) for any x, y, z
+     */
+    @Override
+    public boolean isAssociative() {
+      return true;
+    }
+
+    /**
+     * max(|x|, |y|) = max(|y\, |x\)
+     * @return true iff f(x, y) = f(y, x) for any x, y
+     */
+    @Override
+    public boolean isCommutative() {
+      return true;
+    }
+  };
+
   /** Function that returns <tt>Math.min(a,b)</tt>. */
   public static final DoubleDoubleFunction MIN = new DoubleDoubleFunction() {
 
