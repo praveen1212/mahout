@@ -158,12 +158,20 @@ public abstract class VectorBinaryAssign {
       Vector.Element ye = null;
       boolean advanceThis = true;
       boolean advanceThat = true;
-      while (xi.hasNext() && yi.hasNext()) {
+      while (true) {
         if (advanceThis) {
-          xe = xi.next();
+          if (xi.hasNext()) {
+            xe = xi.next();
+          } else {
+            break;
+          }
         }
         if (advanceThat) {
-          ye = yi.next();
+          if (yi.hasNext()) {
+            ye = yi.next();
+          } else {
+            break;
+          }
         }
         if (xe.index() == ye.index()) {
           xe.set(f.apply(xe.get(), ye.get()));
