@@ -52,7 +52,7 @@ public class ChebyshevDistanceMeasure implements DistanceMeasure {
     if (v1.size() != v2.size()) {
       throw new CardinalityException(v1.size(), v2.size());
     }
-    return v1.aggregate(v2, Functions.MAX, Functions.MINUS_ABS);
+    return v1.aggregate(v2, Functions.MAX_ABS, Functions.MINUS);
   }
   
   @Override
