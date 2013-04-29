@@ -72,19 +72,14 @@ public abstract class VectorBinaryAggregate {
     @Override
     public double aggregate(Vector x, Vector y, DoubleDoubleFunction fa, DoubleDoubleFunction fc) {
       Iterator<Vector.Element> xi = x.iterateNonZero();
-      Vector.Element xe;
-      boolean validResult = false;
-      double result = 0;
-      double thisResult;
+      if (!xi.hasNext()) {
+        return 0;
+      }
+      Vector.Element xe = xi.next();
+      double result = fc.apply(xe.get(), y.getQuick(xe.index()));
       while (xi.hasNext()) {
         xe = xi.next();
-        thisResult = fc.apply(xe.get(), y.getQuick(xe.index()));
-        if (validResult) {
-          result = fa.apply(result, thisResult);
-        } else {
-          result = thisResult;
-          validResult = true;
-        }
+        result = fa.apply(result, fc.apply(xe.get(), y.getQuick(xe.index())));
       }
       return result;
     }
@@ -106,19 +101,14 @@ public abstract class VectorBinaryAggregate {
     @Override
     public double aggregate(Vector x, Vector y, DoubleDoubleFunction fa, DoubleDoubleFunction fc) {
       Iterator<Vector.Element> yi = y.iterateNonZero();
-      Vector.Element ye;
-      boolean validResult = false;
-      double result = 0;
-      double thisResult;
+      if (!yi.hasNext()) {
+        return 0;
+      }
+      Vector.Element ye = yi.next();
+      double result = fc.apply(x.getQuick(ye.index()), ye.get());
       while (yi.hasNext()) {
         ye = yi.next();
-        thisResult = fc.apply(x.getQuick(ye.index()), ye.get());
-        if (validResult) {
-          result = fa.apply(result, thisResult);
-        } else {
-          result = thisResult;
-          validResult = true;
-        }
+        result = fa.apply(result, fc.apply(x.getQuick(ye.index()), ye.get()));
       }
       return result;
     }

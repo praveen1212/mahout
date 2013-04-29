@@ -390,7 +390,6 @@ public class VectorBenchmarks {
     distanceBenchmark.benchmark(new ChebyshevDistanceMeasure());
     distanceBenchmark.benchmark(new MinkowskiDistanceMeasure());
 
-    /*
     ClosestCentroidBenchmark centroidBenchmark = new ClosestCentroidBenchmark(mark);
     centroidBenchmark.benchmark(new CosineDistanceMeasure());
     centroidBenchmark.benchmark(new SquaredEuclideanDistanceMeasure());
@@ -399,7 +398,6 @@ public class VectorBenchmarks {
     centroidBenchmark.benchmark(new TanimotoDistanceMeasure());
     centroidBenchmark.benchmark(new ChebyshevDistanceMeasure());
     centroidBenchmark.benchmark(new MinkowskiDistanceMeasure());
-    */
   }
 
   private String asCsvString() {
