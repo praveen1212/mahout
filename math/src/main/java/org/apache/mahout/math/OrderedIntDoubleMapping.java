@@ -27,6 +27,13 @@ public final class OrderedIntDoubleMapping implements Serializable, Cloneable {
   private double[] values;
   private int numMappings;
 
+  private boolean noDefault = true;
+
+  OrderedIntDoubleMapping(boolean noDefault) {
+    this();
+    this.noDefault = noDefault;
+  }
+
   OrderedIntDoubleMapping() {
     // no-arg constructor for deserializer
     this(11);
@@ -104,7 +111,7 @@ public final class OrderedIntDoubleMapping implements Serializable, Cloneable {
 
   public void set(int index, double value) {
     if (numMappings == 0 || index > indices[numMappings - 1]) {
-      if (value != DEFAULT_VALUE) {
+      if (!noDefault || value != DEFAULT_VALUE) {
         if (numMappings >= indices.length) {
           growTo(Math.max((int) (1.2 * numMappings), numMappings + 1));
         }
@@ -166,7 +173,7 @@ public final class OrderedIntDoubleMapping implements Serializable, Cloneable {
 
     indices = newIndices;
     values = newValues;
-    numMappings = newNumMappings;
+    numMappings = k;
   }
 
   @Override
@@ -225,7 +232,7 @@ public final class OrderedIntDoubleMapping implements Serializable, Cloneable {
   }
 
   private void insertValueIfNotDefault(int index, int offset, double value) {
-    if (value != DEFAULT_VALUE) {
+    if (!noDefault || value != DEFAULT_VALUE) {
       if (numMappings >= indices.length) {
         growTo(Math.max((int) (1.2 * numMappings), numMappings + 1));
       }
@@ -243,7 +250,7 @@ public final class OrderedIntDoubleMapping implements Serializable, Cloneable {
   }
 
   private void insertOrUpdateValueIfPresent(int offset, double newValue) {
-    if (newValue == DEFAULT_VALUE) {
+    if (noDefault && newValue == DEFAULT_VALUE) {
       for (int i = offset + 1, j = offset; i < numMappings; i++, j++) {
         indices[j] = indices[i];
         values[j] = values[i];

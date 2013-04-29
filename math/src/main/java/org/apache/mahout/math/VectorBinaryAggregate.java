@@ -148,12 +148,20 @@ public abstract class VectorBinaryAggregate {
       boolean validResult = false;
       double result = 0;
       double thisResult;
-      while (xi.hasNext() && yi.hasNext()) {
+      while (true) {
         if (advanceThis) {
-          xe = xi.next();
+          if (xi.hasNext()) {
+            xe = xi.next();
+          } else {
+            break;
+          }
         }
         if (advanceThat) {
-          ye = yi.next();
+          if (yi.hasNext()) {
+            ye = yi.next();
+          } else {
+            break;
+          }
         }
         if (xe.index() == ye.index()) {
           thisResult = fc.apply(xe.get(), ye.get());

@@ -127,7 +127,7 @@ public abstract class VectorBinaryAssign {
     public Vector assign(Vector x, Vector y, DoubleDoubleFunction f) {
       Iterator<Vector.Element> yi = y.iterateNonZero();
       Vector.Element ye;
-      OrderedIntDoubleMapping updates = new OrderedIntDoubleMapping();
+      OrderedIntDoubleMapping updates = new OrderedIntDoubleMapping(false);
       while (yi.hasNext()) {
         ye = yi.next();
         updates.set(ye.index(), f.apply(x.getQuick(ye.index()), ye.get()));
@@ -204,7 +204,7 @@ public abstract class VectorBinaryAssign {
       Vector.Element ye = null;
       boolean advanceThis = true;
       boolean advanceThat = true;
-      OrderedIntDoubleMapping updates = new OrderedIntDoubleMapping();
+      OrderedIntDoubleMapping updates = new OrderedIntDoubleMapping(false);
       while (true) {
         if (advanceThis) {
           if (xi.hasNext()) {
@@ -222,12 +222,12 @@ public abstract class VectorBinaryAssign {
         }
         if (xe != null && ye != null) { // both vectors have nonzero elements
           if (xe.index() == ye.index()) {
-            updates.set(xe.index(), f.apply(xe.get(), ye.get()));
+            xe.set(f.apply(xe.get(), ye.get()));
             advanceThis = true;
             advanceThat = true;
           } else {
             if (xe.index() < ye.index()) { // f(x, 0)
-              updates.set(xe.index(), f.apply(xe.get(), 0));
+              xe.set(f.apply(xe.get(), 0));
               advanceThis = true;
               advanceThat = false;
             } else {
@@ -237,7 +237,7 @@ public abstract class VectorBinaryAssign {
             }
           }
         } else if (xe != null) { // just the first one still has nonzeros
-          updates.set(xe.index(), f.apply(xe.get(), 0));
+          xe.set(f.apply(xe.get(), 0));
           advanceThis = true;
           advanceThat = false;
         } else if (ye != null) { // just the second one has nonzeros
@@ -346,7 +346,7 @@ public abstract class VectorBinaryAssign {
       }
       Iterator<Vector.Element> yi = y.iterateNonZero();
       Vector.Element ye;
-      OrderedIntDoubleMapping updates = new OrderedIntDoubleMapping();
+      OrderedIntDoubleMapping updates = new OrderedIntDoubleMapping(false);
       while (yi.hasNext()) {
         ye = yi.next();
         if (!visited.contains(ye.index())) {
@@ -409,7 +409,7 @@ public abstract class VectorBinaryAssign {
       Iterator<Vector.Element> xi = x.iterator();
       Iterator<Vector.Element> yi = y.iterator();
       Vector.Element xe;
-      OrderedIntDoubleMapping updates = new OrderedIntDoubleMapping();
+      OrderedIntDoubleMapping updates = new OrderedIntDoubleMapping(false);
       while (xi.hasNext() && yi.hasNext()) {
         xe = xi.next();
         updates.set(xe.index(), f.apply(xe.get(), yi.next().get()));
@@ -461,14 +461,10 @@ public abstract class VectorBinaryAssign {
     public Vector assign(Vector x, Vector y, DoubleDoubleFunction f) {
       Iterator<Vector.Element> xi = x.iterator();
       Vector.Element xe;
-      OrderedIntDoubleMapping updates = new OrderedIntDoubleMapping();
+      OrderedIntDoubleMapping updates = new OrderedIntDoubleMapping(false);
       while (xi.hasNext()) {
         xe = xi.next();
-        if (xe.get() != 0.0) {
-          xe.set(f.apply(xe.get(), y.getQuick(xe.index())));
-        } else {
-          updates.set(xe.index(), f.apply(xe.get(), y.getQuick(xe.index())));
-        }
+        updates.set(xe.index(), f.apply(xe.get(), y.getQuick(xe.index())));
       }
       x.mergeUpdates(updates);
       return x;
@@ -515,7 +511,7 @@ public abstract class VectorBinaryAssign {
     public Vector assign(Vector x, Vector y, DoubleDoubleFunction f) {
       Iterator<Vector.Element> yi = y.iterator();
       Vector.Element ye;
-      OrderedIntDoubleMapping updates = new OrderedIntDoubleMapping();
+      OrderedIntDoubleMapping updates = new OrderedIntDoubleMapping(false);
       while (yi.hasNext()) {
         ye = yi.next();
         updates.set(ye.index(), f.apply(x.getQuick(ye.index()), ye.get()));
@@ -563,7 +559,7 @@ public abstract class VectorBinaryAssign {
 
     @Override
     public Vector assign(Vector x, Vector y, DoubleDoubleFunction f) {
-      OrderedIntDoubleMapping updates = new OrderedIntDoubleMapping();
+      OrderedIntDoubleMapping updates = new OrderedIntDoubleMapping(false);
       for (int i = 0; i < x.size(); ++i) {
         updates.set(i, f.apply(x.getQuick(i), y.getQuick(i)));
       }

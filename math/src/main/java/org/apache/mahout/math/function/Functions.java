@@ -870,7 +870,7 @@ public final class Functions {
      */
     @Override
     public boolean isLikeRightPlus() {
-      return true;
+      return false;
     }
 
     /**
