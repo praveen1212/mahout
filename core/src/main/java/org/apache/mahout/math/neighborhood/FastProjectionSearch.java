@@ -187,7 +187,7 @@ public class FastProjectionSearch extends UpdatableSearcher {
 
   @Override
   public boolean remove(Vector v, double epsilon) {
-    WeightedThing<Vector> closestPair = search(v, 1).get(0);
+    WeightedThing<Vector> closestPair = searchFirst(v, false);
     if (distanceMeasure.distance(closestPair.getValue(), v) > epsilon) {
       return false;
     }

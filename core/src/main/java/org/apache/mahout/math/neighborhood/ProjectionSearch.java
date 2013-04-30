@@ -196,8 +196,8 @@ public class ProjectionSearch extends UpdatableSearcher implements Iterable<Vect
   }
 
   public boolean remove(Vector vector, double epsilon) {
-    List<WeightedThing<Vector>> x = search(vector, 1);
-    if (x.get(0).getWeight() < epsilon) {
+    WeightedThing<Vector> toRemove = searchFirst(vector, false);
+    if (toRemove.getWeight() < epsilon) {
       Iterator<? extends Vector> basisVectors = basisMatrix.iterator();
       for (TreeMultiset<WeightedThing<Vector>> projection : scalarProjections) {
         if (!projection.remove(new WeightedThing<Vector>(vector, vector.dot(basisVectors.next())))) {
