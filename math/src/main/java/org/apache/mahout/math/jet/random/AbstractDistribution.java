@@ -30,7 +30,7 @@ import org.apache.mahout.math.function.IntFunction;
 
 import java.util.Random;
 
-public abstract class AbstractDistribution implements DoubleFunction, IntFunction {
+public abstract class AbstractDistribution extends DoubleFunction implements IntFunction {
 
   private Random randomGenerator;
 

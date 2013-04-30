@@ -30,7 +30,7 @@ import java.io.IOException;
  * Provides coordinate tranformations so that evolution can proceed on the entire space of
  * reals but have the output limited and squished in convenient (and safe) ways.
  */
-public abstract class Mapping implements DoubleFunction, Writable {
+public abstract class Mapping extends DoubleFunction implements Writable {
 
   private Mapping() {
   }

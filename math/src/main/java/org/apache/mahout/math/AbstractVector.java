@@ -54,7 +54,7 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
 
     if (aggregator.isAssociativeAndCommutative()) {
       boolean hasZeros = size() - getNumNondefaultElements() > 0;
-      if (hasZeros && Math.abs(map.apply(0.0) - 0.0) < Constants.EPSILON) {
+      if (hasZeros && !map.isDensifying()) {
         // There exists at least one zero, and fm(0) = 0. The results starts as 0.0.
         // This can be the first result in the aggregator (because it's associative and commutative).
         // The aggregator is applied as fa(result, fm(v)), but we know there must be a fa(0, fm(v)).
@@ -69,7 +69,7 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     if (isSequentialAccess() || aggregator.isAssociativeAndCommutative()) {
       Iterator<Element> iterator;
       // If fm(0) = 0 and fa(x, 0) = x, we can skip all zero values.
-      if (Math.abs(map.apply(0.0) - 0.0) < Constants.EPSILON && aggregator.isLikeRightPlus()) {
+      if (!map.isDensifying() && aggregator.isLikeRightPlus()) {
         iterator = iterateNonZero();
         if (!iterator.hasNext()) {
           return 0.0;
@@ -910,14 +910,12 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     if (size != that.size()) {
       throw new CardinalityException(size, that.size());
     }
-    Vector to = this;
-    Vector from = that;
-    // Clone and edit to the sparse one; if both are sparse, edit the more sparse one (more zeroes)
-    if (isDense() || !that.isDense() && getNumNondefaultElements() > that.getNumNondefaultElements()) {
-      to = that;
-      from = this;
+
+    if (this.getNumNondefaultElements() <= that.getNumNondefaultElements()) {
+      return createOptimizedCopy(this).assign(that, Functions.MULT);
+    } else {
+      return createOptimizedCopy(that).assign(this, Functions.MULT);
     }
-    return createOptimizedCopy(to).assign(from, Functions.MULT);
   }
 
   @Override

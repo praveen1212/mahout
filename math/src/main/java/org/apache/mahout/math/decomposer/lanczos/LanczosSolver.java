@@ -76,7 +76,7 @@ public class LanczosSolver {
   private final Map<TimingSection, Long> startTimes = new EnumMap<TimingSection, Long>(TimingSection.class);
   private final Map<TimingSection, Long> times = new EnumMap<TimingSection, Long>(TimingSection.class);
 
-  private static final class Scale implements DoubleFunction {
+  private static final class Scale extends DoubleFunction {
     private final double d;
 
     private Scale(double d) {
