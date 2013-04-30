@@ -269,7 +269,8 @@ public class StreamingKMeans implements Iterable<Centroid> {
       // Get the closest vector and its weight as a WeightedThing<Vector>.
       // The weight of the WeightedThing is the distance to the query and the value is a
       // reference to one of the vectors we added to the searcher previously.
-      WeightedThing<Vector> closestPair = centroids.search(row, 1).get(0);
+      WeightedThing<Vector> closestPair = centroids.searchFirst(row, false);
+          // centroids.search(row, 1).get(0);
 
       // We get a uniformly distributed random number between 0 and 1 and compare it with the
       // distance to the closest cluster divided by the distanceCutoff.

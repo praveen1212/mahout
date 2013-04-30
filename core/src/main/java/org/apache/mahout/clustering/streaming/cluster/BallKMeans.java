@@ -27,6 +27,7 @@ import org.apache.mahout.common.distance.DistanceMeasure;
 import org.apache.mahout.math.Centroid;
 import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.WeightedVector;
+import org.apache.mahout.math.function.Functions;
 import org.apache.mahout.math.neighborhood.UpdatableSearcher;
 import org.apache.mahout.math.random.Multinomial;
 import org.apache.mahout.math.random.WeightedThing;
@@ -163,8 +164,10 @@ public class BallKMeans implements Iterable<Centroid> {
     // Compute the centroid of all of the datapoints.  This is then used to compute the squared radius of the datapoints.
     Centroid center = new Centroid(datapoints.iterator().next());
     for (WeightedVector row : Iterables.skip(datapoints, 1)) {
-      center.update(row);
+      center.assign(row, Functions.PLUS);
     }
+    center.assign(Functions.div(datapoints.size()));
+
     // Given the centroid, we can compute \Delta_1^2(X), the total squared distance for the datapoints
     // this accelerates seed selection.
     double radius = 0;
@@ -267,7 +270,8 @@ public class BallKMeans implements Iterable<Centroid> {
       // centroid.
       closestClusterDistances.clear();
       for (Vector center : centroids) {
-        Vector closestOtherCluster = centroids.search(center, 2).get(1).getValue();
+        Vector closestOtherCluster = centroids.searchFirst(center, true).getValue();
+            // centroids.search(center, 2).get(1).getValue();
         closestClusterDistances.add(distanceMeasure.distance(center, closestOtherCluster));
       }
 
@@ -285,7 +289,8 @@ public class BallKMeans implements Iterable<Centroid> {
       for (int j = 0; j < datapoints.size(); ++j) {
         WeightedVector datapoint = datapoints.get(j);
         // Get the closest cluster this point belongs to.
-        WeightedThing<Vector> closestPair = centroids.search(datapoint, 1).get(0);
+        WeightedThing<Vector> closestPair = centroids.searchFirst(datapoint, false);
+        // centroids.search(datapoint, 1).get(0);
         int closestIndex = ((WeightedVector)closestPair.getValue()).getIndex();
         double closestDistance = closestPair.getWeight();
         // Update its cluster assignment if necessary.
@@ -310,7 +315,8 @@ public class BallKMeans implements Iterable<Centroid> {
         ((Centroid)v).setWeight(0);
       }
       for (WeightedVector datapoint : datapoints) {
-        Centroid closestCentroid = (Centroid)centroids.search(datapoint, 1).get(0).getValue();
+        Centroid closestCentroid = (Centroid) centroids.searchFirst(datapoint, false).getValue();
+        // (Centroid)centroids.search(datapoint, 1).get(0).getValue();
         closestCentroid.setWeight(closestCentroid.getWeight() + datapoint.getWeight());
       }
     }
