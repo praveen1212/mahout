@@ -1308,7 +1308,7 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     }
     return true;
     */
-    return aggregate(that, Functions.PLUS_ABS, Functions.MINUS) < Constants.EPSILON;
+    return aggregate(that, Functions.PLUS, Functions.MINUS_ABS) < Constants.EPSILON;
   }
 
   @Override

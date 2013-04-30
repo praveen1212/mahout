@@ -53,16 +53,60 @@ public class Centroid extends WeightedVector {
     }
   }
 
-  public void update(Vector v, final double w) {
-    final double weight = getWeight();
-    final double totalWeight = weight + w;
-    delegate.assign(v, new DoubleDoubleFunction() {
+  public void update(Vector other, final double wy) {
+    final double wx = getWeight();
+    final double tw = wx + wy;
+    delegate.assign(other, new DoubleDoubleFunction() {
       @Override
-      public double apply(double v, double v1) {
-        return (weight * v + w * v1) / totalWeight;
+      public double apply(double x, double y) {
+        return (wx * x + wy * y) / tw;
+      }
+
+      /**
+       * f(x, 0) = wx * x / tw = x iff wx = tw (practically, impossible, as tw = wx + wy and wy > 0)
+       * @return true iff f(x, 0) = x for any x
+       */
+      @Override
+      public boolean isLikeRightPlus() {
+        return wx == tw;
+      }
+
+      /**
+       * f(0, y) = wy * y / tw = 0 iff y = 0
+       * @return true iff f(0, y) = 0 for any y
+       */
+      @Override
+      public boolean isLikeLeftMult() {
+        return false;
+      }
+
+      /**
+       * f(x, 0) = wx * x / tw = 0 iff x = 0
+       * @return true iff f(x, 0) = 0 for any x
+       */
+      @Override
+      public boolean isLikeRightMult() {
+        return false;
+      }
+
+      /**
+       * wx * x + wy * y = wx * y + wy * x iff wx = wy
+       * @return true iff f(x, y) = f(y, x) for any x, y
+       */
+      @Override
+      public boolean isCommutative() {
+        return wx == wy;
+      }
+
+      /**
+       * @return true iff f(x, f(y, z)) = f(f(x, y), z) for any x, y, z
+       */
+      @Override
+      public boolean isAssociative() {
+        return false;
       }
     });
-    setWeight(totalWeight);
+    setWeight(tw);
   }
 
   @Override
