@@ -153,10 +153,13 @@ public class ProjectionSearch extends UpdatableSearcher implements Iterable<Vect
    * it's faster (less overhead).
    *
    * @param query the vector to search for
+   * @param differentThanQuery if true, returns the closest vector different than the query (this
+   *                           only matters if the query is among the searched vectors), otherwise,
+   *                           returns the closest vector to the query (even the same vector).
    * @return the weighted vector closest to the query
    */
   @Override
-  public WeightedThing<Vector> searchFirst(Vector query) {
+  public WeightedThing<Vector> searchFirst(Vector query, boolean differentThanQuery) {
     double bestDistance = Double.POSITIVE_INFINITY;
     Vector bestVector = null;
 
@@ -168,7 +171,7 @@ public class ProjectionSearch extends UpdatableSearcher implements Iterable<Vect
           Iterables.limit(v.tailMultiset(projectedQuery, BoundType.CLOSED), searchSize),
           Iterables.limit(v.headMultiset(projectedQuery, BoundType.OPEN).descendingMultiset(), searchSize))) {
         double distance = distanceMeasure.distance(query, candidate.getValue());
-        if (distance < bestDistance) {
+        if (distance < bestDistance && (!differentThanQuery || !candidate.getValue().equals(query))) {
           bestDistance = distance;
           bestVector = candidate.getValue();
         }

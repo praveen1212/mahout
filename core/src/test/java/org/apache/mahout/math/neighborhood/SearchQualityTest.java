@@ -79,8 +79,7 @@ public class SearchQualityTest {
 
   @Test
   public void testOverlapAndRuntimeSearchFirst() {
-    assertThat("Search not empty initially", searcher.size(), equalTo(0));
-
+    searcher.clear();
     searcher.addAll(dataPoints);
     Pair<List<WeightedThing<Vector>>, Long> results = getResultsAndRuntimeSearchFirst(searcher, queries);
 
@@ -105,8 +104,7 @@ public class SearchQualityTest {
   }
   @Test
   public void testOverlapAndRuntime() {
-    assertThat("Search not empty initially", searcher.size(), equalTo(0));
-
+    searcher.clear();
     searcher.addAll(dataPoints);
     Pair<List<List<WeightedThing<Vector>>>, Long> results = getResultsAndRuntime(searcher, queries);
 
@@ -150,7 +148,7 @@ public class SearchQualityTest {
   public static Pair<List<WeightedThing<Vector>>, Long> getResultsAndRuntimeSearchFirst(
       Searcher searcher, Iterable<? extends Vector> queries) {
     long start = System.currentTimeMillis();
-    List<WeightedThing<Vector>> results = searcher.searchFirst(queries);
+    List<WeightedThing<Vector>> results = searcher.searchFirst(queries, false);
     long end = System.currentTimeMillis();
     return new Pair<List<WeightedThing<Vector>>, Long>(results, end - start);
   }

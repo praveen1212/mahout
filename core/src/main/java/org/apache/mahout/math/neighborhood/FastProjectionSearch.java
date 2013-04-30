@@ -148,10 +148,13 @@ public class FastProjectionSearch extends UpdatableSearcher {
    * it's faster (less overhead).
    *
    * @param query the vector to search for
+   * @param differentThanQuery if true, returns the closest vector different than the query (this
+   *                           only matters if the query is among the searched vectors), otherwise,
+   *                           returns the closest vector to the query (even the same vector).
    * @return the weighted vector closest to the query
    */
   @Override
-  public WeightedThing<Vector> searchFirst(Vector query) {
+  public WeightedThing<Vector> searchFirst(Vector query, boolean differentThanQuery) {
     reindex(false);
 
     double bestDistance = Double.POSITIVE_INFINITY;
@@ -172,7 +175,7 @@ public class FastProjectionSearch extends UpdatableSearcher {
         }
         Vector vector = currProjections.get(j).getValue();
         double distance = distanceMeasure.distance(vector, query);
-        if (distance < bestDistance) {
+        if (distance < bestDistance && (!differentThanQuery || !vector.equals(query))) {
           bestDistance = distance;
           bestVector = vector;
         }

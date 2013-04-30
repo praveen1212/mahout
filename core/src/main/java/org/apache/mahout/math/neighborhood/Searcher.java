@@ -81,15 +81,19 @@ public abstract class Searcher implements Iterable<Vector> {
    * Returns the closest vector to the query.
    * When only one the nearest vector is needed, use this method, NOT search(query, limit) because
    * it's faster (less overhead).
+   *
    * @param query the vector to search for
+   * @param differentThanQuery if true, returns the closest vector different than the query (this
+   *                           only matters if the query is among the searched vectors), otherwise,
+   *                           returns the closest vector to the query (even the same vector).
    * @return the weighted vector closest to the query
    */
-  public abstract WeightedThing<Vector> searchFirst(Vector query);
+  public abstract WeightedThing<Vector> searchFirst(Vector query, boolean differentThanQuery);
 
-  public List<WeightedThing<Vector>> searchFirst(Iterable<? extends Vector> queries) {
+  public List<WeightedThing<Vector>> searchFirst(Iterable<? extends Vector> queries, boolean differentThanQuery) {
     List<WeightedThing<Vector>> results = Lists.newArrayList();
     for (Vector query : queries) {
-      results.add(searchFirst(query));
+      results.add(searchFirst(query, differentThanQuery));
     }
     return results;
   }
