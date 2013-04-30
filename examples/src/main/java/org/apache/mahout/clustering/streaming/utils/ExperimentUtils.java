@@ -12,7 +12,6 @@ import org.apache.mahout.common.distance.DistanceMeasure;
 import org.apache.mahout.math.Centroid;
 import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.VectorWritable;
-import org.apache.mahout.math.neighborhood.BruteSearch;
 import org.apache.mahout.math.neighborhood.ProjectionSearch;
 
 import java.util.List;
@@ -77,7 +76,7 @@ public class ExperimentUtils {
   public static Iterable<Centroid> clusterBallKMeans(List<Centroid> datapoints, int numClusters,
                                                      double trimFraction, boolean randomInit,
                                                      DistanceMeasure distanceMeasure) {
-    BallKMeans clusterer = new BallKMeans(new ProjectionSearch(distanceMeasure, 3, 2), numClusters, 20,
+    BallKMeans clusterer = new BallKMeans(new ProjectionSearch(distanceMeasure, 3, 1), numClusters, 20,
         trimFraction, true);
     clusterer.cluster(datapoints, randomInit);
     return clusterer;

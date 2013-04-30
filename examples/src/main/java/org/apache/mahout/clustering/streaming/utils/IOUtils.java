@@ -267,11 +267,17 @@ public class IOUtils {
       }
       result.getFirst().add(entry.getFirst().toString());
       if (projectionDimension > 0) {
+        result.getSecond().add(new Centroid(numVectors++, projectionMatrix.times(entry.getSecond().get()), 1));
+        /*
         result.getSecond().add(new Centroid(numVectors++,
             new RandomAccessSparseVector(projectionMatrix.times(entry.getSecond().get())), 1));
+            */
       } else {
+        result.getSecond().add(new Centroid(numVectors++, entry.getSecond().get(), 1));
+        /*
         result.getSecond().add(new Centroid(numVectors++,
             new RandomAccessSparseVector(entry.getSecond().get()), 1));
+            */
       }
       --limit;
       if (limit == 0) {
