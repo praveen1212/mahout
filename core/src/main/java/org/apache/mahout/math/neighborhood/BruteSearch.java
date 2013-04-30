@@ -102,6 +102,28 @@ public class BruteSearch extends UpdatableSearcher {
   }
 
   /**
+   * Returns the closest vector to the query.
+   * When only one the nearest vector is needed, use this method, NOT search(query, limit) because
+   * it's faster (less overhead).
+   *
+   * @param query the vector to search for
+   * @return the weighted vector closest to the query
+   */
+  @Override
+  public WeightedThing<Vector> searchFirst(Vector query) {
+    double bestDistance = Double.POSITIVE_INFINITY;
+    Vector bestVector = null;
+    for (Vector row : referenceVectors) {
+      double distance = distanceMeasure.distance(query, row);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestVector = row;
+      }
+    }
+    return new WeightedThing<Vector>(bestVector, bestDistance);
+  }
+
+  /**
    * Searches with a list full of queries in a threaded fashion.
    *
    * @param queries The queries to search for.

@@ -147,6 +147,37 @@ public class ProjectionSearch extends UpdatableSearcher implements Iterable<Vect
     return top.subList(0, Math.min(limit, top.size()));
   }
 
+  /**
+   * Returns the closest vector to the query.
+   * When only one the nearest vector is needed, use this method, NOT search(query, limit) because
+   * it's faster (less overhead).
+   *
+   * @param query the vector to search for
+   * @return the weighted vector closest to the query
+   */
+  @Override
+  public WeightedThing<Vector> searchFirst(Vector query) {
+    double bestDistance = Double.POSITIVE_INFINITY;
+    Vector bestVector = null;
+
+    Iterator<? extends Vector> projections = basisMatrix.iterator();
+    for (TreeMultiset<WeightedThing<Vector>> v : scalarProjections) {
+      Vector basisVector = projections.next();
+      WeightedThing<Vector> projectedQuery = new WeightedThing<Vector>(query, query.dot(basisVector));
+      for (WeightedThing<Vector> candidate : Iterables.concat(
+          Iterables.limit(v.tailMultiset(projectedQuery, BoundType.CLOSED), searchSize),
+          Iterables.limit(v.headMultiset(projectedQuery, BoundType.OPEN).descendingMultiset(), searchSize))) {
+        double distance = distanceMeasure.distance(query, candidate.getValue());
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          bestVector = candidate.getValue();
+        }
+      }
+    }
+
+    return new WeightedThing<Vector>(bestVector, bestDistance);
+  }
+
   @Override
   public Iterator<Vector> iterator() {
     return new AbstractIterator<Vector>() {

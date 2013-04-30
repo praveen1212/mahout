@@ -64,6 +64,9 @@ public abstract class Searcher implements Iterable<Vector> {
    * the distance (calculated by some metric - see a concrete implementation) between the query
    * and neighbor.
    * The actual type of vector in the pair is the same as the vector added to the Searcher.
+   * @param query the vector to search for
+   * @param limit the number of results to return
+   * @return the list of weighted vectors closest to the query
    */
   public abstract List<WeightedThing<Vector>> search(Vector query, int limit);
 
@@ -71,6 +74,23 @@ public abstract class Searcher implements Iterable<Vector> {
     List<List<WeightedThing<Vector>>> results = Lists.newArrayList();
     for (Vector query : queries)
       results.add(search(query, limit));
+    return results;
+  }
+
+  /**
+   * Returns the closest vector to the query.
+   * When only one the nearest vector is needed, use this method, NOT search(query, limit) because
+   * it's faster (less overhead).
+   * @param query the vector to search for
+   * @return the weighted vector closest to the query
+   */
+  public abstract WeightedThing<Vector> searchFirst(Vector query);
+
+  public List<WeightedThing<Vector>> searchFirst(Iterable<? extends Vector> queries) {
+    List<WeightedThing<Vector>> results = Lists.newArrayList();
+    for (Vector query : queries) {
+      results.add(searchFirst(query));
+    }
     return results;
   }
 

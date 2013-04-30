@@ -137,6 +137,72 @@ public class LocalitySensitiveHashSearch extends UpdatableSearcher implements It
     return results;
   }
 
+  /**
+   * Returns the closest vector to the query.
+   * When only one the nearest vector is needed, use this method, NOT search(query, limit) because
+   * it's faster (less overhead).
+   *
+   * @param query the vector to search for
+   * @return the weighted vector closest to the query
+   */
+  @Override
+  public WeightedThing<Vector> searchFirst(Vector query) {
+    double bestDistance = Double.POSITIVE_INFINITY;
+    Vector bestVector = null;
+
+    // we keep the counts of the hash distances here.  This lets us accurately
+    // judge what hash distance cutoff we should use.
+    int[] hashCounts = new int[BITS + 1];
+
+    // we scan the vectors using bit counts as an approximation of the dot product so we can do as few
+    // full distance computations as possible.  Our goal is to only do full distance computations for
+    // vectors with hash distance at most as large as the searchSize biggest hash distance seen so far.
+
+    // in this loop, we have the invariants that
+    //
+    // limitCount = sum_{i<hashLimit} hashCount[i]
+    // and
+    // limitCount >= searchSize && limitCount - hashCount[hashLimit-1] < searchSize
+
+    OnlineSummarizer[] distribution = new OnlineSummarizer[BITS + 1];
+    for (int i = 0; i < BITS + 1; i++) {
+      distribution[i] = new OnlineSummarizer();
+    }
+
+    int hashLimit = BITS;
+    int limitCount = 0;
+    long queryHash = HashedVector.computeHash64(query, projection);
+    for (HashedVector v : trainingVectors) {
+      int bitDot = Long.bitCount(v.getHash() ^ queryHash);
+      if (bitDot <= hashLimit) {
+        distanceEvaluations++;
+        double distance = distanceMeasure.distance(query, v);
+        distribution[bitDot].add(distance);
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          bestVector = v.getVector();
+
+          hashCounts[bitDot]++;
+          limitCount++;
+          while (hashLimit > 0 && limitCount - hashCounts[hashLimit - 1] > searchSize) {
+            hashLimit--;
+            limitCount -= hashCounts[hashLimit];
+          }
+
+          if (hashLimitStrategy >= 0) {
+            while (hashLimit < 32 && distribution[hashLimit].getCount() > 10 &&
+                (hashLimitStrategy * distribution[hashLimit].getQuartile(1)) + ((1 - hashLimitStrategy) * distribution[hashLimit].getQuartile(0)) < bestDistance) {
+              limitCount += hashCounts[hashLimit];
+              hashLimit++;
+            }
+          }
+        }
+      }
+    }
+
+    return new WeightedThing<Vector>(bestVector, bestDistance);
+  }
+
 
   @Override
   public void add(Vector v) {

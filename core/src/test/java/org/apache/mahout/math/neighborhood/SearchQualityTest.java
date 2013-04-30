@@ -32,6 +32,7 @@ public class SearchQualityTest {
   private final Matrix dataPoints;
   private final Matrix queries;
   private Pair<List<List<WeightedThing<Vector>>>, Long> reference;
+  private Pair<List<WeightedThing<Vector>>, Long> referenceSearchFirst;
 
   @Parameterized.Parameters
   public static List<Object[]> generateData() {
@@ -45,32 +46,63 @@ public class SearchQualityTest {
     bruteSearcher.addAll(dataPoints);
     Pair<List<List<WeightedThing<Vector>>>, Long> reference = getResultsAndRuntime(bruteSearcher, queries);
 
+    Pair<List<WeightedThing<Vector>>, Long> referenceSearchFirst =
+        getResultsAndRuntimeSearchFirst(bruteSearcher, queries);
+
     double bruteSearchAvgTime = reference.getSecond() / (queries.numRows() * 1.0);
     System.out.printf("BruteSearch: avg_time(1 query) %f[s]\n", bruteSearchAvgTime);
 
     return Arrays.asList(new Object[][]{
         // NUM_PROJECTIONS = 3
         // SEARCH_SIZE = 10
-        {new ProjectionSearch(distanceMeasure, 3, 10), dataPoints, queries, reference},
-        {new FastProjectionSearch(distanceMeasure, 3, 10), dataPoints, queries, reference},
-        {new LocalitySensitiveHashSearch(distanceMeasure, 10), dataPoints, queries, reference,},
+        {new ProjectionSearch(distanceMeasure, 3, 10), dataPoints, queries, reference, referenceSearchFirst},
+        {new FastProjectionSearch(distanceMeasure, 3, 10), dataPoints, queries, reference, referenceSearchFirst},
+        {new LocalitySensitiveHashSearch(distanceMeasure, 10), dataPoints, queries, reference, referenceSearchFirst},
         // NUM_PROJECTIONS = 5
         // SEARCH_SIZE = 5
-        {new ProjectionSearch(distanceMeasure, 5, 5), dataPoints, queries, reference},
-        {new FastProjectionSearch(distanceMeasure, 5, 5), dataPoints, queries, reference},
-        {new LocalitySensitiveHashSearch(distanceMeasure, 5), dataPoints, queries, reference},
+        {new ProjectionSearch(distanceMeasure, 5, 5), dataPoints, queries, reference, referenceSearchFirst},
+        {new FastProjectionSearch(distanceMeasure, 5, 5), dataPoints, queries, reference, referenceSearchFirst},
+        {new LocalitySensitiveHashSearch(distanceMeasure, 5), dataPoints, queries, reference, referenceSearchFirst},
     }
     );
   }
 
   public SearchQualityTest(Searcher searcher, Matrix dataPoints, Matrix queries,
-                           Pair<List<List<WeightedThing<Vector>>>, Long> reference) {
+                           Pair<List<List<WeightedThing<Vector>>>, Long> reference,
+                           Pair<List<WeightedThing<Vector>>, Long> referenceSearchFirst) {
     this.searcher = searcher;
     this.dataPoints = dataPoints;
     this.queries = queries;
     this.reference = reference;
+    this.referenceSearchFirst = referenceSearchFirst;
   }
 
+  @Test
+  public void testOverlapAndRuntimeSearchFirst() {
+    assertThat("Search not empty initially", searcher.size(), equalTo(0));
+
+    searcher.addAll(dataPoints);
+    Pair<List<WeightedThing<Vector>>, Long> results = getResultsAndRuntimeSearchFirst(searcher, queries);
+
+    int numFirstMatches = 0;
+    for (int i = 0; i < queries.numRows(); ++i) {
+      WeightedThing<Vector> referenceVector = referenceSearchFirst.getFirst().get(i);
+      WeightedThing<Vector> resultVector = results.getFirst().get(i);
+      if (referenceVector.getValue().equals(resultVector.getValue())) {
+        ++numFirstMatches;
+      }
+    }
+
+    double bruteSearchAvgTime = reference.getSecond() / (queries.numRows() * 1.0);
+    double searcherAvgTime = results.getSecond() / (queries.numRows() * 1.0);
+    System.out.printf("%s: first matches %d [%d]; avg_time(1 query) %f(s) [%f]\n",
+        searcher.getClass().getName(), numFirstMatches, queries.numRows(),
+        searcherAvgTime, bruteSearchAvgTime);
+
+    assertThat("Closest vector returned doesn't match", numFirstMatches, is(queries.numRows()));
+    assertThat("Searcher " + searcher.getClass().getName() + " slower than brute",
+        bruteSearchAvgTime, greaterThan(searcherAvgTime));
+  }
   @Test
   public void testOverlapAndRuntime() {
     assertThat("Search not empty initially", searcher.size(), equalTo(0));
@@ -113,6 +145,14 @@ public class SearchQualityTest {
     List<List<WeightedThing<Vector>>> results = searcher.search(queries, NUM_RESULTS);
     long end = System.currentTimeMillis();
     return new Pair<List<List<WeightedThing<Vector>>>, Long>(results, end - start);
+  }
+
+  public static Pair<List<WeightedThing<Vector>>, Long> getResultsAndRuntimeSearchFirst(
+      Searcher searcher, Iterable<? extends Vector> queries) {
+    long start = System.currentTimeMillis();
+    List<WeightedThing<Vector>> results = searcher.searchFirst(queries);
+    long end = System.currentTimeMillis();
+    return new Pair<List<WeightedThing<Vector>>, Long>(results, end - start);
   }
 
   static class StripWeight implements Function<WeightedThing<Vector>, Vector> {

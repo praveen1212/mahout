@@ -142,6 +142,46 @@ public class FastProjectionSearch extends UpdatableSearcher {
     return top.subList(0, Math.min(top.size(), limit));
   }
 
+  /**
+   * Returns the closest vector to the query.
+   * When only one the nearest vector is needed, use this method, NOT search(query, limit) because
+   * it's faster (less overhead).
+   *
+   * @param query the vector to search for
+   * @return the weighted vector closest to the query
+   */
+  @Override
+  public WeightedThing<Vector> searchFirst(Vector query) {
+    reindex(false);
+
+    double bestDistance = Double.POSITIVE_INFINITY;
+    Vector bestVector = null;
+
+    Vector projection = basisMatrix.times(query);
+    for (int i = 0; i < basisMatrix.numRows(); ++i) {
+      List<WeightedThing<Vector>> currProjections = scalarProjections.get(i);
+      int middle = Collections.binarySearch(currProjections,
+          new WeightedThing<Vector>(projection.get(i)));
+      if (middle < 0) {
+        middle = -(middle + 1);
+      }
+      for (int j = Math.max(0, middle - searchSize);
+           j < Math.min(currProjections.size(), middle + searchSize + 1); ++j) {
+        if (currProjections.get(j).getValue() == null) {
+          continue;
+        }
+        Vector vector = currProjections.get(j).getValue();
+        double distance = distanceMeasure.distance(vector, query);
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          bestVector = vector;
+        }
+      }
+    }
+
+    return new WeightedThing<Vector>(bestVector, bestDistance);
+  }
+
   @Override
   public boolean remove(Vector v, double epsilon) {
     WeightedThing<Vector> closestPair = search(v, 1).get(0);
