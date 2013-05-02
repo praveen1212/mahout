@@ -1008,6 +1008,65 @@ public final class Functions {
     }
   };
 
+  public static final DoubleDoubleFunction MULT_RIGHT_PLUS1 = new DoubleDoubleFunction() {
+
+    /**
+     * Apply the function to the arguments and return the result
+     *
+     * @param x a double for the first argument
+     * @param y a double for the second argument
+     * @return the result of applying the function
+     */
+    @Override
+    public double apply(double x, double y) {
+      return x * (y + 1);
+    }
+
+    /**
+     * x * 1 = x
+     * @return true iff f(x, 0) = x for any x
+     */
+    @Override
+    public boolean isLikeRightPlus() {
+      return true;
+    }
+
+    /**
+     * 0 * y = 0
+     * @return true iff f(0, y) = 0 for any y
+     */
+    @Override
+    public boolean isLikeLeftMult() {
+      return true;
+    }
+
+    /**
+     * x * 1 = x != 0
+     * @return true iff f(x, 0) = 0 for any x
+     */
+    @Override
+    public boolean isLikeRightMult() {
+      return false;
+    }
+
+    /**
+     * x * (y + 1) != y * (x + 1)
+     * @return true iff f(x, y) = f(y, x) for any x, y
+     */
+    @Override
+    public boolean isCommutative() {
+      return false;
+    }
+
+    /**
+     * @return true iff f(x, f(y, z)) = f(f(x, y), z) for any x, y, z
+     */
+    @Override
+    public boolean isAssociative() {
+      return false;
+    }
+  };
+
   private Functions() {
   }
 
