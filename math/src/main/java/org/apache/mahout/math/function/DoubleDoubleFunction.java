@@ -26,8 +26,6 @@ It is provided "as is" without expressed or implied warranty.
 
 package org.apache.mahout.math.function;
 
-import org.apache.mahout.math.jet.math.Constants;
-
 /**
  * Interface that represents a function object: a function that takes two arguments and returns a single value.
  **/
@@ -95,6 +93,6 @@ public abstract class DoubleDoubleFunction {
    * @return true iff f(0, 0) != 0
    */
   public boolean isDensifying() {
-    return Math.abs(apply(0.0, 0.0)) > Constants.EPSILON;
+    return apply(0.0, 0.0) != 0.0;
   }
 }

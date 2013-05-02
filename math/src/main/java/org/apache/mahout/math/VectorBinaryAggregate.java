@@ -7,26 +7,18 @@ import java.util.Iterator;
 
 public abstract class VectorBinaryAggregate {
   public static final VectorBinaryAggregate[] operations = new VectorBinaryAggregate[] {
-      // case 1
-      new AggregateNonzerosIterateThisLookupThat(),  // 0
+      new AggregateNonzerosIterateThisLookupThat(),
+      new AggregateNonzerosIterateThatLookupThis(),
 
-      new AggregateNonzerosIterateThatLookupThis(),  // 1
+      new AggregateIterateIntersection(),
 
-      // case 2
-      new AggregateIterateIntersection(),  // 2
+      new AggregateIterateUnionSequential(),
+      new AggregateIterateUnionRandom(),
 
-      // case 3
-      new AggregateIterateUnionSequential(),  // 3
-
-      new AggregateIterateUnionRandom(),  // 5
-
-      // case 4
-      new AggregateAllIterateSequential(),  // 7
-
-      new AggregateAllIterateThisLookupThat(),  // 9
-      new AggregateAllIterateThatLookupThis(),  // 11
-
-      new AggregateAllLoop(),  // 14
+      new AggregateAllIterateSequential(),
+      new AggregateAllIterateThisLookupThat(),
+      new AggregateAllIterateThatLookupThis(),
+      new AggregateAllLoop(),
   };
 
   public abstract boolean isValid(Vector x, Vector y, DoubleDoubleFunction fa, DoubleDoubleFunction fc);
@@ -41,14 +33,12 @@ public abstract class VectorBinaryAggregate {
     for (int i = 0; i < operations.length; ++i) {
       if (operations[i].isValid(x, y, fa, fc)) {
         double cost = operations[i].estimateCost(x, y, fa, fc);
-        // System.out.printf("%s cost %f\n", operations[i].getClass().toString(), cost);
         if (cost < bestCost) {
           bestCost = cost;
           bestOperationIndex = i;
         }
       }
     }
-    // System.out.println();
     return operations[bestOperationIndex];
   }
 

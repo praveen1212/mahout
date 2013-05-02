@@ -26,7 +26,6 @@ It is provided "as is" without expressed or implied warranty.
 
 package org.apache.mahout.math.function;
 
-import org.apache.mahout.math.jet.math.Constants;
 import org.apache.mahout.math.jet.random.engine.MersenneTwister;
 
 import java.util.Date;
@@ -303,7 +302,6 @@ public final class Functions {
    * <H3>Binary functions</H3>
    */
 
-  // TODO: never used, candidate for removal?
   /** Function that returns <tt>Math.atan2(a,b)</tt>. */
   public static final DoubleDoubleFunction ATAN2 = new DoubleDoubleFunction() {
     @Override
@@ -312,7 +310,6 @@ public final class Functions {
     }
   };
 
-  // TODO: never used, candidate for removal?
   /** Function that returns <tt>a < b ? -1 : a > b ? 1 : 0</tt>. */
   public static final DoubleDoubleFunction COMPARE = new DoubleDoubleFunction() {
 
@@ -339,12 +336,12 @@ public final class Functions {
     }
 
     /**
-     * 0 / y = 0
+     * 0 / y = 0 unless y = 0
      * @return true iff f(0, y) = 0 for any y
      */
     @Override
     public boolean isLikeLeftMult() {
-      return true;
+      return false;
     }
 
     /**
@@ -377,7 +374,6 @@ public final class Functions {
 
   };
 
-  // TODO: never used, candidate for removal?
   /** Function that returns <tt>a == b ? 1 : 0</tt>. */
   public static final DoubleDoubleFunction EQUALS = new DoubleDoubleFunction() {
 
@@ -396,7 +392,6 @@ public final class Functions {
     }
   };
 
-  // TODO: never used, candidate for removal?
   /** Function that returns <tt>a > b ? 1 : 0</tt>. */
   public static final DoubleDoubleFunction GREATER = new DoubleDoubleFunction() {
 
@@ -406,7 +401,6 @@ public final class Functions {
     }
   };
 
-  // TODO: never used, candidate for removal?
   /** Function that returns <tt>Math.IEEEremainder(a,b)</tt>. */
   public static final DoubleDoubleFunction IEEE_REMAINDER = new DoubleDoubleFunction() {
 
@@ -416,7 +410,6 @@ public final class Functions {
     }
   };
 
-  // TODO: never used, candidate for removal?
   /** Function that returns <tt>a == b</tt>. */
   public static final DoubleDoubleProcedure IS_EQUAL = new DoubleDoubleProcedure() {
 
@@ -426,7 +419,6 @@ public final class Functions {
     }
   };
 
-  // TODO: never used, candidate for removal?
   /** Function that returns <tt>a < b</tt>. */
   public static final DoubleDoubleProcedure IS_LESS = new DoubleDoubleProcedure() {
 
@@ -436,7 +428,6 @@ public final class Functions {
     }
   };
 
-  // TODO: never used, candidate for removal?
   /** Function that returns <tt>a > b</tt>. */
   public static final DoubleDoubleProcedure IS_GREATER = new DoubleDoubleProcedure() {
 
@@ -446,7 +437,6 @@ public final class Functions {
     }
   };
 
-  // TODO: never used, candidate for removal?
   /** Function that returns <tt>a < b ? 1 : 0</tt>. */
   public static final DoubleDoubleFunction LESS = new DoubleDoubleFunction() {
 
@@ -456,7 +446,6 @@ public final class Functions {
     }
   };
 
-  // TODO: never used, candidate for removal?
   /** Function that returns <tt>Math.log(a) / Math.log(b)</tt>. */
   public static final DoubleDoubleFunction LG = new DoubleDoubleFunction() {
 
@@ -682,7 +671,6 @@ public final class Functions {
     }
   };
 
-  // TODO: never used, candidate for removal?
   /** Function that returns <tt>a % b</tt>. */
   public static final DoubleDoubleFunction MOD = new DoubleDoubleFunction() {
     @Override
@@ -1174,7 +1162,7 @@ public final class Functions {
        */
       @Override
       public boolean isLikeLeftMult() {
-        return Math.abs(g.apply(0.0) - 0.0) < Constants.EPSILON && h.isLikeLeftMult();
+        return !g.isDensifying() && h.isLikeLeftMult();
       }
 
       /**
@@ -1183,7 +1171,7 @@ public final class Functions {
        */
       @Override
       public boolean isLikeRightMult() {
-        return Math.abs(g.apply(0.0) - 0.0) < Constants.EPSILON && h.isLikeRightMult();
+        return !g.isDensifying() && h.isLikeRightMult();
       }
 
       /**
@@ -1489,7 +1477,6 @@ public final class Functions {
     };
   }
 
-  // TODO: never used, candidate for removal?
   /**
    * Constructs a function that returns <tt>function.apply(b,a)</tt>, i.e. applies the function with the first operand
    * as second operand and the second operand as first operand.

@@ -7,33 +7,25 @@ import java.util.Iterator;
 
 public abstract class VectorBinaryAssign {
   public static final VectorBinaryAssign[] operations = new VectorBinaryAssign[] {
-      // case 1
-      new AssignNonzerosIterateThisLookupThat(),  // 0
+      new AssignNonzerosIterateThisLookupThat(),
+      new AssignNonzerosIterateThatLookupThisMergeUpdates(),
+      new AssignNonzerosIterateThatLookupThisInplaceUpdates(),
 
-      new AssignNonzerosIterateThatLookupThisMergeUpdate(),  // 1
-      new AssignNonzerosIterateThatLookupThisInplaceUpdate(),  // 1
+      new AssignIterateIntersection(),
 
-      // case 2
-      new AssignIterateIntersection(),  // 2
+      new AssignIterateUnionSequentialMergeUpdates(),
+      new AssignIterateUnionSequentialInplaceUpdates(),
+      new AssignIterateUnionRandomMergeUpdates(),
+      new AssignIterateUnionRandomInplaceUpdates(),
 
-      // case 3
-      new AssignIterateUnionSequentialMergeUpdates(),  // 3
-      new AssignIterateUnionSequentialInplaceUpdates(),  // 4
-
-      new AssignIterateUnionRandomMergeUpdates(),  // 5
-      new AssignIterateUnionRandomInplaceUpdates(),  // 6
-
-      // case 4
-      new AssignAllIterateSequentialMergeUpdates(),  // 7
-      new AssignAllIterateSequentialInplaceUpdates(),  // 8
-
-      new AssignAllIterateThisLookupThatMergeUpdates(),  // 9
-      new AssignAllIterateThisLookupThatInplaceUpdates(),  // 10
-      new AssignAllIterateThatLookupThisMergeUpdates(),  // 11
-      new AssignAllIterateThatLookupThisInplaceUpdates(),  // 12
-
-      new AssignAllLoopMergeUpdates(),  // 13
-      new AssignAllLoopInplaceUpdates(),  // 14
+      new AssignAllIterateSequentialMergeUpdates(),
+      new AssignAllIterateSequentialInplaceUpdates(),
+      new AssignAllIterateThisLookupThatMergeUpdates(),
+      new AssignAllIterateThisLookupThatInplaceUpdates(),
+      new AssignAllIterateThatLookupThisMergeUpdates(),
+      new AssignAllIterateThatLookupThisInplaceUpdates(),
+      new AssignAllLoopMergeUpdates(),
+      new AssignAllLoopInplaceUpdates(),
   };
 
   public abstract boolean isValid(Vector x, Vector y, DoubleDoubleFunction f);
@@ -48,14 +40,12 @@ public abstract class VectorBinaryAssign {
     for (int i = 0; i < operations.length; ++i) {
       if (operations[i].isValid(x, y, f)) {
         double cost = operations[i].estimateCost(x, y, f);
-        // System.out.printf("%s cost %f\n", operations[i].getClass().toString(), cost);
         if (cost < bestCost) {
           bestCost = cost;
           bestOperationIndex = i;
         }
       }
     }
-    // System.out.println();
     return operations[bestOperationIndex];
   }
 
@@ -87,7 +77,7 @@ public abstract class VectorBinaryAssign {
     }
   }
 
-  public static class AssignNonzerosIterateThatLookupThisInplaceUpdate extends VectorBinaryAssign {
+  public static class AssignNonzerosIterateThatLookupThisInplaceUpdates extends VectorBinaryAssign {
 
     @Override
     public boolean isValid(Vector x, Vector y, DoubleDoubleFunction f) {
@@ -111,7 +101,7 @@ public abstract class VectorBinaryAssign {
     }
   }
 
-  public static class AssignNonzerosIterateThatLookupThisMergeUpdate extends VectorBinaryAssign {
+  public static class AssignNonzerosIterateThatLookupThisMergeUpdates extends VectorBinaryAssign {
 
     @Override
     public boolean isValid(Vector x, Vector y, DoubleDoubleFunction f) {
