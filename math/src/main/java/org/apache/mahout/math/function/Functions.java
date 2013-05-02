@@ -26,6 +26,7 @@ It is provided "as is" without expressed or implied warranty.
 
 package org.apache.mahout.math.function;
 
+import com.google.common.base.Preconditions;
 import org.apache.mahout.math.jet.random.engine.MersenneTwister;
 
 import java.util.Date;
@@ -907,6 +908,7 @@ public final class Functions {
   public static final DoubleDoubleFunction SECOND_LEFT_ZERO = new DoubleDoubleFunction() {
     @Override
     public double apply(double x, double y) {
+      Preconditions.checkArgument(x == 0, "This special version of SECOND needs x == 0");
       return y;
     }
 
