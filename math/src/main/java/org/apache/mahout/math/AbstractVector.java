@@ -514,38 +514,6 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     return this;
   }
 
-  /**
-   * Assigns the current vector, x the value of f(x, y) where f is applied to every component of x and y sequentially.
-   * xi = f(xi, yi).
-   * Let:
-   * - d = cardinality of x and y (they must be equal for the assignment to be possible);
-   * - nx = number of nonzero elements in x;
-   * - ny = number of nonzero elements in y;
-   *
-   * If the function is densifying (f(0, 0) != 0), the resulting vector will be dense and the complexity
-   * of this function is O(d).
-   * Otherwise, the worst-case complexity if O(nx + ny).
-   *
-   * Note, that for two classes of functions we can do better:
-   * a. if f(x, 0) = x (function instanceof LikeRightPlus), the zeros in y can't affect the values of x, so it's
-   * enough to iterate through the nonzero values of y to compute the result. For each nonzero yi, we need to find
-   * the corresponding xi and update it accordingly.
-   * b. if f(0, y) = 0 (function instanceof LikeLeftMult), the zeros in x are not affected by any value, so it's
-   * enough to iterate through the nonzero values of x to compute the result. For each nonzero xi, we need to find
-   * the corresponding yi and update xi accordingly.
-   * Finding a random element in a vector given its index however is O(log n) for sequential access sparse vectors
-   * (because of binary search).
-   * Therefore, in case a. if x is sequential, the complexity is O(ny * log nx) otherwise it's O(ny + nx).
-   * Similarly, in case a. if x is sequential, the complexity is O(nx * log ny) otherwise it's O(nx + ny).
-   *
-   * Practically, we use a. or b. even for sequential vectors when m * log n < m + n that is m < n / (log n - 1),
-   * where n is the number of nonzero elements in the sequential vector and m is the number of elements in the other
-   * vector.
-   *
-   * @param other    a Vector containing the second arguments to the function (y).
-   * @param function a DoubleDoubleFunction to apply (f).
-   * @return this vector, after being updated.
-   */
   @Override
   public Vector assign(Vector other, DoubleDoubleFunction function) {
     if (size != other.size()) {

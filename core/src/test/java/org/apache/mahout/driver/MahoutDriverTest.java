@@ -27,7 +27,6 @@ public final class MahoutDriverTest {
   @Test
   public void testMain() throws Throwable {
     MahoutDriver.main(new String[] {"canopy", "help"});
-    MahoutDriver.main(new String[] {"streamingkmeans"});
   }
 
 }

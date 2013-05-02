@@ -124,7 +124,7 @@ public final class FileBasedSparseBinaryMatrix extends AbstractMatrix {
 
     // compute offsets and write row headers
     for (MatrixSlice row : m) {
-      int nondefaultElements = row.vector().getNumNonZeroElements();
+      int nondefaultElements = row.vector().getNumNondefaultElements();
       out.writeInt(nondefaultElements);
     }
 
@@ -470,7 +470,7 @@ public final class FileBasedSparseBinaryMatrix extends AbstractMatrix {
      * Set the value at the given index, without checking bounds
      *
      * @param index an int index into the receiver
-     * @param value a double value to set
+     * @param increment a double value to set
      */
     @Override
     public void incrementQuick(int index, double increment) {

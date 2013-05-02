@@ -120,7 +120,6 @@ public final class TestDistributedRowMatrix extends MahoutTestCase {
 
     Vector expected = m.times(v);
     Vector actual = dm.times(v);
-    System.out.printf("%s\n%s\n", expected, actual);
     assertEquals(0.0, expected.getDistanceSquared(actual), EPSILON);
   }
 
