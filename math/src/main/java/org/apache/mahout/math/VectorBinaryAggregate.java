@@ -5,6 +5,39 @@ import org.apache.mahout.math.set.OpenIntHashSet;
 
 import java.util.Iterator;
 
+/**
+ * Abstract class encapsulating different algorithms that perform the Vector operations aggregate().
+ * x.aggregte(y, fa, fc), for x and y Vectors and fa, fc DoubleDouble functions:
+ * - applies the function fc to every element in x and y, fc(xi, yi)
+ * - constructs a result iteratively, r0 = fc(x0, y0), ri = fc(r_{i-1}, fc(xi, yi)).
+ * This works essentially like a map/reduce functional combo.
+ *
+ * The names of variables, methods and classes used here follow the following conventions:
+ * The vector being assigned to (the left hand side) is called this or x.
+ * The right hand side is called that or y.
+ * The aggregating (reducing) function to be applied is called fa.
+ * The combining (mapping) function to be applied is called fc.
+ *
+ * The different algorithms take into account the different characteristics of vector classes:
+ * - whether the vectors support sequential iteration (isSequential())
+ * - what the lookup cost is (getLookupCost())
+ * - what the iterator advancement cost is (getIteratorAdvanceCost())
+ *
+ * The names of the actual classes (they're nested in VectorBinaryAssign) describe the used for assignment.
+ * The most important optimization is iterating just through the nonzeros (only possible if f(0, 0) = 0).
+ * There are 4 main possibilities:
+ * - iterating through the nonzeros of just one vector and looking up the corresponding elements in the other
+ * - iterating through the intersection of nonzeros (those indices where both vectors have nonzero values)
+ * - iterating through the union of nonzeros (those indices where at least one of the vectors has a nonzero value)
+ * - iterating through all the elements in some way (either through both at the same time, both one after the other,
+ *   looking up both, looking up just one).
+ *
+ * The internal details are not important and a particular algorithm should generally not be called explicitly.
+ * The best one will be selected through assignBest(), which is itself called through Vector.assign().
+ *
+ * See https://docs.google.com/document/d/1g1PjUuvjyh2LBdq2_rKLIcUiDbeOORA1sCJiSsz-JVU/edit# for a more detailed
+ * explanation.
+ */
 public abstract class VectorBinaryAggregate {
   public static final VectorBinaryAggregate[] operations = new VectorBinaryAggregate[] {
       new AggregateNonzerosIterateThisLookupThat(),
@@ -21,12 +54,25 @@ public abstract class VectorBinaryAggregate {
       new AggregateAllLoop(),
   };
 
+  /**
+   * Returns true iff we can use this algorithm to apply fc to x and y component-wise and aggregate the result using fa.
+   */
   public abstract boolean isValid(Vector x, Vector y, DoubleDoubleFunction fa, DoubleDoubleFunction fc);
 
+  /**
+   * Estimates the cost of using this algorithm to compute the aggregation. The algorithm is assumed to be valid.
+   */
   public abstract double estimateCost(Vector x, Vector y, DoubleDoubleFunction fa, DoubleDoubleFunction fc);
 
+  /**
+   * Main method that applies fc to x and y component-wise aggregating the results with fa. It returns the result of
+   * the aggregation.
+   */
   public abstract double aggregate(Vector x, Vector y, DoubleDoubleFunction fa, DoubleDoubleFunction fc);
 
+  /**
+   * The best operation is the least expensive valid one.
+   */
   public static VectorBinaryAggregate getBestOperation(Vector x, Vector y, DoubleDoubleFunction fa, DoubleDoubleFunction fc) {
     int bestOperationIndex = -1;
     double bestCost = Double.POSITIVE_INFINITY;
@@ -42,6 +88,9 @@ public abstract class VectorBinaryAggregate {
     return operations[bestOperationIndex];
   }
 
+  /**
+   * This is the method that should be used when aggregating. It selects the best algorithm and applies it.
+   */
   public static double aggregateBest(Vector x, Vector y, DoubleDoubleFunction fa, DoubleDoubleFunction fc) {
     return getBestOperation(x, y, fa, fc).aggregate(x, y, fa, fc);
   }

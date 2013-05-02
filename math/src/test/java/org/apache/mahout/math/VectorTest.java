@@ -17,16 +17,15 @@
 
 package org.apache.mahout.math;
 
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.NoSuchElementException;
-import java.util.Set;
-
+import com.google.common.collect.Sets;
 import org.apache.mahout.math.Vector.Element;
 import org.apache.mahout.math.function.Functions;
 import org.junit.Test;
 
-import com.google.common.collect.Sets;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+import java.util.Set;
 
 public final class VectorTest extends MahoutTestCase {
 
@@ -784,18 +783,19 @@ public final class VectorTest extends MahoutTestCase {
         v.aggregate(w, Functions.PLUS, Functions.chain(Functions.pow(2), Functions.MINUS)), EPSILON);
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testEmptyAggregate1() {
     assertEquals(1.0, new DenseVector(new double[]{1}).aggregate(Functions.MIN, Functions.IDENTITY), EPSILON);
     assertEquals(1.0, new DenseVector(new double[]{2, 1}).aggregate(Functions.MIN, Functions.IDENTITY), EPSILON);
-    new DenseVector(new double[0]).aggregate(Functions.MIN, Functions.IDENTITY);
+    assertEquals(0, new DenseVector(new double[0]).aggregate(Functions.MIN, Functions.IDENTITY), 0);
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testEmptyAggregate2() {
     assertEquals(3.0, new DenseVector(new double[]{1}).aggregate(
         new DenseVector(new double[]{2}),Functions.MIN, Functions.PLUS), EPSILON);
-    new DenseVector(new double[0]).aggregate(new DenseVector(new double[0]), Functions.MIN, Functions.PLUS);
+    assertEquals(0,
+        new DenseVector(new double[0]).aggregate(new DenseVector(new double[0]), Functions.MIN, Functions.PLUS), 0);
   }
 
   private static void setUpFirstVector(Vector v) {

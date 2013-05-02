@@ -5,6 +5,42 @@ import org.apache.mahout.math.set.OpenIntHashSet;
 
 import java.util.Iterator;
 
+/**
+ * Abstract class encapsulating different algorithms that perform the Vector operations assign().
+ * x.assign(y, f), for x and y Vectors and f a DoubleDouble function:
+ * - applies the function f to every element in x and y, f(xi, yi)
+ * - assigns xi = f(xi, yi) for all indices i
+ *
+ * The names of variables, methods and classes used here follow the following conventions:
+ * The vector being assigned to (the left hand side) is called this or x.
+ * The right hand side is called that or y.
+ * The function to be applied is called f.
+ *
+ * The different algorithms take into account the different characteristics of vector classes:
+ * - whether the vectors support sequential iteration (isSequential())
+ * - whether the vectors support constant-time additions (isAddConstantTime())
+ * - what the lookup cost is (getLookupCost())
+ * - what the iterator advancement cost is (getIteratorAdvanceCost())
+ *
+ * The names of the actual classes (they're nested in VectorBinaryAssign) describe the used for assignment.
+ * The most important optimization is iterating just through the nonzeros (only possible if f(0, 0) = 0).
+ * There are 4 main possibilities:
+ * - iterating through the nonzeros of just one vector and looking up the corresponding elements in the other
+ * - iterating through the intersection of nonzeros (those indices where both vectors have nonzero values)
+ * - iterating through the union of nonzeros (those indices where at least one of the vectors has a nonzero value)
+ * - iterating through all the elements in some way (either through both at the same time, both one after the other,
+ *   looking up both, looking up just one).
+ * Then, there are two additional sub-possibilities:
+ * - if a new value can be added to x in constant time (isAddConstantTime()), the *Inplace updates are used
+ * - otherwise (really just for SequentialAccessSparseVectors right now), the *Merge updates are used, where
+ *   a sorted list of (index, value) pairs is merged into the vector at the end.
+ *
+ * The internal details are not important and a particular algorithm should generally not be called explicitly.
+ * The best one will be selected through assignBest(), which is itself called through Vector.assign().
+ *
+ * See https://docs.google.com/document/d/1g1PjUuvjyh2LBdq2_rKLIcUiDbeOORA1sCJiSsz-JVU/edit# for a more detailed
+ * explanation.
+ */
 public abstract class VectorBinaryAssign {
   public static final VectorBinaryAssign[] operations = new VectorBinaryAssign[] {
       new AssignNonzerosIterateThisLookupThat(),
@@ -28,12 +64,25 @@ public abstract class VectorBinaryAssign {
       new AssignAllLoopInplaceUpdates(),
   };
 
+  /**
+   * Returns true iff we can use this algorithm to apply f to x and y component-wise and assign the result to x.
+   */
   public abstract boolean isValid(Vector x, Vector y, DoubleDoubleFunction f);
 
+  /**
+   * Estimates the cost of using this algorithm to compute the assignment. The algorithm is assumed to be valid.
+   */
   public abstract double estimateCost(Vector x, Vector y, DoubleDoubleFunction f);
 
+  /**
+   * Main method that applies f to x and y component-wise assigning the results to x. It returns the modified vector,
+   * x.
+   */
   public abstract Vector assign(Vector x, Vector y, DoubleDoubleFunction f);
 
+  /**
+   * The best operation is the least expensive valid one.
+   */
   public static VectorBinaryAssign getBestOperation(Vector x, Vector y, DoubleDoubleFunction f) {
     int bestOperationIndex = -1;
     double bestCost = Double.POSITIVE_INFINITY;
@@ -49,10 +98,21 @@ public abstract class VectorBinaryAssign {
     return operations[bestOperationIndex];
   }
 
+  /**
+   * This is the method that should be used when assigning. It selects the best algorithm and applies it.
+   * Note that it does NOT invalidate the cached length of the Vector and should only be used through the wrapprs
+   * in AbstractVector.
+   */
   public static Vector assignBest(Vector x, Vector y, DoubleDoubleFunction f) {
     return getBestOperation(x, y, f).assign(x, y, f);
   }
 
+  /**
+   * If f(0, y) = 0, the zeros in x don't matter and we can simply iterate through the nonzeros of x.
+   * To get the corresponding element of y, we perform a lookup.
+   * There are no *Merge or *Inplace versions because in this case x cannot become more dense because of f, meaning
+   * all changes will occur at indices whose values are already nonzero.
+   */
   public static class AssignNonzerosIterateThisLookupThat extends VectorBinaryAssign {
 
     @Override
@@ -77,6 +137,10 @@ public abstract class VectorBinaryAssign {
     }
   }
 
+  /**
+   * If f(x, 0) = x, the zeros in y don't matter and we can simply iterate through the nonzeros of y.
+   * We get the corresponding element of x through a lookup and update x inplace.
+   */
   public static class AssignNonzerosIterateThatLookupThisInplaceUpdates extends VectorBinaryAssign {
 
     @Override
@@ -101,6 +165,10 @@ public abstract class VectorBinaryAssign {
     }
   }
 
+  /**
+   * If f(x, 0) = x, the zeros in y don't matter and we can simply iterate through the nonzeros of y.
+   * We get the corresponding element of x through a lookup and update x by merging.
+   */
   public static class AssignNonzerosIterateThatLookupThisMergeUpdates extends VectorBinaryAssign {
 
     @Override
@@ -127,6 +195,11 @@ public abstract class VectorBinaryAssign {
     }
   }
 
+  /**
+   * If f(x, 0) = x and f(0, y) = 0 the zeros in x and y don't matter and we can iterate through the nonzeros
+   * in both x and y.
+   * This is only possible if both x and y support sequential access.
+   */
   public static class AssignIterateIntersection extends VectorBinaryAssign {
 
     @Override
@@ -181,6 +254,11 @@ public abstract class VectorBinaryAssign {
     }
   }
 
+  /**
+   * If f(0, 0) = 0 we can iterate through the nonzeros in either x or y.
+   * In this case we iterate through them in parallel and update x by merging. Because we're iterating through
+   * both vectors at the same time, x and y need to support sequential access.
+   */
   public static class AssignIterateUnionSequentialMergeUpdates extends VectorBinaryAssign {
 
     @Override
@@ -251,6 +329,11 @@ public abstract class VectorBinaryAssign {
     }
   }
 
+  /**
+   * If f(0, 0) = 0 we can iterate through the nonzeros in either x or y.
+   * In this case we iterate through them in parallel and update x inplace. Because we're iterating through
+   * both vectors at the same time, x and y need to support sequential access.
+   */
   public static class AssignIterateUnionSequentialInplaceUpdates extends VectorBinaryAssign {
 
     @Override
@@ -319,6 +402,12 @@ public abstract class VectorBinaryAssign {
     }
   }
 
+  /**
+   * If f(0, 0) = 0 we can iterate through the nonzeros in either x or y.
+   * In this case, we iterate through the nozeros of x and y alternatively (this works even when one of them
+   * doesn't support sequential access). Since we're merging the results into x, when iterating through y, the
+   * order of iteration matters and y must support sequential access.
+   */
   public static class AssignIterateUnionRandomMergeUpdates extends VectorBinaryAssign {
 
     @Override
@@ -356,6 +445,12 @@ public abstract class VectorBinaryAssign {
     }
   }
 
+  /**
+   * If f(0, 0) = 0 we can iterate through the nonzeros in either x or y.
+   * In this case, we iterate through the nozeros of x and y alternatively (this works even when one of them
+   * doesn't support sequential access). Because updates to x are inplace, neither x, nor y need to support
+   * sequential access.
+   */
   public static class AssignIterateUnionRandomInplaceUpdates extends VectorBinaryAssign {
 
     @Override
