@@ -413,15 +413,19 @@ public interface Vector extends Cloneable, Iterable<Vector.Element> {
   /** Get the square of the distance between this vector and the other vector. */
   double getDistanceSquared(Vector v);
 
+  /**
+   * Gets an estimate of the cost (in number of operations) it takes to lookup a random element in this vector.
+   */
   double getLookupCost();
 
+  /**
+   * Gets an estimate of the cost (in number of operations) it takes to advance an iterator through the nonzero
+   * elements of this vector.
+   */
   double getIteratorAdvanceCost();
 
-  /*
-  double getInplaceCost();
-
-  double getMergeCost();
-  */
-
+  /**
+   * Return true iff adding a new (nonzero) element takes constant time for this vector.
+   */
   boolean isAddConstantTime();
 }
