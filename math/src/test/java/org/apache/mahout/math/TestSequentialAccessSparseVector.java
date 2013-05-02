@@ -20,7 +20,6 @@ package org.apache.mahout.math;
 import org.apache.mahout.common.RandomUtils;
 import org.junit.Test;
 
-import java.util.Iterator;
 import java.util.Random;
 
 public final class TestSequentialAccessSparseVector extends AbstractVectorTest<SequentialAccessSparseVector> {
@@ -52,40 +51,5 @@ public final class TestSequentialAccessSparseVector extends AbstractVectorTest<S
       r.set(gen.nextInt(r.size()), gen.nextGaussian());
     }
     return r;
-  }
-
-  @Test
-  public void testDenseVectorIteration() {
-    vectorIterationTest(new DenseVector(100));
-  }
-
-  @Test
-  public void testSequentialAccessSparseVector() {
-    vectorIterationTest(new SequentialAccessSparseVector(100));
-  }
-
-  @Test
-  public void testRandomAccessSparseVector() {
-    vectorIterationTest(new RandomAccessSparseVector(100));
-  }
-
-  public void vectorIterationTest(Vector vector) {
-    System.out.printf("%s\n", vector.getClass().toString());
-    vector.set(0, 1);
-    vector.set(2, 2);
-    vector.set(4, 3);
-    vector.set(6, 4);
-    Iterator<Vector.Element> vectorIterator = vector.iterateNonZero();
-    Vector.Element element = null;
-    int i = 0;
-    while (vectorIterator.hasNext()) {
-      if (i % 2 == 0) {
-        element = vectorIterator.next();
-        System.out.printf("Advancing\n");
-      }
-      System.out.printf("%d %d %f\n", i, element.index(), element.get());
-      ++i;
-    }
-    System.out.printf("Done\n\n");
   }
 }

@@ -17,8 +17,17 @@
 
 package org.apache.mahout.benchmark;
 
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
+import java.io.IOException;
+import java.text.DecimalFormat;
+import java.util.BitSet;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Random;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
+
 import org.apache.commons.cli2.CommandLine;
 import org.apache.commons.cli2.Group;
 import org.apache.commons.cli2.Option;
@@ -33,7 +42,13 @@ import org.apache.mahout.common.CommandLineUtil;
 import org.apache.mahout.common.RandomUtils;
 import org.apache.mahout.common.TimingStatistics;
 import org.apache.mahout.common.commandline.DefaultOptionCreator;
-import org.apache.mahout.common.distance.*;
+import org.apache.mahout.common.distance.ChebyshevDistanceMeasure;
+import org.apache.mahout.common.distance.CosineDistanceMeasure;
+import org.apache.mahout.common.distance.EuclideanDistanceMeasure;
+import org.apache.mahout.common.distance.ManhattanDistanceMeasure;
+import org.apache.mahout.common.distance.MinkowskiDistanceMeasure;
+import org.apache.mahout.common.distance.SquaredEuclideanDistanceMeasure;
+import org.apache.mahout.common.distance.TanimotoDistanceMeasure;
 import org.apache.mahout.math.DenseVector;
 import org.apache.mahout.math.RandomAccessSparseVector;
 import org.apache.mahout.math.SequentialAccessSparseVector;
@@ -41,16 +56,12 @@ import org.apache.mahout.math.Vector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.text.DecimalFormat;
-import java.util.*;
-import java.util.Map.Entry;
-import java.util.concurrent.TimeUnit;
-import java.util.regex.Pattern;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 
 public class VectorBenchmarks {
   private static final int MAX_TIME_MS = 1000;
-  private static final int LEAD_TIME_MS = 1000;
+  private static final int LEAD_TIME_MS = 1500;
   public static final String CLUSTERS = "Clusters";
   public static final String CREATE_INCREMENTALLY = "Create (incrementally)";
   public static final String CREATE_COPY = "Create (copy)";
@@ -357,7 +368,7 @@ public class VectorBenchmarks {
       VectorBenchmarks mark = new VectorBenchmarks(cardinality, numNonZero, numVectors, numClusters, numOps);
       runBenchmark(mark);
 
-      // log.info("\n{}", mark);
+      log.info("\n{}", mark);
       log.info("\n{}", mark.asCsvString());
     } catch (OptionException e) {
       CommandLineUtil.printHelp(group);
@@ -390,6 +401,7 @@ public class VectorBenchmarks {
     distanceBenchmark.benchmark(new ChebyshevDistanceMeasure());
     distanceBenchmark.benchmark(new MinkowskiDistanceMeasure());
 
+    /*
     ClosestCentroidBenchmark centroidBenchmark = new ClosestCentroidBenchmark(mark);
     centroidBenchmark.benchmark(new CosineDistanceMeasure());
     centroidBenchmark.benchmark(new SquaredEuclideanDistanceMeasure());
@@ -398,6 +410,7 @@ public class VectorBenchmarks {
     centroidBenchmark.benchmark(new TanimotoDistanceMeasure());
     centroidBenchmark.benchmark(new ChebyshevDistanceMeasure());
     centroidBenchmark.benchmark(new MinkowskiDistanceMeasure());
+    */
   }
 
   private String asCsvString() {

@@ -19,10 +19,8 @@ package org.apache.mahout.math;
 
 import org.apache.mahout.math.function.DoubleDoubleFunction;
 import org.apache.mahout.math.function.Functions;
-import org.junit.Ignore;
 import org.junit.Test;
 
-@Ignore
 public final class OldQRDecompositionTest extends MahoutTestCase {
   @Test
   public void rank1() {

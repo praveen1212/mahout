@@ -1,19 +1,11 @@
 package org.apache.mahout.benchmark;
 
-import static org.apache.mahout.benchmark.VectorBenchmarks.DENSE_FN_RAND;
-import static org.apache.mahout.benchmark.VectorBenchmarks.DENSE_FN_SEQ;
-import static org.apache.mahout.benchmark.VectorBenchmarks.DENSE_VECTOR;
-import static org.apache.mahout.benchmark.VectorBenchmarks.RAND_FN_DENSE;
-import static org.apache.mahout.benchmark.VectorBenchmarks.RAND_FN_SEQ;
-import static org.apache.mahout.benchmark.VectorBenchmarks.RAND_SPARSE_VECTOR;
-import static org.apache.mahout.benchmark.VectorBenchmarks.SEQ_FN_DENSE;
-import static org.apache.mahout.benchmark.VectorBenchmarks.SEQ_FN_RAND;
-import static org.apache.mahout.benchmark.VectorBenchmarks.SEQ_SPARSE_VECTOR;
+import org.apache.mahout.benchmark.BenchmarkRunner.BenchmarkFn;
+import org.apache.mahout.benchmark.BenchmarkRunner.BenchmarkFnD;
 
 import java.io.IOException;
 
-import org.apache.mahout.benchmark.BenchmarkRunner.BenchmarkFn;
-import org.apache.mahout.benchmark.BenchmarkRunner.BenchmarkFnD;
+import static org.apache.mahout.benchmark.VectorBenchmarks.*;
 
 public class DotBenchmark {
   private static final String DOT_PRODUCT = "DotProduct";

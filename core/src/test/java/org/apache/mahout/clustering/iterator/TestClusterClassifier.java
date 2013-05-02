@@ -17,7 +17,9 @@
 
 package org.apache.mahout.clustering.iterator;
 
-import com.google.common.collect.Lists;
+import java.io.IOException;
+import java.util.List;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -39,8 +41,7 @@ import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.VectorWritable;
 import org.junit.Test;
 
-import java.io.IOException;
-import java.util.List;
+import com.google.common.collect.Lists;
 
 public final class TestClusterClassifier extends MahoutTestCase {
   

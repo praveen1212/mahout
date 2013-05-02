@@ -17,13 +17,14 @@
 
 package org.apache.mahout.math;
 
+import java.util.Iterator;
+
 import com.google.common.base.Preconditions;
 import org.apache.mahout.common.RandomUtils;
 import org.apache.mahout.math.function.DoubleDoubleFunction;
 import org.apache.mahout.math.function.DoubleFunction;
 import org.apache.mahout.math.function.Functions;
 
-import java.util.Iterator;
 /** Implementations of generic capabilities like sum of elements and dot products */
 public abstract class AbstractVector implements Vector, LengthCachingVector {
 
