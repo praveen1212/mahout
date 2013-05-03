@@ -17,13 +17,13 @@
 
 package org.apache.mahout.common.distance;
 
+import java.util.Collection;
+import java.util.Collections;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.mahout.common.parameters.Parameter;
 import org.apache.mahout.math.CardinalityException;
 import org.apache.mahout.math.Vector;
-
-import java.util.Collection;
-import java.util.Collections;
 
 /**
  * This class implements a cosine distance metric by dividing the dot product of two vectors by the product of their
