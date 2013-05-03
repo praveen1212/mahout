@@ -17,6 +17,11 @@
 
 package org.apache.mahout.math.random;
 
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+
 import com.google.common.base.Preconditions;
 import com.google.common.collect.AbstractIterator;
 import com.google.common.collect.Iterables;
@@ -25,11 +30,6 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Multiset;
 import org.apache.mahout.common.RandomUtils;
 import org.apache.mahout.math.list.DoubleArrayList;
-
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
 
 /**
  * Multinomial sampler that allows updates to element probabilities.  The basic idea is that sampling is
