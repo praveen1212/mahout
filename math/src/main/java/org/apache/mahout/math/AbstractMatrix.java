@@ -17,12 +17,17 @@
 
 package org.apache.mahout.math;
 
-import com.google.common.collect.AbstractIterator;
-import com.google.common.collect.Maps;
-import org.apache.mahout.math.function.*;
-
 import java.util.Iterator;
 import java.util.Map;
+
+import org.apache.mahout.math.function.DoubleDoubleFunction;
+import org.apache.mahout.math.function.DoubleFunction;
+import org.apache.mahout.math.function.Functions;
+import org.apache.mahout.math.function.PlusMult;
+import org.apache.mahout.math.function.VectorFunction;
+
+import com.google.common.collect.AbstractIterator;
+import com.google.common.collect.Maps;
 
 /** A few universal implementations of convenience functions */
 public abstract class AbstractMatrix implements Matrix {
@@ -629,14 +634,6 @@ public abstract class AbstractMatrix implements Matrix {
     @Override
     public boolean isSequentialAccess() {
       return true;
-    }
-
-    /**
-     * @return true iff this implementation can access ANY element in constant time.
-     */
-    @Override
-    public boolean isRandomAccess() {
-      return (rowToColumn ? matrix.viewColumn(0) : matrix.viewRow(0)).isRandomAccess();
     }
 
     @Override

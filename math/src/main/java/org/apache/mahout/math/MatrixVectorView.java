@@ -84,14 +84,6 @@ public class MatrixVectorView extends AbstractVector {
   }
 
   /**
-   * @return true iff this implementation can access ANY element in constant time.
-   */
-  @Override
-  public boolean isRandomAccess() {
-    return true;
-  }
-
-  /**
    * Iterates over all elements <p/> * NOTE: Implementations may choose to reuse the Element returned
    * for performance reasons, so if you need a copy of it, you should call {@link #getElement(int)} for
    * the given index

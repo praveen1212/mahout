@@ -345,14 +345,6 @@ public final class FileBasedSparseBinaryMatrix extends AbstractMatrix {
     }
 
     /**
-     * @return true iff this implementation can access ANY element in constant time.
-     */
-    @Override
-    public boolean isRandomAccess() {
-      return false;
-    }
-
-    /**
      * Iterates over all elements
      *
      * NOTE: Implementations may choose to reuse the Element returned
