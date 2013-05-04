@@ -54,30 +54,13 @@ public class TanimotoDistanceMeasure extends WeightedDistanceMeasure {
       denominator = ab;
     }
     if (denominator > 0) {
-      // denom == 0 only when dot(a,a) == dot(b,b) == dot(a,b) == 0
+      // denominator == 0 only when dot(a,a) == dot(b,b) == dot(a,b) == 0
       return 1.0 - ab / denominator;
     } else {
       return 0.0;
     }
   }
 
-  /*
-  public double dot(Vector a, Vector b) {
-    boolean sameVector = a == b;
-    Iterator<Vector.Element> it = a.iterateNonZero();
-    Vector.Element el;
-    Vector weights = getWeights();
-    double dot = 0.0;
-    while (it.hasNext() && (el = it.next()) != null) {
-      double elementValue = el.get();
-      double value = elementValue * (sameVector ? elementValue : b.getQuick(el.index()));
-      value *= weights.getQuick(el.index());  
-      dot += value;
-    }
-    return dot;
-  }
-  */
-  
   @Override
   public double distance(double centroidLengthSquare, Vector centroid, Vector v) {
     return distance(centroid, v); // TODO

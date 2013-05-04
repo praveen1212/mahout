@@ -1,5 +1,8 @@
 package org.apache.mahout.math;
 
+import java.util.Collection;
+import java.util.List;
+
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -8,9 +11,6 @@ import org.apache.mahout.math.function.Functions;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-
-import java.util.Collection;
-import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 
@@ -21,6 +21,7 @@ public final class VectorBinaryAssignTest {
   private DoubleDoubleFunction function;
   private VectorBinaryAssign operation;
 
+  @SuppressWarnings("unchecked")
   @Parameterized.Parameters
   public static Collection<Object[]> generateData() {
     List<Object[]> data = Lists.newArrayList();

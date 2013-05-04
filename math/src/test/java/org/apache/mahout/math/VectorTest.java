@@ -794,7 +794,7 @@ public final class VectorTest extends MahoutTestCase {
   @Test
   public void testEmptyAggregate2() {
     assertEquals(3.0, new DenseVector(new double[]{1}).aggregate(
-        new DenseVector(new double[]{2}),Functions.MIN, Functions.PLUS), EPSILON);
+        new DenseVector(new double[]{2}), Functions.MIN, Functions.PLUS), EPSILON);
     assertEquals(0,
         new DenseVector(new double[0]).aggregate(new DenseVector(new double[0]), Functions.MIN, Functions.PLUS), 0);
   }
@@ -933,6 +933,7 @@ public final class VectorTest extends MahoutTestCase {
       if (i % 2 == 0) {
         element = it.next();
       }
+      //noinspection ConstantConditions
       assertEquals(element.index(), 2* (i/2));
       assertEquals(element.get(), vector.get(2* (i/2)), 0);
       ++i;
@@ -947,6 +948,7 @@ public final class VectorTest extends MahoutTestCase {
       if (i % 2 == 0) {
         element = it.next();
       }
+      //noinspection ConstantConditions
       assertEquals(element.index(), i/2);
       assertEquals(element.get(), vector.get(i/2), 0);
       ++i;
@@ -963,7 +965,7 @@ public final class VectorTest extends MahoutTestCase {
 
     int i = 0;
     while (it.hasNext()) {  // hasNext is called more often than next
-      Element element = it.next();
+      it.next();
       ++i;
     }
     assertEquals(2, i);  // Last element is print only once.

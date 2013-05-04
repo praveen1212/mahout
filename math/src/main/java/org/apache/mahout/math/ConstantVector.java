@@ -17,9 +17,9 @@
 
 package org.apache.mahout.math;
 
-import com.google.common.collect.AbstractIterator;
-
 import java.util.Iterator;
+
+import com.google.common.collect.AbstractIterator;
 
 /**
  * Implements a vector with all the same values.

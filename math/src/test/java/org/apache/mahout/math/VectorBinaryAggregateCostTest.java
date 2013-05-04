@@ -47,8 +47,6 @@ public final class VectorBinaryAggregateCostTest {
         .andStubReturn(realV.isAddConstantTime());
     expect(v.isSequentialAccess())
         .andStubReturn(realV.isSequentialAccess());
-    expect(v.isRandomAccess())
-        .andStubReturn(realV.isRandomAccess());
     expect(v.isDense())
         .andStubReturn(realV.isDense());
     expect(v.getNumNondefaultElements())

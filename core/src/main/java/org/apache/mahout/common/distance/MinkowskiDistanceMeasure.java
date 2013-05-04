@@ -17,15 +17,15 @@
 
 package org.apache.mahout.common.distance;
 
+import java.util.Collection;
+import java.util.List;
+
 import com.google.common.collect.Lists;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.mahout.common.parameters.DoubleParameter;
 import org.apache.mahout.common.parameters.Parameter;
 import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.function.Functions;
-
-import java.util.Collection;
-import java.util.List;
 
 /** 
  * Implement Minkowski distance, a real-valued generalization of the 

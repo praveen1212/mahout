@@ -27,6 +27,8 @@ public final class OrderedIntDoubleMapping implements Serializable, Cloneable {
   private double[] values;
   private int numMappings;
 
+  // If true, doesn't allow DEFAULT_VALUEs in the mapping (adding a zero discards it). Otherwise, a DEFAULT_VALUE is
+  // treated like any other value.
   private boolean noDefault = true;
 
   OrderedIntDoubleMapping(boolean noDefault) {
@@ -215,6 +217,7 @@ public final class OrderedIntDoubleMapping implements Serializable, Cloneable {
     return result.toString();
   }
 
+  @SuppressWarnings("CloneDoesntCallSuperClone")
   @Override
   public OrderedIntDoubleMapping clone() {
     return new OrderedIntDoubleMapping(indices.clone(), values.clone(), numMappings);
@@ -226,8 +229,7 @@ public final class OrderedIntDoubleMapping implements Serializable, Cloneable {
       double newValue = values[offset] + increment;
       insertOrUpdateValueIfPresent(offset, newValue);
     } else {
-      double newValue = increment;
-      insertValueIfNotDefault(index, offset, newValue);
+      insertValueIfNotDefault(index, offset, increment);
     }
   }
 

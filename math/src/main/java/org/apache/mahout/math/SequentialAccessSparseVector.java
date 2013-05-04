@@ -17,12 +17,12 @@
 
 package org.apache.mahout.math;
 
-import com.google.common.primitives.Doubles;
-import org.apache.mahout.math.function.Functions;
-
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+
+import com.google.common.primitives.Doubles;
+import org.apache.mahout.math.function.Functions;
 
 /**
  * <p>
@@ -37,11 +37,6 @@ import java.util.NoSuchElementException;
  *   <li>dot(Vector)</li>
  *   <li>addTo(Vector)</li>
  * </ul>
- * <p>
- * Note that the Vector passed to these above methods may (and currently, are) be used in a random access fashion,
- * so for example, calling SequentialAccessSparseVector.dot(SequentialAccessSparseVector) is slow.
- * TODO: this need not be the case - both are ordered, so this should be very fast if implmented in this class
- * </p>
  *
  * See {@link OrderedIntDoubleMapping}
  */
@@ -122,6 +117,7 @@ public class SequentialAccessSparseVector extends AbstractVector {
     return new SparseRowMatrix(rows, columns);
   }
 
+  @SuppressWarnings("CloneDoesntCallSuperClone")
   @Override
   public SequentialAccessSparseVector clone() {
     return new SequentialAccessSparseVector(size(), values.clone());
@@ -130,7 +126,7 @@ public class SequentialAccessSparseVector extends AbstractVector {
   @Override
   public void mergeUpdates(OrderedIntDoubleMapping updates) {
     values.merge(updates);
-  }
+    }
 
   @Override
   public String toString() {
@@ -164,14 +160,6 @@ public class SequentialAccessSparseVector extends AbstractVector {
   @Override
   public boolean isSequentialAccess() {
     return true;
-  }
-
-  /**
-   * @return true iff this implementation can access ANY element in constant time.
-   */
-  @Override
-  public boolean isRandomAccess() {
-    return false;
   }
 
   /**
@@ -384,5 +372,4 @@ public class SequentialAccessSparseVector extends AbstractVector {
       return index == other.index && value == other.value;
     }
   }
-
 }

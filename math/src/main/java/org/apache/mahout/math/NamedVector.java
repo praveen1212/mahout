@@ -17,10 +17,10 @@
 
 package org.apache.mahout.math;
 
+import java.util.Iterator;
+
 import org.apache.mahout.math.function.DoubleDoubleFunction;
 import org.apache.mahout.math.function.DoubleFunction;
-
-import java.util.Iterator;
 
 public class NamedVector implements Vector {
 
@@ -59,11 +59,13 @@ public class NamedVector implements Vector {
   /**
    * To not break transitivity with other {@link Vector}s, this does not compare name.
    */
+  @SuppressWarnings("EqualsWhichDoesntCheckParameterClass")
   @Override
   public boolean equals(Object other) {
     return delegate.equals(other);
   }
 
+  @SuppressWarnings("CloneDoesntCallSuperClone")
   @Override
   public NamedVector clone() {
     return new NamedVector(delegate.clone(), name);
@@ -126,14 +128,6 @@ public class NamedVector implements Vector {
     return delegate.isSequentialAccess();
   }
 
-  /**
-   * @return true iff this implementation can access ANY element in constant time.
-   */
-  @Override
-  public boolean isRandomAccess() {
-    return delegate.isSequentialAccess();
-  }
-
   @Override
   public Iterator<Element> iterator() {
     return delegate.iterator();
@@ -152,7 +146,7 @@ public class NamedVector implements Vector {
   /**
    * Merge a set of (index, value) pairs into the vector.
    *
-   * @param updates
+   * @param updates an ordered mapping of indices to values to be merged in.
    */
   @Override
   public void mergeUpdates(OrderedIntDoubleMapping updates) {

@@ -18,6 +18,9 @@
 package org.apache.mahout.math.decomposer.lanczos;
 
 
+import java.util.EnumMap;
+import java.util.Map;
+
 import com.google.common.base.Preconditions;
 import org.apache.mahout.math.Matrix;
 import org.apache.mahout.math.Vector;
@@ -27,9 +30,6 @@ import org.apache.mahout.math.function.PlusMult;
 import org.apache.mahout.math.solver.EigenDecomposition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.EnumMap;
-import java.util.Map;
 
 /**
  * <p>Simple implementation of the <a href="http://en.wikipedia.org/wiki/Lanczos_algorithm">Lanczos algorithm</a> for

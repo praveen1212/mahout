@@ -374,6 +374,7 @@ public abstract class AbstractMatrix implements Matrix {
 
   }
 
+  @SuppressWarnings("CloneDoesntDeclareCloneNotSupportedException")
   @Override
   public Matrix clone() {
     AbstractMatrix clone;
@@ -612,6 +613,7 @@ public abstract class AbstractMatrix implements Matrix {
       numCols = rowToColumn ? m.numCols() : m.numRows();
     }
 
+    @SuppressWarnings("CloneDoesntCallSuperClone")
     @Override
     public Vector clone() {
       Vector v = new DenseVector(size());

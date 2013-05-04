@@ -17,14 +17,14 @@
 
 package org.apache.mahout.common.distance;
 
+import java.util.Collection;
+import java.util.Collections;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.mahout.common.parameters.Parameter;
 import org.apache.mahout.math.CardinalityException;
 import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.function.Functions;
-
-import java.util.Collection;
-import java.util.Collections;
 
 /**
  * This class implements a "manhattan distance" metric by summing the absolute values of the difference

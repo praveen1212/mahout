@@ -36,8 +36,8 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
   }
 
   /**
-   * Let fa = aggregator and fm = map.
-   * If fm(0) = 0 and fa(0, x) =
+   * Aggregates a vector by applying a mapping function fm(x) to every component and aggregating
+   * the results with an aggregating function fa(x, y).
    *
    * @param aggregator used to combine the current value of the aggregation with the result of map.apply(nextValue)
    * @param map a function to apply to each element of the vector in turn before passing to the aggregator
@@ -49,17 +49,12 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
       return 0;
     }
 
-    if (aggregator.isAssociativeAndCommutative()) {
-      boolean hasZeros = size() - getNumNondefaultElements() > 0;
-      if (hasZeros && !map.isDensifying()) {
-        // There exists at least one zero, and fm(0) = 0. The results starts as 0.0.
-        // This can be the first result in the aggregator (because it's associative and commutative).
-        // The aggregator is applied as fa(result, fm(v)), but we know there must be a fa(0, fm(v)).
-        // If f(0, y) = 0 (isLikeLeftMult), the 0 will cascade through the aggregation and the final result is 0.
-        if (aggregator.isLikeLeftMult()){
-          return 0.0;
-        }
-      }
+    // If the aggregator is associative and commutative and it's likeLeftMult (fa(0, y) = 0), and there is
+    // at least one zero in the vector (size > getNumNondefaultElements) and applying fm(0) = 0, the result
+    // gets cascaded through the aggregation and the final result will be 0.
+    if (aggregator.isAssociativeAndCommutative() && aggregator.isLikeLeftMult()
+        && size > getNumNondefaultElements() && !map.isDensifying()) {
+      return 0;
     }
 
     double result;
@@ -69,7 +64,7 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
       if (!map.isDensifying() && aggregator.isLikeRightPlus()) {
         iterator = iterateNonZero();
         if (!iterator.hasNext()) {
-          return 0.0;
+          return 0;
         }
       } else {
         iterator = iterator();
@@ -119,6 +114,7 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     return new VectorView(this, offset, length);
   }
 
+  @SuppressWarnings("CloneDoesntDeclareCloneNotSupportedException")
   @Override
   public Vector clone() {
     try {
@@ -209,19 +205,25 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
     }
   }
 
-  // p-norm, where p = power
   @Override
   public double norm(double power) {
     if (power < 0.0) {
       throw new IllegalArgumentException("Power must be >= 0");
     }
-    // we can special case certain powers
+    // We can special case certain powers.
     if (Double.isInfinite(power)) {
       return aggregate(Functions.MAX, Functions.ABS);
     } else if (power == 2.0) {
       return Math.sqrt(getLengthSquared());
     } else if (power == 1.0) {
-      return aggregate(Functions.PLUS, Functions.ABS);
+      double result = 0.0;
+      Iterator<Element> iterator = this.iterateNonZero();
+      while (iterator.hasNext()) {
+        result += Math.abs(iterator.next().get());
+      }
+      return result;
+      // TODO: this should ideally be used, but it's slower.
+      // return aggregate(Functions.PLUS, Functions.ABS);
     } else if (power == 0.0) {
       return getNumNonZeroElements();
     } else {
@@ -572,10 +574,7 @@ public abstract class AbstractVector implements Vector, LengthCachingVector {
       return false;
     }
     Vector that = (Vector) o;
-    if (size != that.size()) {
-      return false;
-    }
-    return aggregate(that, Functions.PLUS, Functions.MINUS_ABS) == 0.0;
+    return size == that.size() && aggregate(that, Functions.PLUS, Functions.MINUS_ABS) == 0.0;
   }
 
   @Override

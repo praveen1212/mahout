@@ -26,10 +26,12 @@ It is provided "as is" without expressed or implied warranty.
 
 package org.apache.mahout.math.function;
 
+
+import java.util.Date;
+
 import com.google.common.base.Preconditions;
 import org.apache.mahout.math.jet.random.engine.MersenneTwister;
 
-import java.util.Date;
 
 /**
  * Function objects to be passed to generic methods. Contains the functions of {@link java.lang.Math} as function
@@ -305,6 +307,7 @@ public final class Functions {
 
   /** Function that returns <tt>Math.atan2(a,b)</tt>. */
   public static final DoubleDoubleFunction ATAN2 = new DoubleDoubleFunction() {
+
     @Override
     public double apply(double a, double b) {
       return Math.atan2(a, b);
@@ -322,6 +325,7 @@ public final class Functions {
 
   /** Function that returns <tt>a / b</tt>. */
   public static final DoubleDoubleFunction DIV = new DoubleDoubleFunction() {
+
     @Override
     public double apply(double a, double b) {
       return a / b;
@@ -629,7 +633,7 @@ public final class Functions {
     /**
      * (x - 0)^2 = x^2 != x
      * @return true iff f(x, 0) = x for any x
-     */
+  */
     @Override
     public boolean isLikeRightPlus() {
       return false;
@@ -674,6 +678,7 @@ public final class Functions {
 
   /** Function that returns <tt>a % b</tt>. */
   public static final DoubleDoubleFunction MOD = new DoubleDoubleFunction() {
+
     @Override
     public double apply(double a, double b) {
       return a % b;
@@ -682,7 +687,7 @@ public final class Functions {
 
   /** Function that returns <tt>a * b</tt>. */
   public static final DoubleDoubleFunction MULT = new TimesFunction();
-  
+
   /** Function that returns <tt>a + b</tt>. */
   public static final DoubleDoubleFunction PLUS = plusMult(1);
 
@@ -702,7 +707,7 @@ public final class Functions {
     public boolean isLikeRightPlus() {
       return false;
     }
-
+    
     /**
      * abs(0) + abs(y) = abs(y) != 0 unless y = 0
      * @return true iff f(0, y) = 0 for any y
@@ -1068,6 +1073,60 @@ public final class Functions {
       return false;
     }
   };
+
+  public static DoubleDoubleFunction reweigh(final double wx, final double wy) {
+    final double tw = wx + wy;
+    return new DoubleDoubleFunction() {
+      @Override
+      public double apply(double x, double y) {
+        return (wx * x + wy * y) / tw;
+      }
+
+      /**
+       * f(x, 0) = wx * x / tw = x iff wx = tw (practically, impossible, as tw = wx + wy and wy > 0)
+       * @return true iff f(x, 0) = x for any x
+       */
+      @Override
+      public boolean isLikeRightPlus() {
+        return wx == tw;
+      }
+
+      /**
+       * f(0, y) = wy * y / tw = 0 iff y = 0
+       * @return true iff f(0, y) = 0 for any y
+       */
+      @Override
+      public boolean isLikeLeftMult() {
+        return false;
+      }
+
+      /**
+       * f(x, 0) = wx * x / tw = 0 iff x = 0
+       * @return true iff f(x, 0) = 0 for any x
+       */
+      @Override
+      public boolean isLikeRightMult() {
+        return false;
+      }
+
+      /**
+       * wx * x + wy * y = wx * y + wy * x iff wx = wy
+       * @return true iff f(x, y) = f(y, x) for any x, y
+       */
+      @Override
+      public boolean isCommutative() {
+        return wx == wy;
+      }
+
+      /**
+       * @return true iff f(x, f(y, z)) = f(f(x, y), z) for any x, y, z
+       */
+      @Override
+      public boolean isAssociative() {
+        return false;
+      }
+    };
+  }
 
   private Functions() {
   }
@@ -1502,8 +1561,8 @@ public final class Functions {
         if (b == 2) {
           return a * a;
         } else {
-          return Math.pow(a, b);
-        }
+        return Math.pow(a, b);
+      }
       }
     };
   }

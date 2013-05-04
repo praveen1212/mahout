@@ -17,11 +17,11 @@
 
 package org.apache.mahout.math;
 
-import com.google.common.base.Preconditions;
-
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+
+import com.google.common.base.Preconditions;
 
 /** Implements vector as an array of doubles */
 public class DenseVector extends AbstractVector {
@@ -91,6 +91,7 @@ public class DenseVector extends AbstractVector {
     return new DenseMatrix(rows, columns);
   }
 
+  @SuppressWarnings("CloneDoesntCallSuperClone")
   @Override
   public DenseVector clone() {
     return new DenseVector(values.clone());
@@ -109,14 +110,6 @@ public class DenseVector extends AbstractVector {
    */
   @Override
   public boolean isSequentialAccess() {
-    return true;
-  }
-
-  /**
-   * @return true
-   */
-  @Override
-  public boolean isRandomAccess() {
     return true;
   }
 
@@ -235,7 +228,7 @@ public class DenseVector extends AbstractVector {
     if (size() != v.size()) {
       throw new CardinalityException(size(), v.size());
     }
-    
+
     Iterator<Element> iter = v.iterateNonZero();
     while (iter.hasNext()) {
       Element element = iter.next();

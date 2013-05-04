@@ -17,9 +17,9 @@
 
 package org.apache.mahout.math;
 
-import com.google.common.collect.AbstractIterator;
-
 import java.util.Iterator;
+
+import com.google.common.collect.AbstractIterator;
 
 /**
  * Provides a permuted view of a vector.
@@ -74,11 +74,10 @@ public class PermutedVectorView extends AbstractVector {
    */
   @Override
   public void mergeUpdates(OrderedIntDoubleMapping updates) {
-    OrderedIntDoubleMapping innerUpdates = updates;
-    for (int i = 0; i < innerUpdates.getNumMappings(); ++i) {
-      innerUpdates.setIndexAt(i, pivot[updates.indexAt(i)]);
+    for (int i = 0; i < updates.getNumMappings(); ++i) {
+      updates.setIndexAt(i, pivot[updates.indexAt(i)]);
     }
-    vector.mergeUpdates(innerUpdates);
+    vector.mergeUpdates(updates);
   }
 
   /**
@@ -100,14 +99,6 @@ public class PermutedVectorView extends AbstractVector {
   @Override
   public boolean isSequentialAccess() {
     return false;
-  }
-
-  /**
-   * @return true iff this implementation can access ANY element in constant time.
-   */
-  @Override
-  public boolean isRandomAccess() {
-    return vector.isRandomAccess();
   }
 
   /**

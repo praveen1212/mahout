@@ -17,10 +17,10 @@
 
 package org.apache.mahout.math;
 
+import java.util.Iterator;
+
 import org.apache.mahout.math.function.DoubleDoubleFunction;
 import org.apache.mahout.math.function.DoubleFunction;
-
-import java.util.Iterator;
 
 /**
  * A delegating vector provides an easy way to decorate vectors with weights or id's and such while
@@ -58,6 +58,7 @@ public class DelegatingVector implements Vector, LengthCachingVector {
     return delegate.viewPart(offset, length);
   }
 
+  @SuppressWarnings("CloneDoesntDeclareCloneNotSupportedException")
   @Override
   public Vector clone() {
     DelegatingVector r;
@@ -94,7 +95,7 @@ public class DelegatingVector implements Vector, LengthCachingVector {
   /**
    * Merge a set of (index, value) pairs into the vector.
    *
-   * @param updates
+   * @param updates an ordered mapping of indices to values to be merged in.
    */
   @Override
   public void mergeUpdates(OrderedIntDoubleMapping updates) {
@@ -269,6 +270,7 @@ public class DelegatingVector implements Vector, LengthCachingVector {
     return delegate.hashCode();
   }
 
+  @SuppressWarnings("EqualsWhichDoesntCheckParameterClass")
   @Override
   public boolean equals(Object o) {
     return delegate.equals(o);
@@ -287,14 +289,6 @@ public class DelegatingVector implements Vector, LengthCachingVector {
   @Override
   public boolean isSequentialAccess() {
     return delegate.isSequentialAccess();
-  }
-
-  /**
-   * @return true iff this implementation can access ANY element in constant time.
-   */
-  @Override
-  public boolean isRandomAccess() {
-    return delegate.isRandomAccess();
   }
 
   @Override

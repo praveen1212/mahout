@@ -17,14 +17,14 @@
 
 package org.apache.mahout.ep;
 
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
+
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.io.Writable;
 import org.apache.mahout.classifier.sgd.PolymorphicWritable;
 import org.apache.mahout.math.function.DoubleFunction;
-
-import java.io.DataInput;
-import java.io.DataOutput;
-import java.io.IOException;
 
 /**
  * Provides coordinate tranformations so that evolution can proceed on the entire space of

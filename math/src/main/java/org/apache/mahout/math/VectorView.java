@@ -17,9 +17,9 @@
 
 package org.apache.mahout.math;
 
-import com.google.common.collect.AbstractIterator;
-
 import java.util.Iterator;
+
+import com.google.common.collect.AbstractIterator;
 
 /** Implements subset view of a Vector */
 public class VectorView extends AbstractVector {
@@ -61,14 +61,6 @@ public class VectorView extends AbstractVector {
   @Override
   public boolean isSequentialAccess() {
     return vector.isSequentialAccess();
-  }
-
-  /**
-   * @return true iff this implementation can access ANY element in constant time.
-   */
-  @Override
-  public boolean isRandomAccess() {
-    return vector.isRandomAccess();
   }
 
   @Override
@@ -214,7 +206,8 @@ public class VectorView extends AbstractVector {
 
   @Override
   public double getIteratorAdvanceCost() {
-    return vector.getIteratorAdvanceCost();
+    // TODO: remove the 2x after fixing the Element iterator
+    return 2 * vector.getIteratorAdvanceCost();
   }
 
   @Override
@@ -232,11 +225,9 @@ public class VectorView extends AbstractVector {
    */
   @Override
   public void mergeUpdates(OrderedIntDoubleMapping updates) {
-    // TODO: see what the best thing to do here is.
-    OrderedIntDoubleMapping internalUpdates = updates;
-    for (int i = 0; i < internalUpdates.getNumMappings(); ++i) {
-      internalUpdates.setIndexAt(i, internalUpdates.indexAt(i) + offset);
+    for (int i = 0; i < updates.getNumMappings(); ++i) {
+      updates.setIndexAt(i, updates.indexAt(i) + offset);
     }
-    vector.mergeUpdates(internalUpdates);
+    vector.mergeUpdates(updates);
   }
 }

@@ -17,13 +17,17 @@
 
 package org.apache.mahout.math.hadoop.stochasticsvd.qr;
 
-import com.google.common.collect.Lists;
-import org.apache.mahout.math.*;
-import org.apache.mahout.math.hadoop.stochasticsvd.UpperTriangular;
-
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+
+import com.google.common.collect.Lists;
+import org.apache.mahout.math.AbstractVector;
+import org.apache.mahout.math.DenseVector;
+import org.apache.mahout.math.Matrix;
+import org.apache.mahout.math.OrderedIntDoubleMapping;
+import org.apache.mahout.math.Vector;
+import org.apache.mahout.math.hadoop.stochasticsvd.UpperTriangular;
 
 /**
  * Givens Thin solver. Standard Givens operations are reordered in a way that
@@ -559,14 +563,6 @@ public class GivensThinSolver {
     @Override
     public boolean isSequentialAccess() {
       return false;
-    }
-
-    /**
-     * @return true iff this implementation can access ANY element in constant time.
-     */
-    @Override
-    public boolean isRandomAccess() {
-      return true;
     }
 
     @Override

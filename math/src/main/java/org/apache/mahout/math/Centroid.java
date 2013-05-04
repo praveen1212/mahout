@@ -17,7 +17,7 @@
 
 package org.apache.mahout.math;
 
-import org.apache.mahout.math.function.DoubleDoubleFunction;
+import org.apache.mahout.math.function.Functions;
 
 /**
  * A centroid is a weighted vector.  We have it delegate to the vector itself for lots of operations
@@ -55,58 +55,8 @@ public class Centroid extends WeightedVector {
 
   public void update(Vector other, final double wy) {
     final double wx = getWeight();
-    final double tw = wx + wy;
-    delegate.assign(other, new DoubleDoubleFunction() {
-      @Override
-      public double apply(double x, double y) {
-        return (wx * x + wy * y) / tw;
-      }
-
-      /**
-       * f(x, 0) = wx * x / tw = x iff wx = tw (practically, impossible, as tw = wx + wy and wy > 0)
-       * @return true iff f(x, 0) = x for any x
-       */
-      @Override
-      public boolean isLikeRightPlus() {
-        return wx == tw;
-      }
-
-      /**
-       * f(0, y) = wy * y / tw = 0 iff y = 0
-       * @return true iff f(0, y) = 0 for any y
-       */
-      @Override
-      public boolean isLikeLeftMult() {
-        return false;
-      }
-
-      /**
-       * f(x, 0) = wx * x / tw = 0 iff x = 0
-       * @return true iff f(x, 0) = 0 for any x
-       */
-      @Override
-      public boolean isLikeRightMult() {
-        return false;
-      }
-
-      /**
-       * wx * x + wy * y = wx * y + wy * x iff wx = wy
-       * @return true iff f(x, y) = f(y, x) for any x, y
-       */
-      @Override
-      public boolean isCommutative() {
-        return wx == wy;
-      }
-
-      /**
-       * @return true iff f(x, f(y, z)) = f(f(x, y), z) for any x, y, z
-       */
-      @Override
-      public boolean isAssociative() {
-        return false;
-      }
-    });
-    setWeight(tw);
+    delegate.assign(other, Functions.reweigh(wx, wy));
+    setWeight(wx + wy);
   }
 
   @Override
@@ -131,6 +81,7 @@ public class Centroid extends WeightedVector {
     return String.format("key = %d, weight = %.2f, vector = %s", getIndex(), getWeight(), delegate);
   }
 
+  @SuppressWarnings("CloneDoesntCallSuperClone")
   @Override
   public Centroid clone() {
     return new Centroid(this);

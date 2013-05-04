@@ -18,10 +18,10 @@
 package org.apache.mahout.math;
 
 
+import java.util.Iterator;
+
 import org.apache.mahout.math.function.DoubleDoubleFunction;
 import org.apache.mahout.math.function.DoubleFunction;
-
-import java.util.Iterator;
 
 /**
  * The basic interface including numerous convenience functions <p/> NOTE: All implementing classes must have a
@@ -108,15 +108,11 @@ public interface Vector extends Cloneable, Iterable<Vector.Element> {
   boolean isSequentialAccess();
 
   /**
-   * @return true iff this implementation can access ANY element in constant time.
-   */
-  boolean isRandomAccess();
-
-  /**
    * Return a copy of the recipient
    *
    * @return a new Vector
    */
+  @SuppressWarnings("CloneDoesntDeclareCloneNotSupportedException")
   Vector clone();
 
   /**
@@ -147,7 +143,7 @@ public interface Vector extends Cloneable, Iterable<Vector.Element> {
 
   /**
    * Merge a set of (index, value) pairs into the vector.
-   * @param updates
+   * @param updates an ordered mapping of indices to values to be merged in.
    */
   void mergeUpdates(OrderedIntDoubleMapping updates);
 
@@ -401,9 +397,10 @@ public interface Vector extends Cloneable, Iterable<Vector.Element> {
    * Example: dot(other) could be expressed as aggregate(other, Plus, Times), and kernelized inner products (which
    * are symmetric on the indices) work similarly.
    * @param other a vector to aggregate in combination with
-   * @param aggregator
-   * @param combiner
-   * @return the final aggregation
+   * @param aggregator function we're aggregating with; fa
+   * @param combiner function we're combining with; fc
+   * @return the final aggregation; if r0 = fc(this[0], other[0]), ri = fa(r_{i-1}, fc(this[i], other[i]))
+   * for all i > 0
    */
   double aggregate(Vector other, DoubleDoubleFunction aggregator, DoubleDoubleFunction combiner);
 
