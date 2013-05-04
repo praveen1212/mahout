@@ -17,14 +17,16 @@
 
 package org.apache.mahout.math.neighborhood;
 
+import java.util.List;
+
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import org.apache.lucene.util.PriorityQueue;
 import org.apache.mahout.common.distance.DistanceMeasure;
 import org.apache.mahout.math.MatrixSlice;
 import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.WeightedVector;
 import org.apache.mahout.math.random.WeightedThing;
-
-import java.util.List;
 
 /**
  * Describes how to search a bunch of vectors.
@@ -51,7 +53,7 @@ public abstract class Searcher implements Iterable<Vector> {
    * The vector IS NOT CLONED. Do not modify the vector externally otherwise the internal
    * Searcher data structures could be invalidated.
    */
-  public abstract void add(Vector v);
+  public abstract void add(Vector vector);
 
   /**
    * Returns the number of WeightedVectors being searched for nearest neighbors.
@@ -71,9 +73,10 @@ public abstract class Searcher implements Iterable<Vector> {
   public abstract List<WeightedThing<Vector>> search(Vector query, int limit);
 
   public List<List<WeightedThing<Vector>>> search(Iterable<? extends Vector> queries, int limit) {
-    List<List<WeightedThing<Vector>>> results = Lists.newArrayList();
-    for (Vector query : queries)
+    List<List<WeightedThing<Vector>>> results = Lists.newArrayListWithExpectedSize(Iterables.size(queries));
+    for (Vector query : queries) {
       results.add(search(query, limit));
+    }
     return results;
   }
 
@@ -91,7 +94,7 @@ public abstract class Searcher implements Iterable<Vector> {
   public abstract WeightedThing<Vector> searchFirst(Vector query, boolean differentThanQuery);
 
   public List<WeightedThing<Vector>> searchFirst(Iterable<? extends Vector> queries, boolean differentThanQuery) {
-    List<WeightedThing<Vector>> results = Lists.newArrayList();
+    List<WeightedThing<Vector>> results = Lists.newArrayListWithExpectedSize(Iterables.size(queries));
     for (Vector query : queries) {
       results.add(searchFirst(query, differentThanQuery));
     }
@@ -104,8 +107,8 @@ public abstract class Searcher implements Iterable<Vector> {
    * @param data an iterable of WeightedVectors to add.
    */
   public void addAll(Iterable<? extends Vector> data) {
-    for (Vector v : data) {
-        add(v);
+    for (Vector vector : data) {
+      add(vector);
     }
   }
 
@@ -134,5 +137,19 @@ public abstract class Searcher implements Iterable<Vector> {
   public void clear() {
     throw new UnsupportedOperationException("Can't remove vectors from a "
         + this.getClass().getName());
+  }
+
+  /**
+   * Returns a bounded size priority queue, in reverse order that keeps track of the best nearest neighbor vectors.
+   * @param limit maximum size of the heap.
+   * @return the priority queue.
+   */
+  public static PriorityQueue<WeightedThing<Vector>> getCandidateQueue(int limit) {
+    return new PriorityQueue<WeightedThing<Vector>>(limit) {
+      @Override
+      protected boolean lessThan(WeightedThing<Vector> a, WeightedThing<Vector> b) {
+        return a.getWeight() > b.getWeight();
+      }
+    };
   }
 }

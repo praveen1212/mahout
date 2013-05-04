@@ -1,6 +1,14 @@
 package org.apache.mahout.math.neighborhood;
 
-import com.google.common.collect.*;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+
+import com.google.common.collect.AbstractIterator;
+import com.google.common.collect.HashMultiset;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Multiset;
+import org.apache.lucene.util.PriorityQueue;
 import org.apache.mahout.common.RandomUtils;
 import org.apache.mahout.common.distance.DistanceMeasure;
 import org.apache.mahout.math.DenseMatrix;
@@ -9,11 +17,6 @@ import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.jet.random.Normal;
 import org.apache.mahout.math.random.WeightedThing;
 import org.apache.mahout.math.stats.OnlineSummarizer;
-
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import java.util.PriorityQueue;
 
 /**
  * Implements a Searcher that uses locality sensitivity hash as a first pass approximation
@@ -48,7 +51,7 @@ public class LocalitySensitiveHashSearch extends UpdatableSearcher implements It
 
   private boolean initialized = false;
 
-  public LocalitySensitiveHashSearch(DistanceMeasure distanceMeasure,  int searchSize) {
+  public LocalitySensitiveHashSearch(DistanceMeasure distanceMeasure, int searchSize) {
     super(distanceMeasure);
     this.searchSize = searchSize;
 
@@ -56,21 +59,20 @@ public class LocalitySensitiveHashSearch extends UpdatableSearcher implements It
   }
 
   private void initialize(int numDimensions) {
-    if (initialized)
+    if (initialized) {
       return;
+    }
     initialized = true;
     projection = new DenseMatrix(BITS, numDimensions);
     projection.assign(new Normal(0, 1, RandomUtils.getRandom()));
   }
 
   @Override
-  public List<WeightedThing<Vector>> search(Vector q, int numberOfNeighbors) {
+  public List<WeightedThing<Vector>> search(Vector q, int limit) {
     long queryHash = HashedVector.computeHash64(q, projection);
 
-    // we keep an approximation of the closest vectors here
-    PriorityQueue<WeightedThing<Vector>> top = new
-        PriorityQueue<WeightedThing<Vector>>(getSearchSize(),
-        Ordering.natural().reverse());
+    // We keep an approximation of the closest vectors here.
+    PriorityQueue<WeightedThing<Vector>> top = Searcher.getCandidateQueue(searchSize);
 
     // we keep the counts of the hash distances here.  This lets us accurately
     // judge what hash distance cutoff we should use.
@@ -101,13 +103,9 @@ public class LocalitySensitiveHashSearch extends UpdatableSearcher implements It
         double d = distanceMeasure.distance(q, v);
         distribution[bitDot].add(d);
         if (d < distanceLimit) {
-          top.add(new WeightedThing<Vector>(v, d));
-          while (top.size() > searchSize) {
-            top.poll();
-          }
-
+          top.insertWithOverflow(new WeightedThing<Vector>(v, d));
           if (top.size() == searchSize) {
-            distanceLimit = top.peek().getWeight();
+            distanceLimit = top.top().getWeight();
           }
 
           hashCounts[bitDot]++;
@@ -119,7 +117,8 @@ public class LocalitySensitiveHashSearch extends UpdatableSearcher implements It
 
           if (hashLimitStrategy >= 0) {
             while (hashLimit < 32 && distribution[hashLimit].getCount() > 10 &&
-                (hashLimitStrategy * distribution[hashLimit].getQuartile(1)) + ((1 - hashLimitStrategy) * distribution[hashLimit].getQuartile(0)) < distanceLimit) {
+                (hashLimitStrategy * distribution[hashLimit].getQuartile(1))
+                    +((1 - hashLimitStrategy) * distribution[hashLimit].getQuartile(0)) < distanceLimit) {
               limitCount += hashCounts[hashLimit];
               hashLimit++;
             }
@@ -128,9 +127,9 @@ public class LocalitySensitiveHashSearch extends UpdatableSearcher implements It
       }
     }
 
-    List<WeightedThing<Vector>> results = Lists.newArrayListWithExpectedSize(numberOfNeighbors);
-    while (numberOfNeighbors > 0 && !top.isEmpty()) {
-      WeightedThing<Vector> wv = top.poll();
+    List<WeightedThing<Vector>> results = Lists.newArrayListWithExpectedSize(limit);
+    while (limit > 0 && top.size() > 0) {
+      WeightedThing<Vector> wv = top.pop();
       results.add(new WeightedThing<Vector>(((HashedVector)wv.getValue()).getVector(), wv.getWeight()));
     }
     Collections.reverse(results);
@@ -193,8 +192,9 @@ public class LocalitySensitiveHashSearch extends UpdatableSearcher implements It
           }
 
           if (hashLimitStrategy >= 0) {
-            while (hashLimit < 32 && distribution[hashLimit].getCount() > 10 &&
-                (hashLimitStrategy * distribution[hashLimit].getQuartile(1)) + ((1 - hashLimitStrategy) * distribution[hashLimit].getQuartile(0)) < bestDistance) {
+            while (hashLimit < 32 && distribution[hashLimit].getCount() > 10
+                && (hashLimitStrategy * distribution[hashLimit].getQuartile(1))
+                + ((1 - hashLimitStrategy) * distribution[hashLimit].getQuartile(0)) < bestDistance) {
               limitCount += hashCounts[hashLimit];
               hashLimit++;
             }
@@ -208,9 +208,9 @@ public class LocalitySensitiveHashSearch extends UpdatableSearcher implements It
 
 
   @Override
-  public void add(Vector v) {
-    initialize(v.size());
-    trainingVectors.add(new HashedVector(v, projection, HashedVector.INVALID_INDEX, BITMASK));
+  public void add(Vector vector) {
+    initialize(vector.size());
+    trainingVectors.add(new HashedVector(vector, projection, HashedVector.INVALID_INDEX, BITMASK));
   }
 
 

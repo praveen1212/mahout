@@ -1,5 +1,8 @@
 package org.apache.mahout.math.neighborhood;
 
+import java.util.Arrays;
+import java.util.List;
+
 import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
@@ -14,12 +17,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import java.util.Arrays;
-import java.util.List;
-
+import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertThat;
-import static org.hamcrest.Matchers.*;
 
 @RunWith(value = Parameterized.class)
 public class SearchQualityTest {
@@ -61,8 +61,9 @@ public class SearchQualityTest {
         // NUM_PROJECTIONS = 5
         // SEARCH_SIZE = 5
         {new ProjectionSearch(distanceMeasure, 5, 5), dataPoints, queries, reference, referenceSearchFirst},
-        {new FastProjectionSearch(distanceMeasure, 5, 5), dataPoints, queries, reference, referenceSearchFirst},
         {new LocalitySensitiveHashSearch(distanceMeasure, 5), dataPoints, queries, reference, referenceSearchFirst},
+        // SEARCH_SIZE = 1
+        {new LocalitySensitiveHashSearch(distanceMeasure, 1), dataPoints, queries, reference, referenceSearchFirst},
     }
     );
   }

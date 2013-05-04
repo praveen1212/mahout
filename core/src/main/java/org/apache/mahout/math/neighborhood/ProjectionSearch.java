@@ -17,17 +17,23 @@
 
 package org.apache.mahout.math.neighborhood;
 
-import com.google.common.base.Preconditions;
-import com.google.common.collect.*;
-import org.apache.mahout.clustering.streaming.cluster.RandomProjector;
-import org.apache.mahout.common.distance.DistanceMeasure;
-import org.apache.mahout.math.*;
-import org.apache.mahout.math.random.WeightedThing;
-
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
+
+import com.google.common.base.Preconditions;
+import com.google.common.collect.AbstractIterator;
+import com.google.common.collect.BoundType;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
+import com.google.common.collect.TreeMultiset;
+import org.apache.mahout.clustering.streaming.cluster.RandomProjector;
+import org.apache.mahout.common.distance.DistanceMeasure;
+import org.apache.mahout.math.Matrix;
+import org.apache.mahout.math.Vector;
+import org.apache.mahout.math.random.WeightedThing;
 
 /**
  * Does approximate nearest neighbor dudes search by projecting the data.
@@ -59,8 +65,9 @@ public class ProjectionSearch extends UpdatableSearcher implements Iterable<Vect
   private boolean initialized = false;
 
   private void initialize(int numDimensions) {
-    if (initialized)
+    if (initialized) {
       return;
+    }
     initialized = true;
     basisMatrix = RandomProjector.generateBasisNormal(numProjections, numDimensions);
     scalarProjections = Lists.newArrayList();
@@ -80,16 +87,16 @@ public class ProjectionSearch extends UpdatableSearcher implements Iterable<Vect
 
   /**
    * Adds a WeightedVector into the set of projections for later searching.
-   * @param v  The WeightedVector to add.
+   * @param vector  The WeightedVector to add.
    */
   @Override
-  public void add(Vector v) {
-    initialize(v.size());
-    Vector projection = basisMatrix.times(v);
+  public void add(Vector vector) {
+    initialize(vector.size());
+    Vector projection = basisMatrix.times(vector);
     // Add the the new vector and the projected distance to each set separately.
     int i = 0;
     for (TreeMultiset<WeightedThing<Vector>> s : scalarProjections) {
-      s.add(new WeightedThing<Vector>(v, projection.get(i++)));
+      s.add(new WeightedThing<Vector>(vector, projection.get(i++)));
     }
     int numVectors = scalarProjections.get(0).size();
     for (TreeMultiset<WeightedThing<Vector>> s : scalarProjections) {
@@ -109,8 +116,9 @@ public class ProjectionSearch extends UpdatableSearcher implements Iterable<Vect
    * @return  The number of scalarProjections added to the search so far.
    */
   public int size() {
-    if (scalarProjections == null)
+    if (scalarProjections == null) {
       return 0;
+    }
     return scalarProjections.get(0).size();
   }
 
@@ -123,7 +131,7 @@ public class ProjectionSearch extends UpdatableSearcher implements Iterable<Vect
    * distance.
    */
   public List<WeightedThing<Vector>> search(final Vector query, int limit) {
-    HashSet<Vector> candidates = Sets.newHashSet();
+    Set<Vector> candidates = Sets.newHashSet();
 
     Iterator<? extends Vector> projections = basisMatrix.iterator();
     for (TreeMultiset<WeightedThing<Vector>> v : scalarProjections) {

@@ -17,25 +17,27 @@
 
 package org.apache.mahout.math.neighborhood;
 
+import java.util.Arrays;
+import java.util.List;
+
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import junit.framework.Assert;
-import org.apache.mahout.common.RandomUtils;
+import org.apache.mahout.common.MahoutTestCase;
 import org.apache.mahout.common.distance.EuclideanDistanceMeasure;
-import org.apache.mahout.math.*;
+import org.apache.mahout.math.DenseMatrix;
+import org.apache.mahout.math.DenseVector;
+import org.apache.mahout.math.Matrix;
+import org.apache.mahout.math.MatrixSlice;
+import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.random.MultiNormal;
 import org.apache.mahout.math.random.WeightedThing;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import java.util.List;
-import java.util.Arrays;
-
-import static org.junit.Assert.*;
-
 @RunWith(value = Parameterized.class)
-public class SearchSanityTest {
+public class SearchSanityTest extends MahoutTestCase {
   private static final int NUM_DATA_POINTS = 1 << 13;
   private static final int NUM_DIMENSIONS = 20;
   private static final int NUM_PROJECTIONS = 3;
@@ -55,7 +57,6 @@ public class SearchSanityTest {
 
   @Parameterized.Parameters
   public static List<Object[]> generateData() {
-    RandomUtils.useTestSeed();
     Matrix dataPoints = multiNormalRandomData(NUM_DATA_POINTS, NUM_DIMENSIONS);
     return Arrays.asList(new Object[][]{
         {new ProjectionSearch(new EuclideanDistanceMeasure(), NUM_PROJECTIONS, SEARCH_SIZE), dataPoints},

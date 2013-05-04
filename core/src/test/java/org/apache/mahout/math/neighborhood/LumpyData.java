@@ -17,6 +17,8 @@
 
 package org.apache.mahout.math.neighborhood;
 
+import java.util.List;
+
 import com.google.common.collect.Lists;
 import org.apache.mahout.math.DenseMatrix;
 import org.apache.mahout.math.Matrix;
@@ -26,23 +28,21 @@ import org.apache.mahout.math.random.ChineseRestaurant;
 import org.apache.mahout.math.random.MultiNormal;
 import org.apache.mahout.math.random.Sampler;
 
-import java.util.List;
-
 /**
  * Samples from clusters that have varying frequencies but constant radius.
  */
 public class LumpyData implements Sampler<Vector> {
   // size of the clusters
-  private double radius;
+  private final double radius;
 
   // figures out which cluster to look at
-  private Sampler<Integer> cluster;
+  private final Sampler<Integer> cluster;
 
   // remembers centroids of clusters
-  private List<Sampler<Vector>> centroids = Lists.newArrayList();
+  private final List<Sampler<Vector>> centroids = Lists.newArrayList();
 
   // how the centroids are generated
-  private MultiNormal centers;
+  private final MultiNormal centers;
 
   /**
    * Samples from a lumpy distribution that acts a bit more like real data than just sampling from a normal distribution.

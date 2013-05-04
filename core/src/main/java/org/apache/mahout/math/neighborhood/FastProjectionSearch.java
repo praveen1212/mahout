@@ -1,17 +1,20 @@
 package org.apache.mahout.math.neighborhood;
 
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
+
 import com.google.common.base.Preconditions;
-import com.google.common.collect.*;
+import com.google.common.collect.AbstractIterator;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import org.apache.mahout.clustering.streaming.cluster.RandomProjector;
 import org.apache.mahout.common.distance.DistanceMeasure;
 import org.apache.mahout.math.Matrix;
 import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.random.WeightedThing;
-
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
 
 /**
  * Does approximate nearest neighbor search by projecting the vectors similar to ProjectionSearch.
@@ -90,9 +93,9 @@ public class FastProjectionSearch extends UpdatableSearcher {
    * Searcher data structures could be invalidated.
    */
   @Override
-  public void add(Vector v) {
-    initialize(v.size());
-    pendingAdditions.add(v);
+  public void add(Vector vector) {
+    initialize(vector.size());
+    pendingAdditions.add(vector);
   }
 
   /**
@@ -114,7 +117,7 @@ public class FastProjectionSearch extends UpdatableSearcher {
   public List<WeightedThing<Vector>> search(Vector query, int limit) {
     reindex(false);
 
-    HashSet<Vector> candidates = Sets.newHashSet();
+    Set<Vector> candidates = Sets.newHashSet();
     Vector projection = basisMatrix.times(query);
     for (int i = 0; i < basisMatrix.numRows(); ++i) {
       List<WeightedThing<Vector>> currProjections = scalarProjections.get(i);

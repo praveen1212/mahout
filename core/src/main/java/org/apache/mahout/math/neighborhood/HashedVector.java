@@ -17,6 +17,8 @@
 
 package org.apache.mahout.math.neighborhood;
 
+import java.util.Iterator;
+
 import org.apache.mahout.math.Matrix;
 import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.WeightedVector;
@@ -43,22 +45,20 @@ public class HashedVector extends WeightedVector {
     this.hash = mask;
   }
 
-  public static int computeHash(Vector v, Matrix projection) {
+  public static int computeHash(Vector vector, Matrix projection) {
     int hash = 0;
-    for (Element element : projection.times(v)) {
-      if (element.get() > 0) {
-        hash += 1 << element.index();
-      }
+    Iterator<Element> iterator = projection.times(vector).iterateNonZero();
+    while (iterator.hasNext()) {
+      hash += 1 << iterator.next().index();
     }
     return hash;
   }
 
-  public static long computeHash64(Vector v, Matrix projection) {
+  public static long computeHash64(Vector vector, Matrix projection) {
     long hash = 0;
-    for (Element element : projection.times(v)) {
-      if (element.get() > 0) {
-        hash += 1L << element.index();
-      }
+    Iterator<Element> iterator = projection.times(vector).iterateNonZero();
+    while (iterator.hasNext()) {
+      hash += 1 << iterator.next().index();
     }
     return hash;
   }
@@ -86,10 +86,12 @@ public class HashedVector extends WeightedVector {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
+    if (this == o) {
+      return true;
+    }
     if (!(o instanceof HashedVector)) {
       return o instanceof Vector && this.minus((Vector) o).norm(1) == 0;
-    }           else {
+    } else {
       HashedVector v = (HashedVector) o;
       return v.hash == this.hash && this.minus(v).norm(1) == 0;
     }

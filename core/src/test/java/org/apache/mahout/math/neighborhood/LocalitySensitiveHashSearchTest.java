@@ -16,18 +16,19 @@
  */
 package org.apache.mahout.math.neighborhood;
 
+import java.util.BitSet;
+import java.util.List;
+
 import org.apache.mahout.common.distance.EuclideanDistanceMeasure;
-import org.apache.mahout.math.*;
-import org.apache.mahout.math.neighborhood.BruteSearch;
-import org.apache.mahout.math.neighborhood.HashedVector;
-import org.apache.mahout.math.neighborhood.LocalitySensitiveHashSearch;
+import org.apache.mahout.math.DenseMatrix;
+import org.apache.mahout.math.DenseVector;
+import org.apache.mahout.math.Matrix;
+import org.apache.mahout.math.Vector;
+import org.apache.mahout.math.WeightedVector;
 import org.apache.mahout.math.random.Normal;
 import org.apache.mahout.math.random.WeightedThing;
 import org.apache.mahout.math.stats.OnlineSummarizer;
 import org.junit.Test;
-
-import java.util.BitSet;
-import java.util.List;
 
 import static org.junit.Assert.assertTrue;
 

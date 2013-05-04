@@ -18,16 +18,16 @@
 package org.apache.mahout.clustering.streaming;
 
 
+import java.util.List;
+
 import com.google.common.collect.Lists;
 import org.apache.mahout.common.distance.EuclideanDistanceMeasure;
-import org.apache.mahout.math.neighborhood.BruteSearch;
 import org.apache.mahout.math.ConstantVector;
 import org.apache.mahout.math.Vector;
+import org.apache.mahout.math.WeightedVector;
+import org.apache.mahout.math.neighborhood.BruteSearch;
 import org.apache.mahout.math.random.MultiNormal;
 import org.apache.mahout.math.random.Sampler;
-import org.apache.mahout.math.WeightedVector;
-
-import java.util.List;
 
 public class BruteSpeedCheck {
   private static final int VECTOR_DIMENSION = 250;
@@ -53,7 +53,11 @@ public class BruteSpeedCheck {
         BruteSearch search = new BruteSearch(new EuclideanDistanceMeasure());
         search.addAll(referenceVectors);
         long t0 = System.nanoTime();
-        search.search(queryVectors, block, threads);
+        try {
+          search.search(queryVectors, block, threads);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
         long t1 = System.nanoTime();
         System.out.printf("%d\t%d\t%.2f\n", threads, block, (t1 - t0) / 1e9);
       }

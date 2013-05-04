@@ -17,6 +17,13 @@
 
 package org.apache.mahout.math.neighborhood;
 
+import java.util.Iterator;
+import java.util.List;
+import java.util.PriorityQueue;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Ordering;
@@ -24,13 +31,6 @@ import org.apache.mahout.common.distance.DistanceMeasure;
 import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.WeightedVector;
 import org.apache.mahout.math.random.WeightedThing;
-
-import java.util.Iterator;
-import java.util.List;
-import java.util.PriorityQueue;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /**
  * Search for nearest neighbors using a complete search (i.e. looping through
@@ -48,8 +48,8 @@ public class BruteSearch extends UpdatableSearcher {
   }
 
   @Override
-  public void add(Vector v) {
-    referenceVectors.add(v);
+  public void add(Vector vector) {
+    referenceVectors.add(vector);
   }
 
   @Override
@@ -71,9 +71,8 @@ public class BruteSearch extends UpdatableSearcher {
     limit = Math.min(limit, referenceVectors.size());
     // A priority queue of the best @limit elements, ordered from worst to best so that the worst
     // element is always on top and can easily be removed.
-    PriorityQueue<WeightedThing<Integer>> bestNeighbors = new
-        PriorityQueue<WeightedThing<Integer>>(limit, Ordering.natural().reverse());
-    // The reulting list of weighted WeightedVectors (the weight is the distance from the query).
+    PriorityQueue<WeightedThing<Integer>> bestNeighbors = new PriorityQueue<WeightedThing<Integer>>(limit, Ordering.natural().reverse());
+    // The resulting list of weighted WeightedVectors (the weight is the distance from the query).
     List<WeightedThing<Vector>> results =
         Lists.newArrayListWithCapacity(limit);
     int rowNumber = 0;
@@ -135,8 +134,8 @@ public class BruteSearch extends UpdatableSearcher {
    * @return A list of result lists.
    */
   public List<List<WeightedThing<Vector>>> search(Iterable<WeightedVector> queries,
-                                                  final int limit, int numThreads) {
-    ExecutorService es = Executors.newFixedThreadPool(numThreads);
+                                                  final int limit, int numThreads) throws InterruptedException {
+    ExecutorService executor = Executors.newFixedThreadPool(numThreads);
     List<Callable<Object>> tasks = Lists.newArrayList();
 
     final List<List<WeightedThing<Vector>>> results = Lists.newArrayList();
@@ -153,13 +152,8 @@ public class BruteSearch extends UpdatableSearcher {
       });
     }
 
-    try {
-      es.invokeAll(tasks);
-      es.shutdown();
-    } catch (InterruptedException e) {
-      // This is ugly, but the point seems to be to not add a throws to the declaration.
-      throw new RuntimeException("Impossible error");
-    }
+    executor.invokeAll(tasks);
+    executor.shutdown();
 
     return results;
   }
