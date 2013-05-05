@@ -35,9 +35,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.Matchers.lessThan;
-
 @RunWith(value = Parameterized.class)
 public class SearchSanityTest extends MahoutTestCase {
   private static final int NUM_DATA_POINTS = 1 << 13;
@@ -173,10 +170,10 @@ public class SearchSanityTest extends MahoutTestCase {
       r = searcher.search(x.get(1), 1);
       assertTrue("Vector should be gone", r.get(0).getWeight() > 0);
 
-      // vectors don't show up in iterator
+      // Vectors don't show up in iterator.
       for (Vector v : searcher) {
-        assertThat(1e-8, is(lessThan(x.get(0).minus(v).norm(1))));
-        assertThat(1e-8, is(lessThan(x.get(1).minus(v).norm(1))));
+        assertTrue(x.get(0).minus(v).norm(1) > 1e-6);
+        assertTrue(x.get(1).minus(v).norm(1) > 1e-6);
       }
     } else {
       try {

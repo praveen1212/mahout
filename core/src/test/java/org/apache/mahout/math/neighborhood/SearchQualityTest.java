@@ -17,9 +17,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import static org.hamcrest.Matchers.greaterThan;
-import static org.hamcrest.core.Is.is;
-import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 @RunWith(value = Parameterized.class)
 public class SearchQualityTest {
@@ -95,9 +94,9 @@ public class SearchQualityTest {
         searcher.getClass().getName(), numFirstMatches, queries.numRows(),
         searcherAvgTime, bruteSearchAvgTime);
 
-    assertThat("Closest vector returned doesn't match", numFirstMatches, is(queries.numRows()));
-    assertThat("Searcher " + searcher.getClass().getName() + " slower than brute",
-        bruteSearchAvgTime, greaterThan(searcherAvgTime));
+    assertEquals("Closest vector returned doesn't match", queries.numRows(), numFirstMatches);
+    assertTrue("Searcher " + searcher.getClass().getName() + " slower than brute",
+        bruteSearchAvgTime > searcherAvgTime);
   }
   @Test
   public void testOverlapAndRuntime() {
@@ -129,9 +128,9 @@ public class SearchQualityTest {
         searcher.getClass().getName(), numFirstMatches, queries.numRows(),
         numMatches, queries.numRows() * NUM_RESULTS, searcherAvgTime, bruteSearchAvgTime);
 
-    assertThat("Closest vector returned doesn't match", numFirstMatches, is(queries.numRows()));
-    assertThat("Searcher " + searcher.getClass().getName() + " slower than brute",
-        bruteSearchAvgTime, greaterThan(searcherAvgTime));
+    assertEquals("Closest vector returned doesn't match", queries.numRows(), numFirstMatches);
+    assertTrue("Searcher " + searcher.getClass().getName() + " slower than brute",
+        bruteSearchAvgTime > searcherAvgTime);
   }
 
   public static Pair<List<List<WeightedThing<Vector>>>, Long> getResultsAndRuntime(Searcher searcher,
