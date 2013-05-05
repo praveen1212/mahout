@@ -57,6 +57,7 @@ public final class WeightedThing<T> implements Comparable<WeightedThing<T>> {
   @Override
   public boolean equals(Object o) {
     if (o instanceof WeightedThing) {
+      @SuppressWarnings("unchecked")
       WeightedThing<T> other = (WeightedThing<T>) o;
       return weight == other.weight && value.equals(other.value);
     }
