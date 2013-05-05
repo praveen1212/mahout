@@ -1,4 +1,4 @@
-package org.apache.mahout.clustering.streaming.cluster;
+package org.apache.mahout.math.random;
 
 import java.util.List;
 
@@ -10,8 +10,6 @@ import org.apache.mahout.math.Matrix;
 import org.apache.mahout.math.MatrixSlice;
 import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.function.DoubleFunction;
-import org.apache.mahout.math.random.Multinomial;
-import org.apache.mahout.math.random.Normal;
 
 public class RandomProjector {
   /**

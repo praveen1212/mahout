@@ -10,7 +10,7 @@ import com.google.common.collect.AbstractIterator;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import org.apache.mahout.clustering.streaming.cluster.RandomProjector;
+import org.apache.mahout.math.random.RandomProjector;
 import org.apache.mahout.common.distance.DistanceMeasure;
 import org.apache.mahout.math.Matrix;
 import org.apache.mahout.math.Vector;
