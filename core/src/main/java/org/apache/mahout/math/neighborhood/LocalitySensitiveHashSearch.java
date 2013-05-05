@@ -3,12 +3,13 @@ package org.apache.mahout.math.neighborhood;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.PriorityQueue;
 
 import com.google.common.collect.AbstractIterator;
 import com.google.common.collect.HashMultiset;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multiset;
-import org.apache.lucene.util.PriorityQueue;
+import com.google.common.collect.Ordering;
 import org.apache.mahout.common.RandomUtils;
 import org.apache.mahout.common.distance.DistanceMeasure;
 import org.apache.mahout.math.DenseMatrix;
@@ -27,7 +28,7 @@ import org.apache.mahout.math.stats.OnlineSummarizer;
 public class LocalitySensitiveHashSearch extends UpdatableSearcher implements Iterable<Vector> {
   private static final int BITS = 64;
   @SuppressWarnings("PointlessBitwiseExpression")
-  private static final long BITMASK = -1L >>> 64 - BITS;
+  private static final long BIT_MASK = -1L >>> 64 - BITS;
 
   private Multiset<HashedVector> trainingVectors = HashMultiset.create();
 
@@ -59,30 +60,30 @@ public class LocalitySensitiveHashSearch extends UpdatableSearcher implements It
   }
 
   private void initialize(int numDimensions) {
-    if (initialized) {
+    if (initialized)
       return;
-    }
     initialized = true;
     projection = new DenseMatrix(BITS, numDimensions);
     projection.assign(new Normal(0, 1, RandomUtils.getRandom()));
   }
 
   @Override
-  public List<WeightedThing<Vector>> search(Vector q, int limit) {
-    long queryHash = HashedVector.computeHash64(q, projection);
+  public List<WeightedThing<Vector>> search(Vector query, int limit) {
+    long queryHash = HashedVector.computeHash64(query, projection);
 
     // We keep an approximation of the closest vectors here.
-    PriorityQueue<WeightedThing<Vector>> top = Searcher.getCandidateQueue(searchSize);
+    PriorityQueue<WeightedThing<Vector>> top =
+        new PriorityQueue<WeightedThing<Vector>>(getSearchSize(), Ordering.natural().reverse());
 
-    // we keep the counts of the hash distances here.  This lets us accurately
+    // We keep the counts of the hash distances here.  This lets us accurately
     // judge what hash distance cutoff we should use.
     int[] hashCounts = new int[BITS + 1];
 
-    // we scan the vectors using bit counts as an approximation of the dot product so we can do as few
+    // We scan the vectors using bit counts as an approximation of the dot product so we can do as few
     // full distance computations as possible.  Our goal is to only do full distance computations for
     // vectors with hash distance at most as large as the searchSize biggest hash distance seen so far.
 
-    // in this loop, we have the invariants that
+    // In this loop, we have the invariants that:
     //
     // limitCount = sum_{i<hashLimit} hashCount[i]
     // and
@@ -96,16 +97,20 @@ public class LocalitySensitiveHashSearch extends UpdatableSearcher implements It
     int hashLimit = BITS;
     int limitCount = 0;
     double distanceLimit = Double.POSITIVE_INFINITY;
-    for (HashedVector v : trainingVectors) {
-      int bitDot = Long.bitCount(v.getHash() ^ queryHash);
+    for (HashedVector vector : trainingVectors) {
+      int bitDot = Long.bitCount(vector.getHash() ^ queryHash);
       if (bitDot <= hashLimit) {
         distanceEvaluations++;
-        double d = distanceMeasure.distance(q, v);
-        distribution[bitDot].add(d);
-        if (d < distanceLimit) {
-          top.insertWithOverflow(new WeightedThing<Vector>(v, d));
+        double distance = distanceMeasure.distance(query, vector);
+        distribution[bitDot].add(distance);
+
+        if (distance < distanceLimit) {
+          top.add(new WeightedThing<Vector>(vector, distance));
+          while (top.size() > searchSize) {
+            top.poll();
+          }
           if (top.size() == searchSize) {
-            distanceLimit = top.top().getWeight();
+            distanceLimit = top.peek().getWeight();
           }
 
           hashCounts[bitDot]++;
@@ -128,8 +133,8 @@ public class LocalitySensitiveHashSearch extends UpdatableSearcher implements It
     }
 
     List<WeightedThing<Vector>> results = Lists.newArrayListWithExpectedSize(limit);
-    while (limit > 0 && top.size() > 0) {
-      WeightedThing<Vector> wv = top.pop();
+    while (limit > 0 && !top.isEmpty()) {
+      WeightedThing<Vector> wv = top.poll();
       results.add(new WeightedThing<Vector>(((HashedVector)wv.getValue()).getVector(), wv.getWeight()));
     }
     Collections.reverse(results);
@@ -152,15 +157,15 @@ public class LocalitySensitiveHashSearch extends UpdatableSearcher implements It
     double bestDistance = Double.POSITIVE_INFINITY;
     Vector bestVector = null;
 
-    // we keep the counts of the hash distances here.  This lets us accurately
+    // We keep the counts of the hash distances here.  This lets us accurately
     // judge what hash distance cutoff we should use.
     int[] hashCounts = new int[BITS + 1];
 
-    // we scan the vectors using bit counts as an approximation of the dot product so we can do as few
+    // We scan the vectors using bit counts as an approximation of the dot product so we can do as few
     // full distance computations as possible.  Our goal is to only do full distance computations for
     // vectors with hash distance at most as large as the searchSize biggest hash distance seen so far.
 
-    // in this loop, we have the invariants that
+    // In this loop, we have the invariants that:
     //
     // limitCount = sum_{i<hashLimit} hashCount[i]
     // and
@@ -174,15 +179,15 @@ public class LocalitySensitiveHashSearch extends UpdatableSearcher implements It
     int hashLimit = BITS;
     int limitCount = 0;
     long queryHash = HashedVector.computeHash64(query, projection);
-    for (HashedVector v : trainingVectors) {
-      int bitDot = Long.bitCount(v.getHash() ^ queryHash);
+    for (HashedVector vector : trainingVectors) {
+      int bitDot = Long.bitCount(vector.getHash() ^ queryHash);
       if (bitDot <= hashLimit) {
         distanceEvaluations++;
-        double distance = distanceMeasure.distance(query, v);
+        double distance = distanceMeasure.distance(query, vector);
         distribution[bitDot].add(distance);
-        if (distance < bestDistance && (!differentThanQuery || !v.getVector().equals(query))) {
+        if (distance < bestDistance && (!differentThanQuery || !vector.getVector().equals(query))) {
           bestDistance = distance;
-          bestVector = v.getVector();
+          bestVector = vector.getVector();
 
           hashCounts[bitDot]++;
           limitCount++;
@@ -210,7 +215,7 @@ public class LocalitySensitiveHashSearch extends UpdatableSearcher implements It
   @Override
   public void add(Vector vector) {
     initialize(vector.size());
-    trainingVectors.add(new HashedVector(vector, projection, HashedVector.INVALID_INDEX, BITMASK));
+    trainingVectors.add(new HashedVector(vector, projection, HashedVector.INVALID_INDEX, BIT_MASK));
   }
 
 
@@ -255,7 +260,7 @@ public class LocalitySensitiveHashSearch extends UpdatableSearcher implements It
   @Override
   public boolean remove(Vector v, double epsilon) {
     return trainingVectors.remove(
-        new HashedVector(v, projection, HashedVector.INVALID_INDEX, BITMASK));
+        new HashedVector(v, projection, HashedVector.INVALID_INDEX, BIT_MASK));
   }
 
   @Override

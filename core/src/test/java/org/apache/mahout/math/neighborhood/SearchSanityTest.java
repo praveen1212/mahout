@@ -22,7 +22,6 @@ import java.util.List;
 
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
-import junit.framework.Assert;
 import org.apache.mahout.common.MahoutTestCase;
 import org.apache.mahout.common.distance.EuclideanDistanceMeasure;
 import org.apache.mahout.math.DenseMatrix;
@@ -35,6 +34,9 @@ import org.apache.mahout.math.random.WeightedThing;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.Matchers.lessThan;
 
 @RunWith(value = Parameterized.class)
 public class SearchSanityTest extends MahoutTestCase {
@@ -174,8 +176,8 @@ public class SearchSanityTest extends MahoutTestCase {
 
       // vectors don't show up in iterator
       for (Vector v : searcher) {
-        Assert.assertTrue(x.get(0).minus(v).norm(1) > 1e-8);
-        Assert.assertTrue(x.get(1).minus(v).norm(1) > 1e-8);
+        assertThat(1e-8, is(lessThan(x.get(0).minus(v).norm(1))));
+        assertThat(1e-8, is(lessThan(x.get(1).minus(v).norm(1))));
       }
     } else {
       try {

@@ -8,8 +8,8 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
 import org.apache.mahout.common.Pair;
 import org.apache.mahout.common.RandomUtils;
+import org.apache.mahout.common.distance.CosineDistanceMeasure;
 import org.apache.mahout.common.distance.DistanceMeasure;
-import org.apache.mahout.common.distance.EuclideanDistanceMeasure;
 import org.apache.mahout.math.Matrix;
 import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.random.WeightedThing;
@@ -23,8 +23,8 @@ import static org.junit.Assert.assertThat;
 
 @RunWith(value = Parameterized.class)
 public class SearchQualityTest {
-  private static final int NUM_DATA_POINTS = 1 << 13;
-  private static final int NUM_QUERIES = 1 << 8;
+  private static final int NUM_DATA_POINTS = 1 << 14;
+  private static final int NUM_QUERIES = 1 << 10;
   private static final int NUM_DIMENSIONS = 40;
   private static final int NUM_RESULTS = 2;
 
@@ -40,7 +40,7 @@ public class SearchQualityTest {
     Matrix dataPoints = LumpyData.lumpyRandomData(NUM_DATA_POINTS, NUM_DIMENSIONS);
     Matrix queries = LumpyData.lumpyRandomData(NUM_QUERIES, NUM_DIMENSIONS);
 
-    DistanceMeasure distanceMeasure = new EuclideanDistanceMeasure();
+    DistanceMeasure distanceMeasure = new CosineDistanceMeasure();
 
     Searcher bruteSearcher = new BruteSearch(distanceMeasure);
     bruteSearcher.addAll(dataPoints);
@@ -55,12 +55,12 @@ public class SearchQualityTest {
     return Arrays.asList(new Object[][]{
         // NUM_PROJECTIONS = 3
         // SEARCH_SIZE = 10
-        {new ProjectionSearch(distanceMeasure, 3, 10), dataPoints, queries, reference, referenceSearchFirst},
-        {new FastProjectionSearch(distanceMeasure, 3, 10), dataPoints, queries, reference, referenceSearchFirst},
+        // {new ProjectionSearch(distanceMeasure, 3, 10), dataPoints, queries, reference, referenceSearchFirst},
+        // {new FastProjectionSearch(distanceMeasure, 3, 10), dataPoints, queries, reference, referenceSearchFirst},
         {new LocalitySensitiveHashSearch(distanceMeasure, 10), dataPoints, queries, reference, referenceSearchFirst},
         // NUM_PROJECTIONS = 5
         // SEARCH_SIZE = 5
-        {new ProjectionSearch(distanceMeasure, 5, 5), dataPoints, queries, reference, referenceSearchFirst},
+        // {new ProjectionSearch(distanceMeasure, 5, 5), dataPoints, queries, reference, referenceSearchFirst},
         {new LocalitySensitiveHashSearch(distanceMeasure, 5), dataPoints, queries, reference, referenceSearchFirst},
         // SEARCH_SIZE = 1
         {new LocalitySensitiveHashSearch(distanceMeasure, 1), dataPoints, queries, reference, referenceSearchFirst},
