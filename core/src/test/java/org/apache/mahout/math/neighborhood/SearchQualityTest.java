@@ -158,6 +158,7 @@ public class SearchQualityTest {
     @Override
     public Vector apply(WeightedThing<Vector> input) {
       Preconditions.checkArgument(input != null);
+      //noinspection ConstantConditions
       return input.getValue();
     }
   }

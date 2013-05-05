@@ -154,6 +154,7 @@ public class SearchSanityTest extends MahoutTestCase {
   public void testRemoval() {
     searcher.clear();
     searcher.addAllMatrixSlices(dataPoints);
+    //noinspection ConstantConditions
     if (searcher instanceof UpdatableSearcher) {
       List<Vector> x = Lists.newArrayList(Iterables.limit(searcher, 2));
       int size0 = searcher.size();
