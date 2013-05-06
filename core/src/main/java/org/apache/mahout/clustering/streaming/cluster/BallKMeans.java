@@ -17,6 +17,11 @@
 
 package org.apache.mahout.clustering.streaming.cluster;
 
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Random;
+
 import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
@@ -27,15 +32,9 @@ import org.apache.mahout.common.distance.DistanceMeasure;
 import org.apache.mahout.math.Centroid;
 import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.WeightedVector;
-import org.apache.mahout.math.function.Functions;
 import org.apache.mahout.math.neighborhood.UpdatableSearcher;
 import org.apache.mahout.math.random.Multinomial;
 import org.apache.mahout.math.random.WeightedThing;
-
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Random;
 
 /**
  * Implements a ball k-means algorithm for weighted vectors with probabilistic seeding similar to k-means++.
@@ -164,9 +163,8 @@ public class BallKMeans implements Iterable<Centroid> {
     // Compute the centroid of all of the datapoints.  This is then used to compute the squared radius of the datapoints.
     Centroid center = new Centroid(datapoints.iterator().next());
     for (WeightedVector row : Iterables.skip(datapoints, 1)) {
-      center.assign(row, Functions.PLUS);
+      center.update(row);
     }
-    center.assign(Functions.div(datapoints.size()));
 
     // Given the centroid, we can compute \Delta_1^2(X), the total squared distance for the datapoints
     // this accelerates seed selection.
@@ -176,7 +174,6 @@ public class BallKMeans implements Iterable<Centroid> {
       radius += distanceMeasure.distance(row, center);
     }
 
-    // TODO(dfilimon): This is not really helping. At line 197, I just replaced it with a random selection.
     // Find the first seed c_1 (and conceptually the second, c_2) as might be done in the 2-means clustering so that
     // the probability of selecting c_1 and c_2 is proportional to || c_1 - c_2 ||^2.  This is done
     // by first selecting c_1 with probability:
@@ -201,8 +198,7 @@ public class BallKMeans implements Iterable<Centroid> {
       seedSelector.add(i, selectionProbability);
     }
 
-    Centroid c_1 = new Centroid(datapoints.get(seedSelector.sample()).clone());
-    // Centroid c_1 = new Centroid(datapoints.get(random.nextInt(datapoints.size())).clone());
+    Centroid c_1 = new Centroid(datapoints.get(random.nextInt(datapoints.size())).clone());
     c_1.setIndex(0);
     // Construct a set of weighted things which can be used for random selection.  Initial weights are
     // set to the squared distance from c_1
@@ -329,6 +325,7 @@ public class BallKMeans implements Iterable<Centroid> {
       public Centroid apply(Vector input) {
         Preconditions.checkArgument(input instanceof Centroid, "Non-centroid in centroids " +
             "searcher");
+        //noinspection ConstantConditions
         return (Centroid)input;
       }
     });
