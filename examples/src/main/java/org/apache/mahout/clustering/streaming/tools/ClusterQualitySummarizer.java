@@ -1,5 +1,11 @@
 package org.apache.mahout.clustering.streaming.tools;
 
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.util.List;
+
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import org.apache.commons.cli2.CommandLine;
@@ -25,12 +31,6 @@ import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.VectorWritable;
 import org.apache.mahout.math.stats.OnlineSummarizer;
 
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
-import java.util.List;
-
 public class ClusterQualitySummarizer {
   private Configuration conf;
   private String outputFile;
@@ -52,7 +52,7 @@ public class ClusterQualitySummarizer {
     for (int i = 0; i < summarizers.size(); ++i) {
       OnlineSummarizer summarizer = summarizers.get(i);
       if (summarizer.getCount() == 0) {
-        System.out.printf("Cluster %d is empty\n");
+        System.out.printf("Cluster %d is empty\n", i);
         continue;
       }
       maxDistance = Math.max(maxDistance, summarizer.getMax());
@@ -99,7 +99,7 @@ public class ClusterQualitySummarizer {
         centroids = Lists.newArrayList(IOUtils.getCentroidsFromCentroidWritableIterable(centroidIterable));
       }
 
-      if (centroidFile != null) {
+      if (centroidCompareFile != null) {
         if (mahoutKMeansFormatCompare) {
           SequenceFileDirValueIterable<ClusterWritable> clusterCompareIterable =
               new SequenceFileDirValueIterable<ClusterWritable>(new Path(centroidCompareFile), PathType.GLOB, conf);
@@ -194,9 +194,9 @@ public class ClusterQualitySummarizer {
 
     Option centroidsCompareFileOption = builder.withLongName("centroidsCompare")
         .withShortName("cc")
-        .withRequired(true)
+        .withRequired(false)
         .withArgument(argumentBuilder.withName("centroidsCompare").withMaximum(1).create())
-        .withDescription("where to get seq files with the second set of centroids (from Mahout KMeans or" +
+        .withDescription("where to get seq files with the second set of centroids (from Mahout KMeans or " +
             "StreamingKMeansDriver)")
         .create();
 

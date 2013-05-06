@@ -1,5 +1,9 @@
 package org.apache.mahout.clustering.streaming.tools;
 
+import java.io.IOException;
+import java.util.List;
+
+import com.google.common.collect.Lists;
 import org.apache.commons.cli2.CommandLine;
 import org.apache.commons.cli2.Group;
 import org.apache.commons.cli2.Option;
@@ -10,7 +14,9 @@ import org.apache.commons.cli2.commandline.Parser;
 import org.apache.commons.cli2.util.HelpFormatter;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.mahout.clustering.streaming.cluster.ClusteringUtils;
 import org.apache.mahout.clustering.streaming.cluster.StreamingKMeansThread;
+import org.apache.mahout.clustering.streaming.mapreduce.CentroidWritable;
 import org.apache.mahout.clustering.streaming.mapreduce.StreamingKMeansDriver;
 import org.apache.mahout.clustering.streaming.mapreduce.StreamingKMeansReducer;
 import org.apache.mahout.clustering.streaming.utils.ExperimentUtils;
@@ -18,12 +24,10 @@ import org.apache.mahout.clustering.streaming.utils.IOUtils;
 import org.apache.mahout.common.ClassUtils;
 import org.apache.mahout.common.Pair;
 import org.apache.mahout.common.distance.DistanceMeasure;
+import org.apache.mahout.common.iterator.sequencefile.SequenceFileValueIterable;
 import org.apache.mahout.math.Centroid;
 import org.apache.mahout.math.neighborhood.ProjectionSearch;
-import org.apache.mahout.utils.vectors.csv.CSVVectorIterable;
-
-import java.io.IOException;
-import java.util.List;
+import org.apache.mahout.math.stats.OnlineSummarizer;
 
 public class CSVClusterer {
   private String inputFile;
@@ -106,10 +110,14 @@ public class CSVClusterer {
     try {
       Configuration conf = new Configuration();
       conf.set("fs.default.name", "file:///");
-      CSVVectorIterable csvIterable = new CSVVectorIterable(true, new Path(inputFile), conf);
 
-      // System.out.printf("%s\n", csvIterable.getHeader());
-      Iterable<Centroid> datapoints = ExperimentUtils.castVectorsToCentroids(csvIterable);
+      /*
+      List<Centroid> datapoints = Lists.newArrayList(IOUtils.getCentroidsFromCentroidWritableIterable(
+          new SequenceFileValueIterable<CentroidWritable>(new Path(inputFile), true, conf)));
+      System.out.printf("%s\n", csvIterable.getHeader());
+      */
+      Iterable<Centroid> datapoints = IOUtils.getCentroidsFromCentroidWritableIterable(
+          new SequenceFileValueIterable<CentroidWritable>(new Path(inputFile), true, conf));
 
       long start = System.currentTimeMillis();
 
@@ -128,14 +136,19 @@ public class CSVClusterer {
 
       // Run BallKMeans in final step.
       System.out.printf("Finished splitting centroids. Starting BallKMeans.\n");
-      centroids = ExperimentUtils.castVectorsToCentroids(
-          StreamingKMeansReducer.getBestCentroids(split.getFirst(), split.getSecond(), conf));
+      List<Centroid> finalCentroids = Lists.newArrayList(ExperimentUtils.castVectorsToCentroids(
+          StreamingKMeansReducer.getBestCentroids(split.getFirst(), split.getSecond(), conf)));
 
       long end = System.currentTimeMillis();
 
       System.out.printf("Done. Took %f. Writing clusters to %s.\n", (end - start) / 1000.0, outputFile);
-      IOUtils.writeCentroidsToSequenceFile(centroids, new Path(outputFile), conf);
+      List<OnlineSummarizer> summarizers =
+          ClusteringUtils.summarizeClusterDistances(datapoints, finalCentroids, distanceMeasure);
+      System.out.printf("Dunn Index %f\n", ClusteringUtils.dunnIndex(finalCentroids, distanceMeasure, summarizers));
+      System.out.printf("Davies-Bouldin Index %f\n",
+          ClusteringUtils.daviesBouldinIndex(finalCentroids, distanceMeasure, summarizers));
 
+      IOUtils.writeCentroidsToSequenceFile(finalCentroids, new Path(outputFile), conf);
     } catch (IOException e) {
       System.out.printf("Unable to open file %s\n", inputFile);
       e.printStackTrace();

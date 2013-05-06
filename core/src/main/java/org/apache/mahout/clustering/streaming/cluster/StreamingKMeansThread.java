@@ -1,5 +1,7 @@
 package org.apache.mahout.clustering.streaming.cluster;
 
+import java.util.concurrent.Callable;
+
 import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
@@ -15,8 +17,6 @@ import org.apache.mahout.math.VectorWritable;
 import org.apache.mahout.math.neighborhood.UpdatableSearcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.concurrent.Callable;
 
 public class StreamingKMeansThread implements Callable<Iterable<Centroid>> {
   private Configuration conf;
@@ -45,7 +45,7 @@ public class StreamingKMeansThread implements Callable<Iterable<Centroid>> {
     double estimateDistanceCutoff = ClusteringUtils.estimateDistanceCutoff(datapoints,
             StreamingKMeansUtilsMR.searcherFromConfiguration(conf, log).getDistanceMeasure(), 4096);
             */
-    double estimateDistanceCutoff = 1e-5;
+    double estimateDistanceCutoff = conf.getFloat(StreamingKMeansDriver.ESTIMATED_DISTANCE_CUTOFF, 1e-6f);
     System.out.printf("estDstCtf %f\n", estimateDistanceCutoff);
 
     StreamingKMeans clusterer = new StreamingKMeans(searcher, numClusters, estimateDistanceCutoff);

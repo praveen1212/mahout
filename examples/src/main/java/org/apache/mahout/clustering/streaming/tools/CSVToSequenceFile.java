@@ -1,5 +1,7 @@
 package org.apache.mahout.clustering.streaming.tools;
 
+import java.io.IOException;
+
 import org.apache.commons.cli2.CommandLine;
 import org.apache.commons.cli2.Group;
 import org.apache.commons.cli2.Option;
@@ -13,8 +15,6 @@ import org.apache.hadoop.fs.Path;
 import org.apache.mahout.clustering.streaming.utils.ExperimentUtils;
 import org.apache.mahout.clustering.streaming.utils.IOUtils;
 import org.apache.mahout.utils.vectors.csv.CSVVectorIterable;
-
-import java.io.IOException;
 
 public class CSVToSequenceFile {
   private String inputFile;

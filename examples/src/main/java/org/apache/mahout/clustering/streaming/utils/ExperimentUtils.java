@@ -1,5 +1,8 @@
 package org.apache.mahout.clustering.streaming.utils;
 
+import java.util.List;
+import java.util.Map;
+
 import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
@@ -13,9 +16,6 @@ import org.apache.mahout.math.Centroid;
 import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.VectorWritable;
 import org.apache.mahout.math.neighborhood.ProjectionSearch;
-
-import java.util.List;
-import java.util.Map;
 
 public class ExperimentUtils {
   /**
