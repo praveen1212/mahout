@@ -186,4 +186,20 @@ public class SearchSanityTest extends MahoutTestCase {
       }
     }
   }
+
+  @Test
+  public void testSearchFirst() {
+    searcher.clear();
+    searcher.addAll(dataPoints);
+    for (Vector datapoint : dataPoints) {
+      WeightedThing<Vector> first = searcher.searchFirst(datapoint, false);
+      WeightedThing<Vector> second = searcher.searchFirst(datapoint, true);
+      List<WeightedThing<Vector>> firstTwo = searcher.search(datapoint, 2);
+
+      assertEquals("First isn't self", 0, first.getWeight(), 0);
+      assertEquals("First isn't self", datapoint, first.getValue());
+      assertEquals("First doesn't match", first, firstTwo.get(0));
+      assertEquals("Second doesn't match", second, firstTwo.get(1));
+    }
+  }
 }
