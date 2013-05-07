@@ -17,6 +17,11 @@
 
 package org.apache.mahout.clustering.streaming.cluster;
 
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Random;
+
 import com.google.common.base.Function;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Iterators;
@@ -29,13 +34,6 @@ import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.jet.math.Constants;
 import org.apache.mahout.math.neighborhood.UpdatableSearcher;
 import org.apache.mahout.math.random.WeightedThing;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Random;
 
 /**
  * Implements a streaming k-means algorithm for weighted vectors.
@@ -112,20 +110,14 @@ public class StreamingKMeans implements Iterable<Centroid> {
   // much more (so that we don't end up having 1 cluster / point).
   private double clusterOvershoot;
 
-  // Logs the progress of the clustering.
-  private Logger progressLogger;
-
-  private long time;
-
   /**
    * Calls StreamingKMeans(searcher, numClusters, initialDistanceCutoff, 1.3, 10, 1.5).
    * @see StreamingKMeans#StreamingKMeans(org.apache.mahout.math.neighborhood.UpdatableSearcher, int,
-   * double, double, double, double, Logger)
+   * double, double, double, double)
    */
   public StreamingKMeans(UpdatableSearcher searcher, int numClusters,
                          double initialDistanceCutoff) {
-    this(searcher, numClusters, initialDistanceCutoff, 1.3, 10, 2,
-        LoggerFactory.getLogger(StreamingKMeans.class));
+    this(searcher, numClusters, initialDistanceCutoff, 1.3, 10, 2);
   }
 
   /**
@@ -148,15 +140,13 @@ public class StreamingKMeans implements Iterable<Centroid> {
    */
   public StreamingKMeans(UpdatableSearcher searcher, int numClusters,
                          double initialDistanceCutoff, double beta, double clusterLogFactor,
-                         double clusterOvershoot, Logger logger) {
+                         double clusterOvershoot) {
     this.centroids = searcher;
     this.numClusters = numClusters;
     this.distanceCutoff = initialDistanceCutoff;
     this.beta = beta;
     this.clusterLogFactor = clusterLogFactor;
     this.clusterOvershoot = clusterOvershoot;
-    this.progressLogger = logger;
-    this.time = System.currentTimeMillis();
   }
 
   /**
@@ -262,7 +252,7 @@ public class StreamingKMeans implements Iterable<Centroid> {
       ++numProcessedDatapoints;
     }
 
-    Random rand = RandomUtils.getRandom();
+    Random random = RandomUtils.getRandom();
     // To cluster, we scan the data and either add each point to the nearest group or create a new group.
     // when we get too many groups, we need to increase the threshold and rescan our current groups
     for (Centroid row : Iterables.skip(datapoints, numCentroidsToSkip)) {
@@ -270,7 +260,6 @@ public class StreamingKMeans implements Iterable<Centroid> {
       // The weight of the WeightedThing is the distance to the query and the value is a
       // reference to one of the vectors we added to the searcher previously.
       WeightedThing<Vector> closestPair = centroids.searchFirst(row, false);
-          // centroids.search(row, 1).get(0);
 
       // We get a uniformly distributed random number between 0 and 1 and compare it with the
       // distance to the closest cluster divided by the distanceCutoff.
@@ -279,7 +268,8 @@ public class StreamingKMeans implements Iterable<Centroid> {
       // cluster anyway.
       // However, if the ratio is less than 1, we want to create a new cluster with probability
       // proportional to the distance to the closest cluster.
-      if (rand.nextDouble() < closestPair.getWeight() / distanceCutoff) {
+      double sample = random.nextDouble();
+      if (sample < closestPair.getWeight() / distanceCutoff) {
         // Add new centroid, note that the vector is copied because we may mutate it later.
         centroids.add(row.clone());
       } else {
@@ -287,17 +277,8 @@ public class StreamingKMeans implements Iterable<Centroid> {
         // position.
         // We know that all the points we inserted in the centroids searcher are (or extend)
         // WeightedVector, so the cast will always succeed.
-        Centroid centroid = (Centroid)closestPair.getValue();
-        /*
-        if ((!collapseClusters && numProcessedDatapoints != ClusteringUtils.totalWeight(centroids)) ||
-            (collapseClusters && oldNumProcessedDataPoints != ClusteringUtils.totalWeight(centroids))){
-          System.out.printf("Stop\n");
-        }
-        if (!collapseClusters) {
-          System.out.printf("[pre] collapse %s; num datapoints %d; total weight %f; this %f; row %f\n", collapseClusters, numProcessedDatapoints,
-              ClusteringUtils.totalWeight(centroids), centroid.getWeight(), row.getWeight());
-        }
-        */
+        Centroid centroid = (Centroid) closestPair.getValue();
+
         // We will update the centroid by removing it from the searcher and reinserting it to
         // ensure consistency.
         if (!centroids.remove(centroid, Constants.EPSILON)) {
@@ -306,22 +287,15 @@ public class StreamingKMeans implements Iterable<Centroid> {
         centroid.update(row);
         centroids.add(centroid);
 
-        /*
-        if (!collapseClusters) {
-          System.out.printf("[post] collapse %s; num datapoints %d; total weight %f; this %f; row %f\n", collapseClusters, numProcessedDatapoints,
-              ClusteringUtils.totalWeight(centroids), centroid.getWeight(), row.getWeight());
-        }
-        */
       }
       ++numProcessedDatapoints;
 
       if (!collapseClusters && centroids.size() > clusterOvershoot * numClusters) {
         numClusters = (int) Math.max(numClusters, clusterLogFactor * Math.log(numProcessedDatapoints));
 
-        // TODO does shuffling help?
         List<Centroid> shuffled = Lists.newArrayList();
-        for (Vector v : centroids) {
-          shuffled.add((Centroid)v);
+        for (Vector vector : centroids) {
+          shuffled.add((Centroid) vector);
         }
         Collections.shuffle(shuffled);
         // Re-cluster using the shuffled centroids as data points. The centroids member variable
@@ -332,29 +306,26 @@ public class StreamingKMeans implements Iterable<Centroid> {
         // distanceCutoff can grow to an excessive size leading sub-clustering to collapse
         // the centroids set too much. This test prevents increase in distanceCutoff if
         // the current value is doing well at collapsing the clusters.
-        if (numProcessedDatapoints / (float)oldNumProcessedDataPoints < 2 || centroids.size() > numClusters) {
+        if (centroids.size() > numClusters) {
           distanceCutoff *= beta;
         }
-        oldNumProcessedDataPoints = numProcessedDatapoints;
-      }
-      if (!collapseClusters && numProcessedDatapoints % 1000 == 0) {
-        this.time = System.currentTimeMillis();
       }
     }
 
     if (collapseClusters) {
       numProcessedDatapoints = oldNumProcessedDataPoints;
-    } else {
-      int numCentroids = 0;
-      for (Vector vector : centroids) {
-        Centroid centroid = (Centroid)vector;
-        centroid.setIndex(numCentroids++);
-      }
     }
 
     // Normally, iterating through the searcher produces Vectors,
     // but since we always used Centroids, we adapt the return type.
     return centroids;
+  }
+
+  public void reindexCentroids() {
+    int numCentroids = 0;
+    for (Centroid centroid : this) {
+      centroid.setIndex(numCentroids++);
+    }
   }
 
   /**
