@@ -1,17 +1,17 @@
 package org.apache.mahout.math.random;
 
-import java.util.List;
+import java.util.Random;
 
-import com.google.common.collect.Lists;
-import org.apache.commons.lang.math.RandomUtils;
+import org.apache.mahout.common.RandomUtils;
 import org.apache.mahout.math.DenseMatrix;
-import org.apache.mahout.math.DenseVector;
 import org.apache.mahout.math.Matrix;
 import org.apache.mahout.math.MatrixSlice;
-import org.apache.mahout.math.Vector;
-import org.apache.mahout.math.function.DoubleFunction;
+import org.apache.mahout.math.jet.random.Normal;
+import org.apache.mahout.math.jet.random.Uniform;
 
 public class RandomProjector {
+  final static Random random = RandomUtils.getRandom(System.currentTimeMillis());
+
   /**
    * Generates a basis matrix of size projectedVectorSize x vectorSize. Multiplying a a vector by
    * this matrix results in the projected vector.
@@ -24,7 +24,16 @@ public class RandomProjector {
    */
   public static Matrix generateBasisNormal(int projectedVectorSize, int vectorSize) {
     Matrix basisMatrix = new DenseMatrix(projectedVectorSize, vectorSize);
-    basisMatrix.assign(new Normal());
+    basisMatrix.assign(new Normal(0.0, 1.0, random));
+    for (MatrixSlice row : basisMatrix) {
+      row.vector().assign(row.normalize());
+    }
+    return basisMatrix;
+  }
+
+  public static Matrix generateBasisUniform(int projectedVectorSize, int vectorSize) {
+    Matrix basisMatrix = new DenseMatrix(projectedVectorSize, vectorSize);
+    basisMatrix.assign(new Uniform(0.0, 1.0, random));
     for (MatrixSlice row : basisMatrix) {
       row.vector().assign(row.normalize());
     }
@@ -50,7 +59,7 @@ public class RandomProjector {
     Matrix basisMatrix = new DenseMatrix(projectedVectorSize, vectorSize);
     for (int i = 0; i < projectedVectorSize; ++i) {
       for (int j = 0; j < vectorSize; ++j) {
-        basisMatrix.set(i, j, RandomUtils.nextInt(2) == 0 ? +1 : -1);
+        basisMatrix.set(i, j, random.nextInt(2) == 0 ? +1 : -1);
       }
     }
     for (MatrixSlice row : basisMatrix) {
@@ -90,24 +99,5 @@ public class RandomProjector {
       row.vector().assign(row.normalize());
     }
     return basisMatrix;
-  }
-
-  /**
-   * Generates a list of projectedVectorSize vectors, each of size vectorSize. This looks like a
-   * matrix of size (projectedVectorSize, vectorSize).
-   * @param projectedVectorSize final projected size of a vector (number of projection vectors)
-   * @param vectorSize initial vector size
-   * @return a list of projection vectors
-   */
-  public static List<Vector> generateVectorBasis(int projectedVectorSize, int vectorSize) {
-    final DoubleFunction random = new Normal();
-    List<Vector> basisVectors = Lists.newArrayList();
-    for (int i = 0; i < projectedVectorSize; ++i) {
-      Vector basisVector = new DenseVector(vectorSize);
-      basisVector.assign(random);
-      basisVector.normalize();
-      basisVectors.add(basisVector);
-    }
-    return basisVectors;
   }
 }

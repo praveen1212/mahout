@@ -8,9 +8,9 @@ It is provided "as is" without expressed or implied warranty.
 */
 package org.apache.mahout.math.jet.random;
 
-import org.apache.mahout.common.RandomUtils;
-
 import java.util.Random;
+
+import org.apache.mahout.common.RandomUtils;
 
 public class Uniform extends AbstractContinousDistribution {
 
@@ -21,7 +21,7 @@ public class Uniform extends AbstractContinousDistribution {
    * Constructs a uniform distribution with the given minimum and maximum, using a {@link
    * org.apache.mahout.math.jet.random.engine.MersenneTwister} seeded with the given seed.
    */
-  public Uniform(double min, double max, int seed) {
+  public Uniform(double min, double max, long seed) {
     this(min, max, RandomUtils.getRandom(seed));
   }
 

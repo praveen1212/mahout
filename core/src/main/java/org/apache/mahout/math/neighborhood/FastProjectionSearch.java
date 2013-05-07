@@ -81,7 +81,7 @@ public class FastProjectionSearch extends UpdatableSearcher {
     if (initialized) {
       return;
     }
-    basisMatrix = RandomProjector.generateBasisNormal(numProjections, numDimensions);
+    basisMatrix = RandomProjector.generateBasisUniform(numProjections, numDimensions);
     initialized = true;
   }
 

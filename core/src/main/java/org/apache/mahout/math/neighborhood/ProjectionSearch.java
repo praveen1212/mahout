@@ -69,7 +69,7 @@ public class ProjectionSearch extends UpdatableSearcher implements Iterable<Vect
       return;
     }
     initialized = true;
-    basisMatrix = RandomProjector.generateBasisNormal(numProjections, numDimensions);
+    basisMatrix = RandomProjector.generateBasisUniform(numProjections, numDimensions);
     scalarProjections = Lists.newArrayList();
     for (int i = 0; i < numProjections; ++i) {
       scalarProjections.add(TreeMultiset.<WeightedThing<Vector>>create());
@@ -186,6 +186,9 @@ public class ProjectionSearch extends UpdatableSearcher implements Iterable<Vect
       }
     }
 
+    if (bestDistance == Double.POSITIVE_INFINITY) {
+      System.out.printf("BROKEN!\n");
+    }
     return new WeightedThing<Vector>(bestVector, bestDistance);
   }
 
