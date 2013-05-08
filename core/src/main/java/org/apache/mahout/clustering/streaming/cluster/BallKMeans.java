@@ -74,7 +74,7 @@ public class BallKMeans implements Iterable<Centroid> {
   // of the centroids, but is useful if the weights matter.
   private final boolean correctWeights;
 
-  private static final Random random = RandomUtils.getRandom(1234);
+  private final Random random = RandomUtils.getRandom();
 
   public BallKMeans(UpdatableSearcher searcher, int numClusters, int maxNumIterations) {
     this(searcher, numClusters, maxNumIterations, 0.9, true);
@@ -109,7 +109,6 @@ public class BallKMeans implements Iterable<Centroid> {
    */
   public UpdatableSearcher cluster(List<? extends WeightedVector> datapoints, boolean randomInit) {
     centroids.clear();
-    RandomUtils.useTestSeed();
     if (randomInit) {
       // randomly select the initial centroids
       initializeSeedsRandomly(datapoints);
@@ -118,21 +117,24 @@ public class BallKMeans implements Iterable<Centroid> {
       initializeSeedsKMeansPlusPlus(datapoints);
     }
     // do k-means iterations with trimmed mean computation (aka ball k-means)
-    iterativeAssignment(datapoints);
-    return centroids;
+    return iterativeAssignment(datapoints) ? centroids : null;
   }
 
   private void initializeSeedsRandomly(List<? extends WeightedVector> datapoints) {
     Multinomial<Integer> seedSelector = new Multinomial<Integer>();
     int numDatapoints = datapoints.size();
-    double fraction = 1.0 / numDatapoints;
+    double totalWeight = 0;
     for (int i = 0; i < numDatapoints; ++i) {
-      seedSelector.add(i, fraction);
+      totalWeight += datapoints.get(i).getWeight();
+    }
+    for (int i = 0; i < numDatapoints; ++i) {
+      seedSelector.add(i, datapoints.get(i).getWeight() / totalWeight);
     }
     for (int i = 0; i < numClusters; ++i) {
       int sample = seedSelector.sample();
       seedSelector.delete(sample);
-      Centroid centroid = new Centroid(i, datapoints.get(sample), 1);
+      Centroid centroid = new Centroid(datapoints.get(sample));
+      centroid.setIndex(i);
       centroids.add(centroid);
     }
   }
@@ -168,10 +170,10 @@ public class BallKMeans implements Iterable<Centroid> {
 
     // Given the centroid, we can compute \Delta_1^2(X), the total squared distance for the datapoints
     // this accelerates seed selection.
-    double radius = 0;
+    double deltaX = 0;
     DistanceMeasure distanceMeasure = centroids.getDistanceMeasure();
     for (WeightedVector row : datapoints) {
-      radius += distanceMeasure.distance(row, center);
+      deltaX += distanceMeasure.distance(row, center);
     }
 
     // Find the first seed c_1 (and conceptually the second, c_2) as might be done in the 2-means clustering so that
@@ -194,11 +196,12 @@ public class BallKMeans implements Iterable<Centroid> {
     Multinomial<Integer> seedSelector = new Multinomial<Integer>();
     for (int i = 0; i < datapoints.size(); ++i) {
       double selectionProbability =
-          radius + datapoints.size() * distanceMeasure.distance(datapoints.get(i), center);
+          deltaX + datapoints.size() * distanceMeasure.distance(datapoints.get(i), center);
       seedSelector.add(i, selectionProbability);
     }
 
-    Centroid c_1 = new Centroid(datapoints.get(random.nextInt(datapoints.size())).clone());
+    int selected = random.nextInt(datapoints.size());
+    Centroid c_1 = new Centroid(datapoints.get(selected).clone());
     c_1.setIndex(0);
     // Construct a set of weighted things which can be used for random selection.  Initial weights are
     // set to the squared distance from c_1
@@ -248,7 +251,7 @@ public class BallKMeans implements Iterable<Centroid> {
    *
    * @param datapoints          Rows containing WeightedVectors
    */
-  private void iterativeAssignment(List<? extends WeightedVector> datapoints) {
+  private boolean iterativeAssignment(List<? extends WeightedVector> datapoints) {
     DistanceMeasure distanceMeasure = centroids.getDistanceMeasure();
     // closestClusterDistances.get(i) is the distance from the i'th cluster to its closest
     // neighboring cluster.
@@ -266,8 +269,10 @@ public class BallKMeans implements Iterable<Centroid> {
       // centroid.
       closestClusterDistances.clear();
       for (Vector center : centroids) {
+        if (((Centroid) center).getWeight() == 0) {
+          return false;
+        }
         Vector closestOtherCluster = centroids.searchFirst(center, true).getValue();
-            // centroids.search(center, 2).get(1).getValue();
         closestClusterDistances.add(distanceMeasure.distance(center, closestOtherCluster));
       }
 
@@ -285,9 +290,8 @@ public class BallKMeans implements Iterable<Centroid> {
       for (int j = 0; j < datapoints.size(); ++j) {
         WeightedVector datapoint = datapoints.get(j);
         // Get the closest cluster this point belongs to.
-        WeightedThing<Vector> closestPair = centroids.searchFirst(datapoint, false);
-        // centroids.search(datapoint, 1).get(0);
-        int closestIndex = ((WeightedVector)closestPair.getValue()).getIndex();
+        WeightedThing<Vector> closestPair = centroids.searchFirst(datapoint, true);
+        int closestIndex = ((WeightedVector) closestPair.getValue()).getIndex();
         double closestDistance = closestPair.getWeight();
         // Update its cluster assignment if necessary.
         if (closestIndex != clusterAssignments.get(j)) {
@@ -312,10 +316,10 @@ public class BallKMeans implements Iterable<Centroid> {
       }
       for (WeightedVector datapoint : datapoints) {
         Centroid closestCentroid = (Centroid) centroids.searchFirst(datapoint, false).getValue();
-        // (Centroid)centroids.search(datapoint, 1).get(0).getValue();
         closestCentroid.setWeight(closestCentroid.getWeight() + datapoint.getWeight());
       }
     }
+    return true;
   }
 
   @Override
