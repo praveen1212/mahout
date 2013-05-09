@@ -63,6 +63,10 @@ public class WeightedVector extends DelegatingVector {
     this.weight = newWeight;
   }
 
+  public void addWeight(double addWeight) {
+    this.weight += addWeight;
+  }
+
   public void setIndex(int index) {
     this.index = index;
   }
