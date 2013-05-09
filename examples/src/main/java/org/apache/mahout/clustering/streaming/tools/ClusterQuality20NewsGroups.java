@@ -1,5 +1,12 @@
 package org.apache.mahout.clustering.streaming.tools;
 
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
+
 import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
@@ -23,7 +30,7 @@ import org.apache.mahout.clustering.classify.ClusterClassifier;
 import org.apache.mahout.clustering.iterator.ClusterIterator;
 import org.apache.mahout.clustering.iterator.KMeansClusteringPolicy;
 import org.apache.mahout.clustering.kmeans.Kluster;
-import org.apache.mahout.clustering.streaming.cluster.ClusteringUtils;
+import org.apache.mahout.clustering.ClusteringUtils;
 import org.apache.mahout.clustering.streaming.mapreduce.CentroidWritable;
 import org.apache.mahout.clustering.streaming.mapreduce.StreamingKMeansDriver;
 import org.apache.mahout.clustering.streaming.utils.ExperimentUtils;
@@ -41,14 +48,6 @@ import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.VectorWritable;
 import org.apache.mahout.math.neighborhood.ProjectionSearch;
 import org.apache.mahout.math.stats.OnlineSummarizer;
-
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.ExecutionException;
 
 public class ClusterQuality20NewsGroups {
   private Configuration conf;
@@ -179,11 +178,13 @@ public class ClusterQuality20NewsGroups {
         ClusteringUtils.summarizeClusterDistances(reducedVectors, centroids, distanceMeasure);
     System.out.printf("Dunn Index %f\n", ClusteringUtils.dunnIndex(centroids, distanceMeasure, summarizers));
     System.out.printf("Davies-Bouldin Index %f\n", ClusteringUtils.daviesBouldinIndex(centroids, distanceMeasure, summarizers));
-    // printSummariesInternal(summarizers, time, name, numRun, "train");
-    /* if (testReducedVectors != null) {
+    printSummariesInternal(summarizers, time, name, numRun, "train");
+    /*
+    if (testReducedVectors != null) {
       printSummariesInternal(ClusteringUtils.summarizeClusterDistances(testReducedVectors, centroids, distanceMeasure),
           time, name, numRun, "test");
-    } */
+    }
+    */
   }
 
   public void printAdjustedRandIndex(List<Centroid> rowCentroids, List<Centroid> columnCentroids) {
@@ -209,14 +210,14 @@ public class ClusterQuality20NewsGroups {
     if (clusterMahoutKMeans) {
       System.out.printf("Clustering MahoutKMeans\n");
       start = System.currentTimeMillis();
-       kmCentroids = clusterKMeans();
+      kmCentroids = clusterKMeans();
       end = System.currentTimeMillis();
       time = (end - start) / 1000.0;
       System.out.printf("Took %f[s]\n", time);
       printSummaries(kmCentroids, time, "km", numRun);
     }
 
-    if (clusterBallKMeans) {
+    if (false) {
       System.out.printf("Clustering BallKMeans k-means++\n");
       start = System.currentTimeMillis();
       List<Centroid> bkmCentroids =
@@ -225,8 +226,9 @@ public class ClusterQuality20NewsGroups {
       time = (end - start) / 1000.0;
       System.out.printf("Took %f[s]\n", time);
       printSummaries(bkmCentroids, time, "bkm", numRun);
-      printAdjustedRandIndex(kmCentroids, bkmCentroids);
+      // printAdjustedRandIndex(kmCentroids, bkmCentroids);
 
+      /*
       System.out.printf("Clustering BallKMeans random centers\n");
       start = System.currentTimeMillis();
       List<Centroid> rBkmCentroids =
@@ -235,11 +237,13 @@ public class ClusterQuality20NewsGroups {
       time = (end - start) / 1000.0;
       System.out.printf("Took %f[s]\n", time);
       printSummaries(rBkmCentroids, time, "bkmr", numRun);
-      printAdjustedRandIndex(kmCentroids, rBkmCentroids);
-      printAdjustedRandIndex(bkmCentroids, rBkmCentroids);
+      */
+      // printAdjustedRandIndex(kmCentroids, rBkmCentroids);
+      // printAdjustedRandIndex(bkmCentroids, rBkmCentroids);
     }
 
     if (clusterStreamingKMeans) {
+      /*
       System.out.printf("Clustering StreamingKMeans with k [20] clusters\n");
       start = System.currentTimeMillis();
       List<Centroid> skmCentroids0 =
@@ -248,6 +252,7 @@ public class ClusterQuality20NewsGroups {
       time = (end - start) / 1000.0;
       System.out.printf("Took %f[s]\n", time);
       printSummaries(skmCentroids0, time, "skm0", numRun);
+      */
 
       int numStreamingClusters = (int) (20 * Math.log(reducedVectors.size()));
       System.out.printf("Clustering StreamingKMeans\n");
@@ -272,21 +277,22 @@ public class ClusterQuality20NewsGroups {
         System.out.printf("Clustering BallStreamingKMeans\n");
         start = System.currentTimeMillis();
         List<Centroid> bskmCentroids =
-            Lists.newArrayList(ExperimentUtils.clusterBallKMeans(skmCentroids, 20, 0.9, true, distanceMeasure));
+            Lists.newArrayList(ExperimentUtils.clusterBallKMeans(skmCentroids, 20, 0.9, false, distanceMeasure));
         end = System.currentTimeMillis();
         time += (end - start) / 1000.0;
         System.out.printf("Took %f[s]\n", time);
         printSummaries(bskmCentroids, time, "bskm", numRun);
+        // printAdjustedRandIndex(kmCentroids, bskmCentroids);
 
         System.out.printf("Clustering OneByOneBallStreamingKMeans\n");
         start = System.currentTimeMillis();
         List<Centroid> boskmCentroids =
-            Lists.newArrayList(ExperimentUtils.clusterBallKMeans(oskmCentroids, 20, 0.9, true, distanceMeasure));
+            Lists.newArrayList(ExperimentUtils.clusterBallKMeans(oskmCentroids, 20, 0.9, false, distanceMeasure));
         end = System.currentTimeMillis();
         time = (end - start) / 1000.0;
         System.out.printf("Took %f[s]\n", time);
         printSummaries(boskmCentroids, time, "boskm", numRun);
-        printAdjustedRandIndex(kmCentroids, boskmCentroids);
+        printAdjustedRandIndex(bskmCentroids, boskmCentroids);
       }
     }
 
@@ -295,7 +301,7 @@ public class ClusterQuality20NewsGroups {
           // StreamingKMeans
           200, 1e-10f,
           // BallKMeans
-          20, 0.9f, 10,
+          20, 0.9f, false, false, 0.1f, 10,
           // Searcher
           CosineDistanceMeasure.class.getName(), ProjectionSearch.class.getName(), 3, 1,
           // run locally or as MapReduce
@@ -338,8 +344,6 @@ public class ClusterQuality20NewsGroups {
     conf = new Configuration();
     conf.set("fs.default.name", "hdfs://localhost:9000/");
     try {
-      Configuration.dumpConfiguration(conf, new OutputStreamWriter(System.out));
-
       System.out.printf("Reading training data\n");
       input = IOUtils.getKeysAndVectors(inputFile, projectionDimension, numPoints);
       reducedVectors = input.getSecond();

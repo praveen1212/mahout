@@ -9,6 +9,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
 import org.apache.hadoop.io.Text;
 import org.apache.mahout.clustering.streaming.cluster.BallKMeans;
+import org.apache.mahout.clustering.ClusteringUtils;
 import org.apache.mahout.clustering.streaming.cluster.StreamingKMeans;
 import org.apache.mahout.common.Pair;
 import org.apache.mahout.common.distance.DistanceMeasure;
@@ -76,27 +77,31 @@ public class ExperimentUtils {
   public static Iterable<Centroid> clusterBallKMeans(List<Centroid> datapoints, int numClusters,
                                                      double trimFraction, boolean randomInit,
                                                      DistanceMeasure distanceMeasure) {
-    BallKMeans clusterer = new BallKMeans(new ProjectionSearch(distanceMeasure, 3, 1), numClusters, 20,
-        trimFraction, true);
-    clusterer.cluster(datapoints, randomInit);
+    BallKMeans clusterer = new BallKMeans(new ProjectionSearch(distanceMeasure, 3, 2),
+        numClusters, 20, !randomInit, 1);
+    clusterer.cluster(datapoints);
     return clusterer;
   }
 
   public static Iterable<Centroid> clusterStreamingKMeans(List<Centroid> datapoints, int numClusters,
                                                           DistanceMeasure distanceMeasure) {
+    double distanceCuttoff = ClusteringUtils.estimateDistanceCutoff(datapoints, distanceMeasure, 100);
     StreamingKMeans clusterer = new StreamingKMeans(new ProjectionSearch(distanceMeasure, 3, 2),
-        numClusters, 1e-6);
+        numClusters, distanceCuttoff);
     clusterer.cluster(datapoints);
+    clusterer.reindexCentroids();
     return clusterer;
   }
 
   public static Iterable<Centroid> clusterOneByOneStreamingKMeans(List<Centroid> datapoints, int numClusters,
                                                      DistanceMeasure distanceMeasure) {
+    double distanceCuttoff = ClusteringUtils.estimateDistanceCutoff(datapoints, distanceMeasure, 100);
     StreamingKMeans clusterer = new StreamingKMeans(new ProjectionSearch(distanceMeasure, 3, 2),
-        numClusters, 1e-6);
+        numClusters, distanceCuttoff);
     for (Centroid datapoint : datapoints) {
       clusterer.cluster(datapoint);
     }
+    clusterer.reindexCentroids();
     return clusterer;
   }
 

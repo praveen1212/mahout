@@ -17,6 +17,13 @@
 
 package org.apache.mahout.utils.vectors.csv;
 
+import java.io.DataInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.util.List;
+
+import com.google.common.base.Preconditions;
 import com.google.common.collect.AbstractIterator;
 import com.google.common.collect.Lists;
 import org.apache.commons.csv.CSVParser;
@@ -25,12 +32,6 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.mahout.math.DenseVector;
 import org.apache.mahout.math.Vector;
-
-import java.io.DataInputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.Reader;
-import java.util.List;
 
 /**
  * Iterates a CSV file and produces {@link org.apache.mahout.math.Vector}.
@@ -51,6 +52,8 @@ public class CSVVectorIterator extends AbstractIterator<Vector> {
   private boolean hasHeaderLine;
 
   private List<String> header;
+
+  private int size;
 
   public CSVVectorIterator(boolean hasHeaderLine, Path path, Configuration conf) throws IOException {
     this.parser = new CSVParser(new InputStreamReader(new DataInputStream(FileSystem.get(conf).open(path))));
@@ -79,7 +82,11 @@ public class CSVVectorIterator extends AbstractIterator<Vector> {
     if (line == null) {
       return endOfData();
     }
+    if (size != 0 && line.length != size) {
+      Preconditions.checkArgument(line.length == size);
+    }
     Vector result = new DenseVector(line.length);
+    size = line.length;
     for (int i = 0; i < line.length; i++) {
       try {
         result.setQuick(i, Double.parseDouble(line[i]));
@@ -99,6 +106,7 @@ public class CSVVectorIterator extends AbstractIterator<Vector> {
         if (line != null) {
           header = Lists.newArrayList(line);
         }
+        size = header.size();
       } catch (IOException e) {
         throw new IllegalStateException(e);
       }

@@ -19,7 +19,7 @@ import org.apache.commons.cli2.util.HelpFormatter;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.mahout.clustering.iterator.ClusterWritable;
-import org.apache.mahout.clustering.streaming.cluster.ClusteringUtils;
+import org.apache.mahout.clustering.ClusteringUtils;
 import org.apache.mahout.clustering.streaming.mapreduce.CentroidWritable;
 import org.apache.mahout.clustering.streaming.utils.IOUtils;
 import org.apache.mahout.common.distance.DistanceMeasure;
