@@ -17,6 +17,8 @@
 
 package org.apache.mahout.clustering.streaming.mapreduce;
 
+import java.io.IOException;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Writable;
@@ -28,8 +30,6 @@ import org.apache.mahout.math.neighborhood.UpdatableSearcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-
 public class StreamingKMeansMapper extends Mapper<Writable, VectorWritable,
     IntWritable, CentroidWritable> {
 
@@ -37,6 +37,7 @@ public class StreamingKMeansMapper extends Mapper<Writable, VectorWritable,
    * The clusterer object used to cluster the points received by this mapper online.
    */
   private StreamingKMeans clusterer;
+
   private int numPoints = 0;
 
   private static final Logger log = LoggerFactory.getLogger(StreamingKMeansMapper.class);
@@ -59,6 +60,8 @@ public class StreamingKMeansMapper extends Mapper<Writable, VectorWritable,
 
   @Override
   public void cleanup(Context context) throws IOException, InterruptedException {
+    // Reindex the centroids before passing them to the reducer.
+    clusterer.reindexCentroids();
     // All outputs have the same key to go to the same final reducer.
     for (Centroid centroid : clusterer) {
       context.write(new IntWritable(0), new CentroidWritable(centroid));

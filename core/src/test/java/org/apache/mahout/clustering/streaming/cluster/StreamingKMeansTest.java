@@ -18,19 +18,24 @@
 package org.apache.mahout.clustering.streaming.cluster;
 
 
+import java.util.Arrays;
+import java.util.List;
+
+import org.apache.mahout.clustering.ClusteringUtils;
 import org.apache.mahout.common.Pair;
 import org.apache.mahout.common.distance.EuclideanDistanceMeasure;
 import org.apache.mahout.common.distance.SquaredEuclideanDistanceMeasure;
 import org.apache.mahout.math.Centroid;
 import org.apache.mahout.math.Vector;
-import org.apache.mahout.math.neighborhood.*;
+import org.apache.mahout.math.neighborhood.BruteSearch;
+import org.apache.mahout.math.neighborhood.FastProjectionSearch;
+import org.apache.mahout.math.neighborhood.ProjectionSearch;
+import org.apache.mahout.math.neighborhood.Searcher;
+import org.apache.mahout.math.neighborhood.UpdatableSearcher;
 import org.apache.mahout.math.random.WeightedThing;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-
-import java.util.Arrays;
-import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -58,17 +63,13 @@ public class StreamingKMeansTest {
   @Parameters
   public static List<Object[]> generateData() {
     return Arrays.asList(new Object[][] {
-        // {new ProjectionSearch(new SquaredEuclideanDistanceMeasure(), NUM_PROJECTIONS, SEARCH_SIZE), true},
+        {new ProjectionSearch(new SquaredEuclideanDistanceMeasure(), NUM_PROJECTIONS, SEARCH_SIZE), true},
         {new FastProjectionSearch(new SquaredEuclideanDistanceMeasure(), NUM_PROJECTIONS, SEARCH_SIZE),
             true},
-        // {new LocalitySensitiveHashSearch(new SquaredEuclideanDistanceMeasure(), SEARCH_SIZE), true},
-        // {new ProjectionSearch(new SquaredEuclideanDistanceMeasure(), NUM_PROJECTIONS, SEARCH_SIZE),
-        // false},
+        {new ProjectionSearch(new SquaredEuclideanDistanceMeasure(), NUM_PROJECTIONS, SEARCH_SIZE), false},
         {new FastProjectionSearch(new SquaredEuclideanDistanceMeasure(), NUM_PROJECTIONS, SEARCH_SIZE),
             false},
-        // {new LocalitySensitiveHashSearch(new SquaredEuclideanDistanceMeasure(), SEARCH_SIZE), false}
-    }
-    );
+    });
   }
 
   @Test

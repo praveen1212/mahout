@@ -17,15 +17,14 @@
 
 package org.apache.mahout.clustering.streaming.cluster;
 
+import java.util.List;
+
 import com.google.common.collect.Lists;
 import org.apache.mahout.common.Pair;
-import org.apache.mahout.common.RandomUtils;
 import org.apache.mahout.math.Centroid;
 import org.apache.mahout.math.DenseVector;
 import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.random.MultiNormal;
-
-import java.util.List;
 
 /**
  * A collection of miscellaneous utility functions for working with data to be clustered.
@@ -48,7 +47,6 @@ public class DataUtils {
    */
   public static Pair<List<Centroid>, List<Centroid>> sampleMultiNormalHypercube(
       int numDimensions, int numDatapoints, double distributionRadius) {
-    RandomUtils.useTestSeed();
     int pow2N = 1 << numDimensions;
     // Construct data samplers centered on the corners of a unit hypercube.
     // Additionally, keep the means of the distributions that will be generated so we can compare

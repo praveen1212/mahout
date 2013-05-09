@@ -17,6 +17,10 @@
 
 package org.apache.mahout.clustering.streaming.mapreduce;
 
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
+
 import com.google.common.collect.Lists;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.IntWritable;
@@ -24,7 +28,7 @@ import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mrunit.mapreduce.MapDriver;
 import org.apache.hadoop.mrunit.mapreduce.MapReduceDriver;
 import org.apache.hadoop.mrunit.mapreduce.ReduceDriver;
-import org.apache.mahout.clustering.streaming.cluster.ClusteringUtils;
+import org.apache.mahout.clustering.ClusteringUtils;
 import org.apache.mahout.clustering.streaming.cluster.DataUtils;
 import org.apache.mahout.clustering.streaming.cluster.StreamingKMeans;
 import org.apache.mahout.common.Pair;
@@ -35,16 +39,13 @@ import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.VectorWritable;
 import org.apache.mahout.math.neighborhood.BruteSearch;
 import org.apache.mahout.math.neighborhood.FastProjectionSearch;
+import org.apache.mahout.math.neighborhood.ProjectionSearch;
 import org.apache.mahout.math.random.WeightedThing;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
 
 import static org.hamcrest.Matchers.lessThan;
 import static org.junit.Assert.assertEquals;
@@ -57,7 +58,7 @@ public class StreamingKMeansTestMR {
   private static final int NUM_PROJECTIONS = 3;
   private static final int SEARCH_SIZE = 5;
   private static final int MAX_NUM_ITERATIONS = 10;
-  // This is optimally 1e-4. However, it's set to less to make more interesting clusters (especially for MAp
+  // This is optimally 1e-4. However, it's set to less to make more interesting clusters (for ball k-means).
   private static final double DISTANCE_CUTOFF = 1e-7;
 
   private static Pair<List<Centroid>, List<Centroid>> syntheticData =
@@ -82,9 +83,8 @@ public class StreamingKMeansTestMR {
   @Parameterized.Parameters
   public static List<Object[]> generateData() {
     return Arrays.asList(new Object[][]{
-        // {ProjectionSearch.class.getName(), SquaredEuclideanDistanceMeasure.class.getName()},
+        {ProjectionSearch.class.getName(), SquaredEuclideanDistanceMeasure.class.getName()},
         {FastProjectionSearch.class.getName(), SquaredEuclideanDistanceMeasure.class.getName()},
-        // {LocalitySensitiveHashSearch.class.getName(), SquaredEuclideanDistanceMeasure.class.getName()}
     });
   }
 

@@ -62,62 +62,89 @@ import org.apache.mahout.math.random.WeightedThing;
  * http://books.nips.cc/papers/files/nips24/NIPS2011_1271.pdf
  */
 public class StreamingKMeans implements Iterable<Centroid> {
-   // The searcher containing the centroids that resulted from the clustering of points until now. When adding a new
-   // point we either assign it to one of the existing clusters in this searcher or create a new centroid for it.
-  private UpdatableSearcher centroids;
-
-  // The estimated number of clusters to cluster the data in. If the actual number of clusters increases beyond this
-  // limit, the clusters will be "collapsed" (re-clustered, by treating them as data points). This doesn't happen
-  // recursively and a collapse might not necessarily make the number of actual clusters drop to less than this limit.
-  //
-  // If the goal is clustering a large data set into k clusters, numClusters SHOULD NOT BE SET to k. StreamingKMeans is
-  // useful to reduce the size of the data set by the mappers so that it can fit into memory in one reducer that runs
-  // BallKMeans.
-  //
-  // It is NOT MEANT to cluster the data into k clusters in one pass because it can't guarantee that there will in fact
-  // be k clusters in total. This is because of the dynamic nature of numClusters over the course of the runtime.
-  // To get an exact number of clusters, another clustering algorithm needs to be applied to the results.
-  private int numClusters;
-
-  // The number of data points seen so far. This is important for re-estimating numClusters when deciding to collapse
-  // the existing clusters.
-  private int numProcessedDatapoints = 0;
-
-  // This is the current value of the distance cutoff.  Points which are much closer than this to a centroid will stick
-  // to it almost certainly. Points further than this to any centroid will form a new cluster.
-  //
-  // This increases (is multiplied by beta) when a cluster collapse did not make the number of clusters drop to below
-  // numClusters (it effectively increases the tolerance for cluster compactness discouraging the creation of new
-  // clusters). Since a collapse only happens when centroids.size() > clusterOvershoot * numClusters, the cutoff
-  // increases when the collapse didn't at least remove the slack in the number of clusters.
-  private double distanceCutoff = 10e-6;
-
-  // Parameter that controls the growth of the distanceCutoff. After n increases of the
-  // distanceCutoff starting at d_0, the final value is d_0 * beta^n (distance cutoffs increase following a geometric
-  // progression with ratio beta).
-  private double beta = 4;
-
-  // Multiplying clusterLogFactor with numProcessedDatapoints gets an estimate of the suggested
-  // number of clusters. This mirrors the recommended number of clusters for n points where there should be k actual
-  // clusters, k // log n. In the case of our estimate we use clusterLogFactor * log(numProcessedDataPoints).
-  //
-  // It is important to note that numClusters is NOT k. It is an estimate of k * log n.
-  private double clusterLogFactor;
-
-  // Centroids are collapsed when the number of clusters becomes greater than clusterOvershoot * numClusters. This
-  // effectively means having a slack in numClusters so that the actual number of centroids, centroids.size() tracks
-  // numClusters approximately. The idea is that the actual number of clusters should be at least numClusters but not
-  // much more (so that we don't end up having 1 cluster / point).
-  private double clusterOvershoot;
+  /**
+   * The searcher containing the centroids that resulted from the clustering of points until now. When adding a new
+   * point we either assign it to one of the existing clusters in this searcher or create a new centroid for it.
+   */
+  private final UpdatableSearcher centroids;
 
   /**
-   * Calls StreamingKMeans(searcher, numClusters, initialDistanceCutoff, 1.3, 10, 1.5).
+   * The estimated number of clusters to cluster the data in. If the actual number of clusters increases beyond this
+   * limit, the clusters will be "collapsed" (re-clustered, by treating them as data points). This doesn't happen
+   * recursively and a collapse might not necessarily make the number of actual clusters drop to less than this limit.
+   *
+   * If the goal is clustering a large data set into k clusters, numClusters SHOULD NOT BE SET to k. StreamingKMeans is
+   * useful to reduce the size of the data set by the mappers so that it can fit into memory in one reducer that runs
+   * BallKMeans.
+   *
+   * It is NOT MEANT to cluster the data into k clusters in one pass because it can't guarantee that there will in fact
+   * be k clusters in total. This is because of the dynamic nature of numClusters over the course of the runtime.
+   * To get an exact number of clusters, another clustering algorithm needs to be applied to the results.
+   */
+  private int numClusters;
+
+  /**
+   * The number of data points seen so far. This is important for re-estimating numClusters when deciding to collapse
+   * the existing clusters.
+   */
+  private int numProcessedDatapoints = 0;
+
+  /**
+   * This is the current value of the distance cutoff.  Points which are much closer than this to a centroid will stick
+   * to it almost certainly. Points further than this to any centroid will form a new cluster.
+   *
+   * This increases (is multiplied by beta) when a cluster collapse did not make the number of clusters drop to below
+   * numClusters (it effectively increases the tolerance for cluster compactness discouraging the creation of new
+   * clusters). Since a collapse only happens when centroids.size() > clusterOvershoot * numClusters, the cutoff
+   * increases when the collapse didn't at least remove the slack in the number of clusters.
+   */
+  private double distanceCutoff;
+
+  /**
+   * Parameter that controls the growth of the distanceCutoff. After n increases of the
+   * distanceCutoff starting at d_0, the final value is d_0 * beta^n (distance cutoffs increase following a geometric
+   * progression with ratio beta).
+   */
+  private final double beta;
+
+  /**
+   * Multiplying clusterLogFactor with numProcessedDatapoints gets an estimate of the suggested
+   * number of clusters. This mirrors the recommended number of clusters for n points where there should be k actual
+   * clusters, k * log n. In the case of our estimate we use clusterLogFactor * log(numProcessedDataPoints).
+   *
+   * It is important to note that numClusters is NOT k. It is an estimate of k * log n.
+   */
+  private final double clusterLogFactor;
+
+  /**
+   * Centroids are collapsed when the number of clusters becomes greater than clusterOvershoot * numClusters. This
+   * effectively means having a slack in numClusters so that the actual number of centroids, centroids.size() tracks
+   * numClusters approximately. The idea is that the actual number of clusters should be at least numClusters but not
+   * much more (so that we don't end up having 1 cluster / point).
+   */
+  private final double clusterOvershoot;
+
+  /**
+   * Random object to sample values from.
+   */
+  private Random random = RandomUtils.getRandom();
+
+  /**
+   * Calls StreamingKMeans(searcher, numClusters, 1.3, 10, 2).
    * @see StreamingKMeans#StreamingKMeans(org.apache.mahout.math.neighborhood.UpdatableSearcher, int,
    * double, double, double, double)
    */
-  public StreamingKMeans(UpdatableSearcher searcher, int numClusters,
-                         double initialDistanceCutoff) {
-    this(searcher, numClusters, initialDistanceCutoff, 1.3, 10, 2);
+  public StreamingKMeans(UpdatableSearcher searcher, int numClusters) {
+    this(searcher, numClusters, 1.0 / numClusters, 1.3, 20, 2);
+  }
+
+  /**
+   * Calls StreamingKMeans(searcher, numClusters, distanceCutoff, 1.3, 10, 2).
+   * @see StreamingKMeans#StreamingKMeans(org.apache.mahout.math.neighborhood.UpdatableSearcher, int,
+   * double, double, double, double)
+   */
+  public StreamingKMeans(UpdatableSearcher searcher, int numClusters, double distanceCutoff) {
+    this(searcher, numClusters, distanceCutoff, 1.3, 20, 2);
   }
 
   /**
@@ -128,22 +155,21 @@ public class StreamingKMeans implements Iterable<Centroid> {
    *                 centroids.
    * @param numClusters An estimated number of clusters to generate for the data points.
    *                    This can adjusted, but the actual number will depend on the data. The
-   * @param initialDistanceCutoff The initial distance cutoff representing the value of the
-   *                              distance between a point and its closest centroid after which
-   *                              the new point will definitely be assigned to a new cluster.
+   * @param distanceCutoff  The initial distance cutoff representing the value of the
+   *                      distance between a point and its closest centroid after which
+   *                      the new point will definitely be assigned to a new cluster.
    * @param beta Ratio of geometric progression to use when increasing distanceCutoff. After n increases, distanceCutoff
-   *             becomes initialDistanceCutoff * beta^n. A smaller value increases the distanceCutoff less aggressively.
+   *             becomes distanceCutoff * beta^n. A smaller value increases the distanceCutoff less aggressively.
    * @param clusterLogFactor Value multiplied with the number of points counted so far estimating the number of clusters
    *                         to aim for. If the final number of clusters is known and this clustering is only for a
    *                         sketch of the data, this can be the final number of clusters, k.
    * @param clusterOvershoot Multiplicative slack factor for slowing down the collapse of the clusters.
    */
   public StreamingKMeans(UpdatableSearcher searcher, int numClusters,
-                         double initialDistanceCutoff, double beta, double clusterLogFactor,
-                         double clusterOvershoot) {
+                         double distanceCutoff, double beta, double clusterLogFactor, double clusterOvershoot) {
     this.centroids = searcher;
     this.numClusters = numClusters;
-    this.distanceCutoff = initialDistanceCutoff;
+    this.distanceCutoff = distanceCutoff;
     this.beta = beta;
     this.clusterLogFactor = clusterLogFactor;
     this.clusterOvershoot = clusterOvershoot;
@@ -252,7 +278,6 @@ public class StreamingKMeans implements Iterable<Centroid> {
       ++numProcessedDatapoints;
     }
 
-    Random random = RandomUtils.getRandom();
     // To cluster, we scan the data and either add each point to the nearest group or create a new group.
     // when we get too many groups, we need to increase the threshold and rescan our current groups
     for (Centroid row : Iterables.skip(datapoints, numCentroidsToSkip)) {
@@ -269,7 +294,7 @@ public class StreamingKMeans implements Iterable<Centroid> {
       // However, if the ratio is less than 1, we want to create a new cluster with probability
       // proportional to the distance to the closest cluster.
       double sample = random.nextDouble();
-      if (sample < closestPair.getWeight() / distanceCutoff) {
+      if (sample < row.getWeight() * closestPair.getWeight() / distanceCutoff) {
         // Add new centroid, note that the vector is copied because we may mutate it later.
         centroids.add(row.clone());
       } else {
@@ -302,10 +327,6 @@ public class StreamingKMeans implements Iterable<Centroid> {
         // is modified directly.
         clusterInternal(shuffled, true);
 
-        // In the original algorithm, with distributions with sharp scale effects, the
-        // distanceCutoff can grow to an excessive size leading sub-clustering to collapse
-        // the centroids set too much. This test prevents increase in distanceCutoff if
-        // the current value is doing well at collapsing the clusters.
         if (centroids.size() > numClusters) {
           distanceCutoff *= beta;
         }
@@ -315,9 +336,6 @@ public class StreamingKMeans implements Iterable<Centroid> {
     if (collapseClusters) {
       numProcessedDatapoints = oldNumProcessedDataPoints;
     }
-
-    // Normally, iterating through the searcher produces Vectors,
-    // but since we always used Centroids, we adapt the return type.
     return centroids;
   }
 

@@ -27,6 +27,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
+import org.apache.mahout.clustering.ClusteringUtils;
 import org.apache.mahout.common.Pair;
 import org.apache.mahout.common.RandomUtils;
 import org.apache.mahout.common.distance.DistanceMeasure;
@@ -48,56 +49,81 @@ import org.apache.mahout.math.random.WeightedThing;
  * multiple iterations in contrast to the algorithm described in the paper.
  */
 public class BallKMeans implements Iterable<Centroid> {
-  // The searcher containing the centroids.
+  /**
+   * The searcher containing the centroids.
+   */
   private final UpdatableSearcher centroids;
 
-  // The number of clusters to cluster the data into.
+  /**
+   * The number of clusters to cluster the data into.
+   */
   private final int numClusters;
 
-  // The maximum number of iterations of the algorithm to run waiting for the cluster assignments
-  // to stabilize. If there are no changes in cluster assignment earlier, we can finish early.
+  /**
+   * The maximum number of iterations of the algorithm to run waiting for the cluster assignments
+   * to stabilize. If there are no changes in cluster assignment earlier, we can finish early.
+   */
   private final int maxNumIterations;
 
-  // When deciding which points to include in the new centroid calculation,
-  // it's preferable to exclude outliers since it increases the rate of convergence.
-  // So, we calculate the distance from each cluster to its closest neighboring cluster. When
-  // evaluating the points assigned to a cluster, we compare the distance between the centroid to
-  // the point with the distance between the centroid and its closest centroid neighbor
-  // multiplied by this trimFraction. If the distance between the centroid and the point is
-  // greater, we consider it an outlier and we don't use it.
+  /**
+   * When deciding which points to include in the new centroid calculation,
+   * it's preferable to exclude outliers since it increases the rate of convergence.
+   * So, we calculate the distance from each cluster to its closest neighboring cluster. When
+   * evaluating the points assigned to a cluster, we compare the distance between the centroid to
+   * the point with the distance between the centroid and its closest centroid neighbor
+   * multiplied by this trimFraction. If the distance between the centroid and the point is
+   * greater, we consider it an outlier and we don't use it.
+   */
   private final double trimFraction;
 
-  // Selecting the initial centroids is the most important part of the ball k-means clustering. Poor choices, like two
-  // centroids in the same actual cluster result in a low-quality final result.
-  // k-means++ initialization yields good quality clusters, especially when using BallKMeans after StreamingKMeans as
-  // the points have weights.
-  // Simple, random selection of the points based on their weights is faster but sometimes fails to produce the
-  // desired number of clusters.
-  // This field is true if the initialization should be done with k-means++.
+  /**
+   * Selecting the initial centroids is the most important part of the ball k-means clustering. Poor choices, like two
+   * centroids in the same actual cluster result in a low-quality final result.
+   * k-means++ initialization yields good quality clusters, especially when using BallKMeans after StreamingKMeans as
+   * the points have weights.
+   * Simple, random selection of the points based on their weights is faster but sometimes fails to produce the
+   * desired number of clusters.
+   * This field is true if the initialization should be done with k-means++.
+   */
   private final boolean kMeansPlusPlusInit;
 
-  // When using trimFraction, the weight of each centroid will not be the sum of the weights of
-  // the vectors assigned to that cluster because outliers are not used to compute the updated
-  // centroid.
-  // So, the total weight is probably wrong. This can be fixed by doing another pass over the
-  // data points and adjusting the weights of each centroid. This doesn't update the coordinates
-  // of the centroids, but is useful if the weights matter.
+  /**
+   * When using trimFraction, the weight of each centroid will not be the sum of the weights of
+   * the vectors assigned to that cluster because outliers are not used to compute the updated
+   * centroid.
+   * So, the total weight is probably wrong. This can be fixed by doing another pass over the
+   * data points and adjusting the weights of each centroid. This doesn't update the coordinates
+   * of the centroids, but is useful if the weights matter.
+   */
   private final boolean correctWeights;
 
-  // When running multiple ball k-means passes to get the one with the smallest total cost, can compute the
-  // overall cost, using all the points for clustering, or reserve a fraction of them, testProbability in a test set.
-  // The cost is the sum of the distances between each point and its corresponding centroid.
-  // We then use this set of points to compute the total cost on. We're therefore trying to select the clustering
-  // that best describes the underlying distribution of the clusters.
-  // This field is the probability of assigning a given point to the test set. If this is 0, the cost will be computed
-  // on the entire set of points.
+  /**
+   * When running multiple ball k-means passes to get the one with the smallest total cost, can compute the
+   * overall cost, using all the points for clustering, or reserve a fraction of them, testProbability in a test set.
+   * The cost is the sum of the distances between each point and its corresponding centroid.
+   * We then use this set of points to compute the total cost on. We're therefore trying to select the clustering
+   * that best describes the underlying distribution of the clusters.
+   * This field is the probability of assigning a given point to the test set. If this is 0, the cost will be computed
+   * on the entire set of points.
+   */
   private final double testProbability;
 
-  // How many k-means runs to have. If there's more than one run, we compute the cost of each clustering as described
-  // above and select the clustering that minimizes the cost.
+  /**
+   * Whether or not testProbability > 0, i.e., there exists a non-empty 'test' set.
+   */
+  private final boolean splitTrainTest;
+
+  /**
+   * How many k-means runs to have. If there's more than one run, we compute the cost of each clustering as described
+   * above and select the clustering that minimizes the cost.
+   * Multiple runs are a lot more useful when using the random initialization. With kmeans++, 1-2 runs are enough and
+   * more runs are not likely to help quality much.
+   */
   private final int numRuns;
 
-  // Random object to sample values from.
+  /**
+   * Random object to sample values from.
+   */
   private final Random random;
 
   public BallKMeans(UpdatableSearcher searcher, int numClusters, int maxNumIterations) {
@@ -108,7 +134,9 @@ public class BallKMeans implements Iterable<Centroid> {
 
   public BallKMeans(UpdatableSearcher searcher, int numClusters, int maxNumIterations,
                     boolean kMeansPlusPlusInit, int numRuns) {
-    this(searcher, numClusters, maxNumIterations, 0.9, kMeansPlusPlusInit, true, 0.9, numRuns);
+    // By default, the trimFraction is 0.9, k-means++ is used, the weights will be corrected at the end,
+    // there will be 10% points of in the test set.
+    this(searcher, numClusters, maxNumIterations, 0.9, kMeansPlusPlusInit, true, 0.1, numRuns);
   }
 
   public BallKMeans(UpdatableSearcher searcher, int numClusters, int maxNumIterations,
@@ -130,6 +158,7 @@ public class BallKMeans implements Iterable<Centroid> {
     this.correctWeights = correctWeights;
 
     this.testProbability = testProbability;
+    this.splitTrainTest = testProbability > 0;
     this.numRuns = numRuns;
 
     this.random = RandomUtils.getRandom();
@@ -151,12 +180,15 @@ public class BallKMeans implements Iterable<Centroid> {
         trainIntermediateCentroids.add(datapoint);
       }
     }
-    int i;
-    for (i = 0; trainIntermediateCentroids.size() < numClusters; ++i) {
-      trainIntermediateCentroids.add(testIntermediateCentroids.get(i));
+    // If there are too few points in the 'training' set, we remove some from the test set until we have at least
+    // as many as training points as clusters.
+    int smallestRemovedClusterIndex;
+    for (smallestRemovedClusterIndex = numClusters - 1; trainIntermediateCentroids.size() < numClusters;
+         --smallestRemovedClusterIndex) {
+      trainIntermediateCentroids.add(testIntermediateCentroids.get(smallestRemovedClusterIndex));
     }
-    for (--i; i >= 0; --i) {
-      testIntermediateCentroids.remove(testIntermediateCentroids.get(i));
+    for (int i = numClusters - 1; i > smallestRemovedClusterIndex; --i) {
+      testIntermediateCentroids.remove(testIntermediateCentroids.get(smallestRemovedClusterIndex));
     }
     return new Pair<List<? extends WeightedVector>, List<? extends WeightedVector>>(
         trainIntermediateCentroids, testIntermediateCentroids);
@@ -180,29 +212,38 @@ public class BallKMeans implements Iterable<Centroid> {
         initializeSeedsKMeansPlusPlus(trainTestSplit.getFirst());
       } else {
         // Randomly select the initial centroids.
-        initializeSeedsRandomly(datapoints);
+        initializeSeedsRandomly(trainTestSplit.getFirst());
       }
       // Do k-means iterations with trimmed mean computation (aka ball k-means).
       if (numRuns > 1) {
         // If the clustering is successful (there are no zero-weight centroids).
-        if (iterativeAssignment(trainTestSplit.getFirst())) {
-          // Compute the cost of the clustering and possibly save the centroids.
-          cost = ClusteringUtils.totalClusterCost(
-              testProbability == 0 ? datapoints : trainTestSplit.getSecond(), centroids);
-          if (cost < bestCost) {
-            bestCost = cost;
-            bestCentroids.clear();
-            Iterables.addAll(bestCentroids, centroids);
-          }
+        iterativeAssignment(trainTestSplit.getFirst());
+        // Compute the cost of the clustering and possibly save the centroids.
+        cost = ClusteringUtils.totalClusterCost(
+            splitTrainTest ? datapoints : trainTestSplit.getSecond(), centroids);
+        if (cost < bestCost) {
+          bestCost = cost;
+          bestCentroids.clear();
+          Iterables.addAll(bestCentroids, centroids);
         }
       } else {
         // If there is only going to be one run, the cost doesn't need to be computed, so we just return the clustering.
-        return iterativeAssignment(datapoints) ? centroids : null;
+        iterativeAssignment(datapoints);
+        return centroids;
       }
+    }
+    if (bestCost == Double.POSITIVE_INFINITY) {
+      throw new RuntimeException("No valid clustering was found");
     }
     if (cost != bestCost) {
       centroids.clear();
       centroids.addAll(bestCentroids);
+    }
+    if (correctWeights) {
+      for (WeightedVector testDatapoint : trainTestSplit.getSecond()) {
+        WeightedVector closest = (WeightedVector) centroids.searchFirst(testDatapoint, false).getValue();
+        closest.addWeight(testDatapoint.getWeight());
+      }
     }
     return centroids;
   }
@@ -344,9 +385,8 @@ public class BallKMeans implements Iterable<Centroid> {
    * optimal k-means solution (given good starting points).
    *
    * @param datapoints the points to cluster.
-   * @return true if the clustering was successful, false otherwise.
    */
-  private boolean iterativeAssignment(List<? extends WeightedVector> datapoints) {
+  private void iterativeAssignment(List<? extends WeightedVector> datapoints) {
     DistanceMeasure distanceMeasure = centroids.getDistanceMeasure();
     // closestClusterDistances.get(i) is the distance from the i'th cluster to its closest
     // neighboring cluster.
@@ -365,9 +405,6 @@ public class BallKMeans implements Iterable<Centroid> {
       closestClusterDistances.clear();
       for (Vector center : centroids) {
         // If a centroid has no points assigned to it, the clustering failed.
-        if (((Centroid) center).getWeight() == 0) {
-          return false;
-        }
         Vector closestOtherCluster = centroids.searchFirst(center, true).getValue();
         closestClusterDistances.add(distanceMeasure.distance(center, closestOtherCluster));
       }
@@ -386,7 +423,7 @@ public class BallKMeans implements Iterable<Centroid> {
       for (int j = 0; j < datapoints.size(); ++j) {
         WeightedVector datapoint = datapoints.get(j);
         // Get the closest cluster this point belongs to.
-        WeightedThing<Vector> closestPair = centroids.searchFirst(datapoint, true);
+        WeightedThing<Vector> closestPair = centroids.searchFirst(datapoint, false);
         int closestIndex = ((WeightedVector) closestPair.getValue()).getIndex();
         double closestDistance = closestPair.getWeight();
         // Update its cluster assignment if necessary.
@@ -397,7 +434,7 @@ public class BallKMeans implements Iterable<Centroid> {
         // Only update if the datapoints point is near enough. What this means is that the weight
         // of outliers is NOT taken into account and the final weights of the centroids will
         // reflect this (it will be less or equal to the initial sum of the weights).
-        if (closestDistance < closestClusterDistances.get(closestIndex) *  trimFraction) {
+        if (closestDistance < trimFraction * closestClusterDistances.get(closestIndex)) {
           newCentroids.get(closestIndex).update(datapoint);
         }
       }
@@ -415,7 +452,6 @@ public class BallKMeans implements Iterable<Centroid> {
         closestCentroid.setWeight(closestCentroid.getWeight() + datapoint.getWeight());
       }
     }
-    return true;
   }
 
   @Override

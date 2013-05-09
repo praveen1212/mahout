@@ -1,19 +1,23 @@
-package org.apache.mahout.clustering.streaming.cluster;
+package org.apache.mahout.clustering;
+
+import java.util.List;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import org.apache.mahout.common.distance.DistanceMeasure;
 import org.apache.mahout.common.distance.EuclideanDistanceMeasure;
-import org.apache.mahout.math.*;
+import org.apache.mahout.math.Centroid;
+import org.apache.mahout.math.DenseMatrix;
+import org.apache.mahout.math.Matrix;
+import org.apache.mahout.math.Vector;
+import org.apache.mahout.math.WeightedVector;
 import org.apache.mahout.math.neighborhood.BruteSearch;
 import org.apache.mahout.math.neighborhood.ProjectionSearch;
 import org.apache.mahout.math.neighborhood.Searcher;
 import org.apache.mahout.math.neighborhood.UpdatableSearcher;
 import org.apache.mahout.math.random.WeightedThing;
 import org.apache.mahout.math.stats.OnlineSummarizer;
-
-import java.util.List;
 
 public class ClusteringUtils {
   /**
@@ -24,7 +28,7 @@ public class ClusteringUtils {
    * index is i.
    */
   public static List<OnlineSummarizer> summarizeClusterDistances(Iterable<? extends Vector> datapoints,
-                                                                 Iterable<Centroid> centroids,
+                                                                 Iterable<? extends Vector> centroids,
                                                                  DistanceMeasure distanceMeasure) {
     UpdatableSearcher searcher = new ProjectionSearch(distanceMeasure, 3, 1);
     searcher.addAll(centroids);
@@ -49,13 +53,23 @@ public class ClusteringUtils {
    * @param centroids iterable of Centroids.
    * @return the total cost described above.
    */
-  public static double totalClusterCost(Iterable<? extends Vector> datapoints, Iterable<Centroid> centroids) {
+  public static double totalClusterCost(Iterable<? extends Vector> datapoints, Iterable<? extends Vector> centroids) {
     DistanceMeasure distanceMeasure = new EuclideanDistanceMeasure();
     UpdatableSearcher searcher = new ProjectionSearch(distanceMeasure, 3, 1);
     searcher.addAll(centroids);
+    return totalClusterCost(datapoints, searcher);
+  }
+
+  /**
+   * Adds up the distances from each point to its closest cluster and returns the sum.
+   * @param datapoints iterable of datapoints.
+   * @param centroids searcher of Centroids.
+   * @return the total cost described above.
+   */
+  public static double totalClusterCost(Iterable<? extends Vector> datapoints, Searcher centroids) {
     double totalCost = 0;
-    for (Vector v : datapoints) {
-      Centroid closest = (Centroid)searcher.search(v, 1).get(0).getValue();
+    for (Vector vector : datapoints) {
+      Centroid closest = (Centroid) centroids.searchFirst(vector, false).getValue();
       totalCost += closest.getWeight();
     }
     return totalCost;
@@ -79,23 +93,27 @@ public class ClusteringUtils {
                                               DistanceMeasure distanceMeasure, int sampleLimit) {
     Iterable<? extends Vector> limitedData = Iterables.limit(data, sampleLimit);
     ProjectionSearch searcher = new ProjectionSearch(distanceMeasure, 3, 1);
-    searcher.addAll(limitedData);
+    searcher.add(limitedData.iterator().next());
     double minDistance = Double.POSITIVE_INFINITY;
-    for (Vector u : limitedData) {
-      double closest = searcher.search(u, 2).get(1).getWeight();
+    for (Vector vector : Iterables.skip(limitedData, 1)) {
+      double closest = searcher.searchFirst(vector, false).getWeight();
       if (closest < minDistance) {
         minDistance = closest;
       }
+      searcher.add(vector);
     }
     return minDistance;
   }
 
-  public static double estimateDistanceCutoff(Iterable<? extends Vector> data,
-                                              DistanceMeasure distanceMeasure) {
-    return estimateDistanceCutoff(data, distanceMeasure, Integer.MAX_VALUE);
-  }
-
-  public static double daviesBouldinIndex(List<Centroid> centroids, DistanceMeasure distanceMeasure,
+  /**
+   * Computes the Davies-Bouldin Index for a given clustering.
+   * See http://en.wikipedia.org/wiki/Clustering_algorithm#Internal_evaluation
+   * @param centroids list of centroids
+   * @param distanceMeasure distance measure for inter-cluster distances
+   * @param clusterDistanceSummaries summaries of the clusters; See summarizeClusterDistances
+   * @return the Davies-Bouldin Index
+   */
+  public static double daviesBouldinIndex(List<? extends Vector> centroids, DistanceMeasure distanceMeasure,
                                           List<OnlineSummarizer> clusterDistanceSummaries) {
     Preconditions.checkArgument(centroids.size() == clusterDistanceSummaries.size(),
         "Number of centroids and cluster summaries differ.");
@@ -126,7 +144,14 @@ public class ClusteringUtils {
     return totalDBIndex / n;
   }
 
-  public static double dunnIndex(List<Centroid> centroids, DistanceMeasure distanceMeasure,
+  /**
+   * Computes the Dunn Index of a given clustering. See http://en.wikipedia.org/wiki/Dunn_index
+   * @param centroids list of centroids
+   * @param distanceMeasure distance measure to compute inter-centroid distance with
+   * @param clusterDistanceSummaries summaries of the clusters; See summarizeClusterDistances
+   * @return the Dunn Index
+   */
+  public static double dunnIndex(List<? extends Vector> centroids, DistanceMeasure distanceMeasure,
                                  List<OnlineSummarizer> clusterDistanceSummaries) {
     Preconditions.checkArgument(centroids.size() == clusterDistanceSummaries.size(),
         "Number of centroids and cluster summaries differ.");
@@ -168,7 +193,18 @@ public class ClusteringUtils {
     return n * (n - 1) / 2;
   }
 
-  public static Matrix getConfusionMatrix(List<Centroid> rowCentroids, List<Centroid> columnCentroids,
+  /**
+   * Creates a confusion matrix by searching for the closest cluster of both the row clustering and column clustering
+   * of a point and adding its weight to that cell of the matrix.
+   * It doesn't matter which clustering is the row clustering and which is the column clustering. If they're
+   * interchanged, the resulting matrix is the transpose of the original one.
+   * @param rowCentroids clustering one
+   * @param columnCentroids clustering two
+   * @param datapoints datapoints whose closest cluster we need to find
+   * @param distanceMeasure distance measure to use
+   * @return the confusion matrix
+   */
+  public static Matrix getConfusionMatrix(List<? extends Vector> rowCentroids, List<? extends  Vector> columnCentroids,
                                           Iterable<? extends Vector> datapoints, DistanceMeasure distanceMeasure) {
     Searcher rowSearcher = new BruteSearch(distanceMeasure);
     rowSearcher.addAll(rowCentroids);
@@ -184,12 +220,23 @@ public class ClusteringUtils {
       WeightedThing<Vector> closestColumnCentroid = columnSearcher.search(vector, 1).get(0);
       int row = ((Centroid) closestRowCentroid.getValue()).getIndex();
       int column = ((Centroid) closestColumnCentroid.getValue()).getIndex();
-      confusionMatrix.set(row, column, confusionMatrix.get(row, column) + 1);
+      double vectorWeight;
+      if (vector instanceof WeightedVector) {
+        vectorWeight = ((WeightedVector) vector).getWeight();
+      } else {
+        vectorWeight = 1;
+      }
+      confusionMatrix.set(row, column, confusionMatrix.get(row, column) + vectorWeight);
     }
 
     return confusionMatrix;
   }
 
+  /**
+   * Computes the Adjusted Rand Index for a given confusion matrix.
+   * @param confusionMatrix confusion matrix; not to be confused with the more restrictive ConfusionMatrix class
+   * @return the Adjusted Rand Index
+   */
   public static double getAdjustedRandIndex(Matrix confusionMatrix) {
     int numRows = confusionMatrix.numRows();
     int numCols = confusionMatrix.numCols();
@@ -218,6 +265,11 @@ public class ClusteringUtils {
         / ((rowChoiceSum + columnChoiceSum) / 2 - rowColumnChoiceSumDivTotal);
   }
 
+  /**
+   * Computes the total weight of the points in the given Vector iterable.
+   * @param data iterable of points
+   * @return total weight
+   */
   public static double totalWeight(Iterable<? extends Vector> data) {
     double sum = 0;
     for (Vector row : data) {

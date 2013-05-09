@@ -17,10 +17,21 @@
 
 package org.apache.mahout.clustering.streaming.cluster;
 
+import java.util.List;
+
 import com.google.common.collect.Lists;
+import org.apache.mahout.clustering.ClusteringUtils;
 import org.apache.mahout.common.Pair;
 import org.apache.mahout.common.distance.EuclideanDistanceMeasure;
-import org.apache.mahout.math.*;
+import org.apache.mahout.common.distance.SquaredEuclideanDistanceMeasure;
+import org.apache.mahout.math.Centroid;
+import org.apache.mahout.math.ConstantVector;
+import org.apache.mahout.math.DenseMatrix;
+import org.apache.mahout.math.DenseVector;
+import org.apache.mahout.math.Matrix;
+import org.apache.mahout.math.SingularValueDecomposition;
+import org.apache.mahout.math.Vector;
+import org.apache.mahout.math.WeightedVector;
 import org.apache.mahout.math.function.Functions;
 import org.apache.mahout.math.function.VectorFunction;
 import org.apache.mahout.math.neighborhood.BruteSearch;
@@ -31,11 +42,11 @@ import org.apache.mahout.math.random.WeightedThing;
 import org.apache.mahout.math.stats.OnlineSummarizer;
 import org.junit.Test;
 
-import java.util.List;
-
+import static org.apache.mahout.clustering.ClusteringUtils.totalWeight;
 import static org.hamcrest.number.OrderingComparison.lessThan;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 
 public class BallKMeansTest {
 
@@ -49,30 +60,33 @@ public class BallKMeansTest {
   private static final int K1 = 100;
 
   @Test
-  public void testBasicClustering() {
-    List<? extends WeightedVector> data = cubishTestData(1);
+  public void testClusteringMultipleRuns() {
+    for (int i = 1; i <= 10; ++i) {
+      BallKMeans clusterer = new BallKMeans(new BruteSearch(new SquaredEuclideanDistanceMeasure()),
+          1 << NUM_DIMENSIONS, NUM_ITERATIONS, true, i);
+      clusterer.cluster(syntheticData.getFirst());
+      double costKMeansPlusPlus = ClusteringUtils.totalClusterCost(syntheticData.getFirst(), clusterer);
 
-    BallKMeans r = new BallKMeans(new BruteSearch(new EuclideanDistanceMeasure()), 6, 20);
-    r.cluster(data);
-    for (Centroid centroid : r) {
-      for (int i = 0; i < 10; i++) {
-        System.out.printf("%10.4f", centroid.get(i));
-      }
-      System.out.printf("\n");
+      clusterer = new BallKMeans(new BruteSearch(new SquaredEuclideanDistanceMeasure()),
+          1 << NUM_DIMENSIONS, NUM_ITERATIONS, false, i);
+      clusterer.cluster(syntheticData.getFirst());
+      double costKMeansRandom = ClusteringUtils.totalClusterCost(syntheticData.getFirst(), clusterer);
+
+      System.out.printf("%d runs; kmeans++: %f; random: %f\n", i, costKMeansPlusPlus, costKMeansRandom);
+      assertTrue("kmeans++ cost should be less than random cost", costKMeansPlusPlus < costKMeansRandom);
     }
   }
 
   @Test
   public void testClustering() {
-    UpdatableSearcher searcher = new BruteSearch(new EuclideanDistanceMeasure());
+    UpdatableSearcher searcher = new BruteSearch(new SquaredEuclideanDistanceMeasure());
     BallKMeans clusterer = new BallKMeans(searcher, 1 << NUM_DIMENSIONS, NUM_ITERATIONS);
 
     long startTime = System.currentTimeMillis();
     clusterer.cluster(syntheticData.getFirst());
     long endTime = System.currentTimeMillis();
 
-    assertEquals("Total weight not preserved", totalWeight(syntheticData.getFirst()),
-        totalWeight(clusterer), 1e-9);
+    assertEquals("Total weight not preserved", totalWeight(syntheticData.getFirst()), totalWeight(clusterer), 1e-9);
 
     // Verify that each corner of the cube has a centroid very nearby.
     // This is probably FALSE for large-dimensional spaces!
@@ -89,7 +103,7 @@ public class BallKMeansTest {
         searcher.getClass().getName(), clusterTime,
         clusterTime / syntheticData.getFirst().size() * 1e6);
 
-    // verify that the total weight of the centroids near each corner is correct
+    // Verify that the total weight of the centroids near each corner is correct.
     double[] cornerWeights = new double[1 << NUM_DIMENSIONS];
     Searcher trueFinder = new BruteSearch(new EuclideanDistanceMeasure());
     for (Vector trueCluster : syntheticData.getSecond()) {
@@ -108,16 +122,17 @@ public class BallKMeansTest {
       assertEquals(expectedNumPoints, v, 0);
     }
   }
+
   @Test
   public void testInitialization() {
-    // start with super clusterable data
+    // Start with super clusterable data.
     List<? extends WeightedVector> data = cubishTestData(0.01);
 
-    // just do initialization of ball k-means.  This should drop a point into each of the clusters
-    BallKMeans r = new BallKMeans(new BruteSearch(new EuclideanDistanceMeasure()), 6, 20);
+    // Just do initialization of ball k-means. This should drop a point into each of the clusters.
+    BallKMeans r = new BallKMeans(new BruteSearch(new SquaredEuclideanDistanceMeasure()), 6, 20);
     r.cluster(data);
 
-    // put the centroids into a matrix
+    // Put the centroids into a matrix.
     Matrix x = new DenseMatrix(6, 5);
     int row = 0;
     for (Centroid c : r) {
@@ -125,18 +140,18 @@ public class BallKMeansTest {
       row++;
     }
 
-    // verify that each column looks right.  Should contain zeros except for a single 6.
+    // Verify that each column looks right. Should contain zeros except for a single 6.
     final Vector columnNorms = x.aggregateColumns(new VectorFunction() {
       @Override
       public double apply(Vector f) {
-        // return the sum of three discrepancy measures
+        // Return the sum of three discrepancy measures.
         return Math.abs(f.minValue()) + Math.abs(f.maxValue() - 6) + Math.abs(f.norm(1) - 6);
       }
     });
-    // verify all errors are nearly zero
+    // Verify all errors are nearly zero.
     assertEquals(0, columnNorms.norm(1) / columnNorms.size(), 0.1);
 
-    // verify that the centroids are a permutation of the original ones
+    // Verify that the centroids are a permutation of the original ones.
     SingularValueDecomposition svd = new SingularValueDecomposition(x);
     Vector s = svd.getS().viewDiagonal().assign(Functions.div(6));
     assertEquals(5, s.getLengthSquared(), 0.05);
@@ -161,17 +176,5 @@ public class BallKMeansTest {
       }
     }
     return data;
-  }
-
-  private double totalWeight(Iterable<? extends Vector> data) {
-    double sum = 0;
-    for (Vector row : data) {
-      if (row instanceof WeightedVector) {
-        sum += ((WeightedVector)row).getWeight();
-      } else {
-        sum++;
-      }
-    }
-    return sum;
   }
 }

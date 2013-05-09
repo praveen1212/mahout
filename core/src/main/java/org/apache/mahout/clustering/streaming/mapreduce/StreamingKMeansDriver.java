@@ -17,6 +17,13 @@
 
 package org.apache.mahout.clustering.streaming.mapreduce;
 
+import java.io.IOException;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import org.apache.hadoop.conf.Configuration;
@@ -32,7 +39,6 @@ import org.apache.hadoop.util.ToolRunner;
 import org.apache.mahout.clustering.streaming.cluster.StreamingKMeansThread;
 import org.apache.mahout.common.AbstractJob;
 import org.apache.mahout.common.HadoopUtil;
-import org.apache.mahout.common.Pair;
 import org.apache.mahout.common.commandline.DefaultOptionCreator;
 import org.apache.mahout.math.Centroid;
 import org.apache.mahout.math.Vector;
@@ -41,13 +47,6 @@ import org.apache.mahout.math.neighborhood.LocalitySensitiveHashSearch;
 import org.apache.mahout.math.neighborhood.ProjectionSearch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.List;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 
 /**
  * Classifies the vectors into different clusters found by the clustering
@@ -68,7 +67,9 @@ public final class StreamingKMeansDriver extends AbstractJob {
    */
   public static final String ESTIMATED_DISTANCE_CUTOFF = "estimatedDistanceCutoff";
 
-  // Ball KMeans options
+  /**
+   * Ball KMeans options
+   */
   /**
    * After mapping finishes, we get an intermediate set of vectors that represent approximate
    * clusterings of the data from each Mapper. These can be clustered by the Reducer using
@@ -78,18 +79,41 @@ public final class StreamingKMeansDriver extends AbstractJob {
    */
   public static final String MAX_NUM_ITERATIONS = "maxNumIterations";
   /**
-   * The percentage of points that go into the "training" set when evaluating BallKMeans runs in the reducer.
+   * The "ball" aspect of ball k-means means that only the closest points to the centroid will actually be used
+   * for updating. The fraction of the points to be used is those points whose distance to the center is within
+   * trimFraction * distance to the closest other center.
+   * Defaults to 0.9.
    */
-  public static final String TRAIN_TEST_SPLIT = "trainTestSplit";
+  public static final String TRIM_FRACTION = "trimFraction";
+  /**
+   * Whether to use k-means++ initialization or random initialization of the seed centroids.
+   * Essentially, k-means++ provides better clusters, but takes longer, whereas random initialization takes less
+   * time, but produces worse clusters, and tends to fail more often and needs multiple runs to compare to
+   * k-means++. If set, uses randomInit.
+   * @see org.apache.mahout.clustering.streaming.cluster.BallKMeans
+   */
+  public static final String RANDOM_INIT = "randomInit";
+  /**
+   * Whether to correct the weights of the centroids after the clustering is done. The weights end up being wrong
+   * because of the trimFraction and possible train/test splits. In some cases, especially in a pipeline, having
+   * an accurate count of the weights is useful. If set, ignores the final weights.
+   */
+  public static final String IGNORE_WEIGHTS = "ignoreWeights";
+  /**
+   * The percentage of points that go into the "test" set when evaluating BallKMeans runs in the reducer.
+   */
+  public static final String TEST_PROBABILITY = "testProbability";
   /**
    * The percentage of points that go into the "training" set when evaluating BallKMeans runs in the reducer.
    */
   public static final String NUM_BALLKMEANS_RUNS = "numBallKMeansRuns";
 
-  // Searcher options
+  /**
+   Searcher options
+   */
   /**
    * The Searcher class when performing nearest neighbor search in StreamingKMeans.
-   * Defaults to BruteSearch.
+   * Defaults to ProjectionSearch.
    */
   public static final String SEARCHER_CLASS_OPTION = "searcherClass";
   /**
@@ -100,7 +124,7 @@ public final class StreamingKMeansDriver extends AbstractJob {
    * actually be.
    * So, there must be more than one projection vectors in the basis. This variable is the number
    * of vectors in a basis.
-   * Defaults to 20.
+   * Defaults to 3
    */
   public static final String NUM_PROJECTIONS_OPTION = "numProjections";
   /**
@@ -110,7 +134,7 @@ public final class StreamingKMeansDriver extends AbstractJob {
    * will be considered.
    * See the ProjectionSearch, FastProjectionSearch, LocalitySensitiveHashSearch classes for more
    * details.
-   * Defaults to 10.
+   * Defaults to 2.
    */
   public static final String SEARCH_SIZE_OPTION = "searchSize";
 
@@ -132,7 +156,7 @@ public final class StreamingKMeansDriver extends AbstractJob {
     addOption(DefaultOptionCreator.numClustersOption().withDescription(
         "The k in k-Means. Approximately this many clusters will be generated.").create());
 
-    /* StreamingKMeans (mapper) options */
+    // StreamingKMeans (mapper) options
     // There will be k final clusters, but in the Map phase to get a good approximation of the data, O(k log n)
     // clusters are needed. Since n is the number of data points and not knowable until reading all the vectors,
     // provide a decent estimate.
@@ -144,18 +168,33 @@ public final class StreamingKMeansDriver extends AbstractJob {
     addOption(ESTIMATED_DISTANCE_CUTOFF, "e", "The initial estimated distance cutoff between two " +
         "points for forming new clusters", String.valueOf(1e-6));
 
-    /* BallKMeans (reducer) options */
+    // BallKMeans (reducer) options
     addOption(MAX_NUM_ITERATIONS, "mi", "The maximum number of iterations to run for the " +
         "BallKMeans algorithm used by the reducer. If no value is given, defaults to 10.", String.valueOf(10));
 
-    addOption(TRAIN_TEST_SPLIT, "trte", "A double value between 0 and 1 that represents the percentage of " +
-        "points to be used for 'training' and for 'testing' different clustering runs in the final BallKMeans " +
-        "step. If no value is given, defaults to 0.9", String.valueOf(0.9));
+    addOption(TRIM_FRACTION, "tf", "The 'ball' aspect of ball k-means means that only the closest points " +
+        "to the centroid will actually be used for updating. The fraction of the points to be used is those " +
+        "points whose distance to the center is within trimFraction * distance to the closest other center. " +
+        "If no value is given, defaults to 0.9.", String.valueOf(0.9));
+
+    addFlag(RANDOM_INIT, "ri", "Whether to use k-means++ initialization or random initialization " +
+        "of the seed centroids. Essentially, k-means++ provides better clusters, but takes longer, whereas random " +
+        "initialization takes less time, but produces worse clusters, and tends to fail more often and needs " +
+        "multiple runs to compare to k-means++. If set, uses the random initialization.");
+
+    addFlag(IGNORE_WEIGHTS, "iw", "Whether to correct the weights of the centroids after the clustering is done. " +
+        "The weights end up being wrong because of the trimFraction and possible train/test splits. In some cases, " +
+        "especially in a pipeline, having an accurate count of the weights is useful. If set, ignores the final " +
+        "weights");
+
+    addOption(TEST_PROBABILITY, "testp", "A double value between 0 and 1 that represents the percentage of " +
+        "points to be used for 'testing' different clustering runs in the final BallKMeans " +
+        "step. If no value is given, defaults to 0.1", String.valueOf(0.1));
 
     addOption(NUM_BALLKMEANS_RUNS, "nbkm", "Number of BallKMeans runs to use at the end to try to cluster the " +
-        "points. If no value is given, defaults to 10", String.valueOf(10));
+        "points. If no value is given, defaults to 4", String.valueOf(4));
 
-    /* Nearest neighbor search options */
+    // Nearest neighbor search options
     // The distance measure used for computing the distance between two points. Generally, the
     // SquaredEuclideanDistance is used for clustering problems (it's equivalent to CosineDistance for normalized
     // vectors).
@@ -175,9 +214,9 @@ public final class StreamingKMeansDriver extends AbstractJob {
     addOption(SEARCH_SIZE_OPTION, "s", "In more efficient searches (non BruteSearch), " +
         "not all distances are calculated for determining the nearest neighbors. The number of " +
         "elements whose distances from the query vector is actually computer is proportional to " +
-        "searchSize. If no value is given, defaults to 1.", String.valueOf(1));
+        "searchSize. If no value is given, defaults to 1.", String.valueOf(2));
 
-    addOption(RUN_LOCALLY, "rl", "Run the clustering locally rather than as a MapReduce", String.valueOf(false));
+    addFlag(RUN_LOCALLY, "rl", "Run the clustering locally rather than as a MapReduce");
 
     if (parseArguments(args) == null) {
       return -1;
@@ -205,7 +244,10 @@ public final class StreamingKMeansDriver extends AbstractJob {
 
     // BallKMeans
     int maxNumIterations = Integer.parseInt(getOption(MAX_NUM_ITERATIONS));
-    float trainTestSplit = Float.parseFloat(getOption(TRAIN_TEST_SPLIT));
+    float trimFraction = Float.parseFloat(getOption(TRIM_FRACTION));
+    boolean randomInit = hasOption(RANDOM_INIT);
+    boolean ignoreWeights = hasOption(IGNORE_WEIGHTS);
+    float testProbability = Float.parseFloat(getOption(TEST_PROBABILITY));
     int numBallKMeansRuns = Integer.parseInt(getOption(NUM_BALLKMEANS_RUNS));
 
     // Nearest neighbor search
@@ -243,7 +285,7 @@ public final class StreamingKMeansDriver extends AbstractJob {
         /* StreamingKMeans */
         estimatedNumMapClusters,  estimatedDistanceCutoff,
         /* BallKMeans */
-        maxNumIterations, trainTestSplit, numBallKMeansRuns,
+        maxNumIterations, trimFraction, randomInit, ignoreWeights, testProbability, numBallKMeansRuns,
         /* Searcher */
         measureClass, searcherClass,  searchSize, numProjections,
         runLocally);
@@ -258,7 +300,10 @@ public final class StreamingKMeansDriver extends AbstractJob {
    * @param estimatedDistanceCutoff an estimate of the minimum distance that separates two clusters (can be smaller and
    *                                will be increased dynamically)
    * @param maxNumIterations the maximum number of iterations of BallKMeans
-   * @param trainTestSplit the percentage of vectors assigned to the training set for selecting the best final centers
+   * @param trimFraction the fraction of the points to be considered in updating a ball k-means
+   * @param randomInit whether to initialize the ball k-means seeds randomly
+   * @param ignoreWeights whether to ignore the invalid final ball k-means weights
+   * @param testProbability the percentage of vectors assigned to the test set for selecting the best final centers
    * @param numBallKMeansRuns the number of BallKMeans runs in the reducer that determine the centroids to return
    *                          (clusters are computed for the training set and the error is computed on the test set)
    * @param measureClass string, name of the distance measure class; theory works for Euclidean-like distances
@@ -273,7 +318,8 @@ public final class StreamingKMeansDriver extends AbstractJob {
                                                 /* StreamingKMeans */
                                                 int estimatedNumMapClusters, float estimatedDistanceCutoff,
                                                 /* BallKMeans */
-                                                int maxNumIterations, float trainTestSplit, int numBallKMeansRuns,
+                                                int maxNumIterations, float trimFraction, boolean randomInit,
+                                                boolean ignoreWeights, float testProbability, int numBallKMeansRuns,
                                                 /* Searcher */
                                                 String measureClass, String searcherClass,
                                                 int searchSize, int numProjections,
@@ -288,8 +334,9 @@ public final class StreamingKMeansDriver extends AbstractJob {
 
     // BallKMeans
     Preconditions.checkArgument(maxNumIterations > 0, "Must have at least one BallKMeans iteration");
-    Preconditions.checkArgument(0 < trainTestSplit && trainTestSplit <= 1, "train/test split is not in the interval " +
-        "[0, 1)");
+    Preconditions.checkArgument(trimFraction > 0, "trimFraction must be positive");
+    Preconditions.checkArgument(0 <= testProbability && testProbability < 1, "test probability is not in the " +
+        "interval [0, 1)");
     Preconditions.checkArgument(numBallKMeansRuns > 0, "numBallKMeans cannot be negative");
 
     // Searcher
@@ -308,7 +355,10 @@ public final class StreamingKMeansDriver extends AbstractJob {
     conf.setFloat(ESTIMATED_DISTANCE_CUTOFF, estimatedDistanceCutoff);
     /* BallKMeans */
     conf.setInt(MAX_NUM_ITERATIONS, maxNumIterations);
-    conf.setFloat(TRAIN_TEST_SPLIT, trainTestSplit);
+    conf.setFloat(TRIM_FRACTION, trimFraction);
+    conf.setBoolean(RANDOM_INIT, randomInit);
+    conf.setBoolean(IGNORE_WEIGHTS, ignoreWeights);
+    conf.setFloat(TEST_PROBABILITY, testProbability);
     conf.setInt(NUM_BALLKMEANS_RUNS, numBallKMeansRuns);
     /* Searcher */
     // Checks if the measureClass is available, throws exception otherwise.
@@ -322,10 +372,11 @@ public final class StreamingKMeansDriver extends AbstractJob {
     conf.setBoolean(RUN_LOCALLY, runLocally);
     log.info("Parameters are: [k] numClusters {}; " +
         "[SKM] estimatedNumMapClusters {}; estimatedDistanceCutoff {} " +
-        "[BKM] maxNumIterations {}; trainTestSplit {}; numBallKMeansRuns {}; " +
+        "[BKM] maxNumIterations {}; trimFraction {}; randomInit {}; ignoreWeights {}; " +
+        "testProbability {}; numBallKMeansRuns {}; " +
         "[S] measureClass {}; searcherClass {}; searcherSize {}; numProjections {}; " +
         "runLocally {}", numClusters, estimatedNumMapClusters, estimatedDistanceCutoff,
-        maxNumIterations, trainTestSplit, numBallKMeansRuns,
+        maxNumIterations, trimFraction, randomInit, ignoreWeights, testProbability, numBallKMeansRuns,
         measureClass, searcherClass, searchSize, numProjections, runLocally);
   }
 
@@ -352,7 +403,7 @@ public final class StreamingKMeansDriver extends AbstractJob {
 
   private static int runLocally(Configuration conf, Path input, Path output)
       throws IOException, ExecutionException, InterruptedException {
-    System.out.printf("Starting local run\n");
+    log.info("Starting local run; input {}; output {}", input, output);
     long start = System.currentTimeMillis();
     // Run StreamingKMeans step in parallel by spawning 1 thread per input path to process.
     ExecutorService pool = Executors.newCachedThreadPool();
@@ -360,7 +411,7 @@ public final class StreamingKMeansDriver extends AbstractJob {
     for (FileStatus status : HadoopUtil.listStatus(FileSystem.get(conf), input)) {
       intermediateCentroidFutures.add(pool.submit(new StreamingKMeansThread(status.getPath(), conf)));
     }
-    System.out.printf("Finished running Mappers\n");
+    log.info("Finished running Mappers");
     // Merge the resulting "mapper" centroids.
     List<Centroid> intermediateCentroids = Lists.newArrayList();
     for (Future<Iterable<Centroid>> futureIterable : intermediateCentroidFutures) {
@@ -368,14 +419,11 @@ public final class StreamingKMeansDriver extends AbstractJob {
         intermediateCentroids.add(centroid);
       }
     }
-    System.out.printf("Finished StreamingKMeans\n");
+    log.info("Finished StreamingKMeans");
     // Split the centroids in training and test sets
-    Pair<List<Centroid>, List<Centroid>> splitCentroids =
-        StreamingKMeansReducer.splitTrainTest(intermediateCentroids, conf);
     SequenceFile.Writer writer = SequenceFile.createWriter(FileSystem.get(conf), conf, output, IntWritable.class,
         CentroidWritable.class);
-    for (Vector finalVector : StreamingKMeansReducer.getBestCentroids(splitCentroids.getFirst(),
-        splitCentroids.getSecond(), conf)) {
+    for (Vector finalVector : StreamingKMeansReducer.getBestCentroids(intermediateCentroids, conf)) {
       Centroid finalCentroid = (Centroid)finalVector;
       writer.append(new IntWritable(finalCentroid.getIndex()), new CentroidWritable(finalCentroid));
     }
