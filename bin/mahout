@@ -99,9 +99,9 @@ JAVA_HEAP_MAX=-Xmx3g
 
 # check envvars which might override default args
 if [ "$MAHOUT_HEAPSIZE" != "" ]; then
-  #echo "run with heapsize $MAHOUT_HEAPSIZE"
+  echo "run with heapsize $MAHOUT_HEAPSIZE"
   JAVA_HEAP_MAX="-Xmx""$MAHOUT_HEAPSIZE""m"
-  #echo $JAVA_HEAP_MAX
+  echo $JAVA_HEAP_MAX
 fi
 
 if [ "x$MAHOUT_CONF_DIR" = "x" ]; then

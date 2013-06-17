@@ -66,7 +66,8 @@ public final class ToUserVectorsReducer extends
                         Context context) throws IOException, InterruptedException {
     Vector userVector = new RandomAccessSparseVector(Integer.MAX_VALUE, 100);
     for (VarLongWritable itemPref : itemPrefs) {
-      int index = TasteHadoopUtils.idToIndex(itemPref.get());
+      // If index is Integer.MAX_VALUE, it with fail without the modulo.
+      int index = TasteHadoopUtils.idToIndex(itemPref.get()) % userVector.size();
       float value = itemPref instanceof EntityPrefWritable ? ((EntityPrefWritable) itemPref).getPrefValue() : 1.0f;
       userVector.set(index, value);
     }

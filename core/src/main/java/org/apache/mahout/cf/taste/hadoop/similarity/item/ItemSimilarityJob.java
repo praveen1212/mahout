@@ -45,6 +45,8 @@ import org.apache.mahout.math.VectorWritable;
 import org.apache.mahout.math.hadoop.similarity.cooccurrence.RowSimilarityJob;
 import org.apache.mahout.math.hadoop.similarity.cooccurrence.measures.VectorSimilarityMeasures;
 import org.apache.mahout.math.map.OpenIntLongHashMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * <p>Distributed precomputation of the item-item-similarities for Itembased Collaborative Filtering</p>
@@ -88,6 +90,8 @@ public final class ItemSimilarityJob extends AbstractJob {
   private static final int DEFAULT_MAX_SIMILAR_ITEMS_PER_ITEM = 100;
   private static final int DEFAULT_MAX_PREFS_PER_USER = 1000;
   private static final int DEFAULT_MIN_PREFS_PER_USER = 1;
+
+  private static final Logger log = LoggerFactory.getLogger(ItemSimilarityJob.class);
 
   public static void main(String[] args) throws Exception {
     ToolRunner.run(new ItemSimilarityJob(), args);
@@ -165,7 +169,11 @@ public final class ItemSimilarityJob extends AbstractJob {
       mostSimilarItemsConf.set(ITEM_ID_INDEX_PATH_STR,
           new Path(prepPath, PreparePreferenceMatrixJob.ITEMID_INDEX).toString());
       mostSimilarItemsConf.setInt(MAX_SIMILARITIES_PER_ITEM, maxSimilarItemsPerItem);
+
+      long start = System.currentTimeMillis();
       boolean succeeded = mostSimilarItems.waitForCompletion(true);
+      long end = System.currentTimeMillis();
+      log.warn("SimilarityJob completed. Took {} seconds", (end - start) / 1000.0);
       if (!succeeded) {
         return -1;
       }
@@ -180,10 +188,16 @@ public final class ItemSimilarityJob extends AbstractJob {
     private OpenIntLongHashMap indexItemIDMap;
     private int maxSimilarItemsPerItem;
 
+    private static final Logger log = LoggerFactory.getLogger(MostSimilarItemPairsMapper.class);
+
     @Override
     protected void setup(Context ctx) {
+      log.warn("Setting up MostSimilarItemPairsMapper");
+
       Configuration conf = ctx.getConfiguration();
       maxSimilarItemsPerItem = conf.getInt(MAX_SIMILARITIES_PER_ITEM, -1);
+
+      log.warn("Reading id-index map");
       indexItemIDMap = TasteHadoopUtils.readIDIndexMap(conf.get(ITEM_ID_INDEX_PATH_STR), conf);
 
       Preconditions.checkArgument(maxSimilarItemsPerItem > 0, "maxSimilarItemsPerItem was not correctly set!");
