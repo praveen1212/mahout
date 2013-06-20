@@ -108,6 +108,11 @@ public class SequentialAccessSparseVector extends AbstractVector {
     this.values = values;
   }
 
+  public OrderedIntDoubleMapping getValues() {
+    return values;
+  }
+
+
   @Override
   protected Matrix matrixLike(int rows, int columns) {
     return new SparseRowMatrix(rows, columns);
