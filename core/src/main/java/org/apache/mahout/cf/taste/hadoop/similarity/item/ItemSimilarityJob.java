@@ -91,8 +91,6 @@ public final class ItemSimilarityJob extends AbstractJob {
   private static final int DEFAULT_MAX_PREFS_PER_USER = 1000;
   private static final int DEFAULT_MIN_PREFS_PER_USER = 1;
 
-  private static final Logger log = LoggerFactory.getLogger(ItemSimilarityJob.class);
-
   public static void main(String[] args) throws Exception {
     ToolRunner.run(new ItemSimilarityJob(), args);
   }
@@ -173,7 +171,7 @@ public final class ItemSimilarityJob extends AbstractJob {
       long start = System.currentTimeMillis();
       boolean succeeded = mostSimilarItems.waitForCompletion(true);
       long end = System.currentTimeMillis();
-      log.warn("SimilarityJob completed. Took {} seconds", (end - start) / 1000.0);
+      System.out.printf("SimilarityJob completed. Took %f seconds", (end - start) / 1000.0);
       if (!succeeded) {
         return -1;
       }

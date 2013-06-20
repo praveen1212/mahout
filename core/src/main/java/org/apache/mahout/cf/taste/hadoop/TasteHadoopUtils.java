@@ -27,8 +27,6 @@ import org.apache.mahout.common.iterator.sequencefile.SequenceFileDirIterable;
 import org.apache.mahout.math.VarIntWritable;
 import org.apache.mahout.math.VarLongWritable;
 import org.apache.mahout.math.map.OpenIntLongHashMap;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.regex.Pattern;
 
@@ -39,8 +37,6 @@ public final class TasteHadoopUtils {
 
   public static final int USER_ID_POS = 0;
   public static final int ITEM_ID_POS = 1;
-
-  private static final Logger log = LoggerFactory.getLogger(TasteHadoopUtils.class);
 
   /** Standard delimiter of textual preference data */
   private static final Pattern PREFERENCE_TOKEN_DELIMITER = Pattern.compile("[\t,]");
@@ -74,8 +70,7 @@ public final class TasteHadoopUtils {
     OpenIntLongHashMap indexIDMap = new OpenIntLongHashMap();
     Path itemIDIndexPath = new Path(idIndexPathStr);
     long start = System.currentTimeMillis();
-    log.warn("Reading binary mapping id-index map");
-    log.warn("Memory: Used {} MB",
+    System.out.printf("Starting reading binary mapping id-index; Now used %f MB\n",
         (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / 1024.0 / 1024.0);
     for (Pair<VarIntWritable,VarLongWritable> record
          : new SequenceFileDirIterable<VarIntWritable,VarLongWritable>(itemIDIndexPath,
@@ -87,8 +82,8 @@ public final class TasteHadoopUtils {
       indexIDMap.put(record.getFirst().get(), record.getSecond().get());
     }
     long end = System.currentTimeMillis();
-    log.warn("Read binary mapping id-index map. Took {} seconds", (end - start) / 1000.0);
-    log.warn("Memory: Used {} MB",
+    System.out.printf("FINISHED reading binary mapping id-index; Took %f seconds; Now used %f MB\n",
+        (end - start) / 1000.0,
         (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / 1024.0 / 1024.0);
     return indexIDMap;
   }
